@@ -46,8 +46,11 @@ def main():
         # remove container after exit
         '--rm',
 
-        # Mount build directory
+        # Mount build directory...
         '-v', '{0}:{1}'.format(os.getcwd(), BUILD_DIR),
+
+        # ...and set the working dir there
+        '-w', BUILD_DIR,
 
         # Docker image
         config['image'],
