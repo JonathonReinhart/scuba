@@ -32,6 +32,14 @@ def load_config():
 
     return config
 
+def make_vol_opt(hostdir, contdir, options=None):
+    '''Generate a docker volume option'''
+    vol = '--volume={0}:{1}'.format(hostdir, contdir)
+    if options != None:
+        if isinstance(options, basestring):
+            options = (options,)
+        vol += ':' + ','.join(options)
+    return vol
 
 def main():
     config = load_config()
@@ -47,7 +55,9 @@ def main():
         '--rm',
 
         # Mount build directory...
-        '-v', '{0}:{1}'.format(os.getcwd(), BUILD_DIR),
+        # NOTE: This tells Docker to re-label the directory for compatibility
+        # with SELinux. See `man docker-run` for more information.
+        make_vol_opt(os.getcwd(), BUILD_DIR, 'z'),
 
         # ...and set the working dir there
         '-w', BUILD_DIR,
