@@ -2,4 +2,4 @@
 
 export PATH="../src:$PATH"
 
-scuba sample_source.txt
+scuba "and more args" from user "via scuba invocation"
