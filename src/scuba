@@ -1,0 +1,64 @@
+#!/usr/bin/env python
+import os, os.path
+import sys
+import yaml
+import subprocess
+
+SCUBA_YML = '.scuba.yml'
+BUILD_DIR = '/build'
+
+def appmsg(fmt, *args):
+    print 'scuba: ' + fmt.format(*args)
+
+def load_config():
+    try: 
+        with open(SCUBA_YML) as f:
+            config = yaml.safe_load(f)
+    except IOError as e:
+        if e.errno == 2:
+            # Pretty message for the most common error
+            appmsg('No {0} found.', SCUBA_YML)
+        else:
+            appmsg('Error opening {0}: {1}', SCUBA_YML, e)
+        sys.exit(2)
+
+    # Sanity checks
+    required_nodes = ('image', 'command')
+    missing = [n for n in required_nodes if not n in config]
+    if missing:
+        appmsg('{0}: Required node{1} missing: {2}', SCUBA_YML,
+                's' if len(missing) > 1 else '', ', '.join(missing))
+        sys.exit(2)
+
+    return config
+
+
+def main():
+    config = load_config()
+
+    args = ['docker', 'run',
+        # interactive: keep STDIN open
+        '-i',
+
+        # allocate TTY
+        '-t',
+
+        # remove container after exit
+        '--rm',
+
+        # Mount build directory
+        '-v', '{0}:{1}'.format(os.getcwd(), BUILD_DIR),
+
+        # Docker image
+        config['image'],
+
+        # Command, args
+        config['command'],
+    ]
+
+    args += sys.argv[1:]
+
+    return subprocess.call(args)
+
+if __name__ == '__main__':
+    main()
