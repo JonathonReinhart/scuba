@@ -45,3 +45,7 @@ command: make -j4
 This tells SCUBA:
 - Use the `gcc:5.1` Docker image
 - Run `make -j4`, plus whatever you specify on the command-line to scuba
+
+## License
+
+This software is released under the [MIT License](https://opensource.org/licenses/MIT).

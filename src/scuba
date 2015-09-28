@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+
+# SCUBA - Simple Container-Utilizing Build Architecture
+# (C) 2015 Jonathon Reinhart
+# https://github.com/JonathonReinhart/scuba
+
 import os, os.path
 import sys
 import yaml
