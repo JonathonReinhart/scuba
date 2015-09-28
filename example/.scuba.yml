@@ -1,2 +1,2 @@
 image: busybox:latest
-command: /bin/echo 
+command: cat

@@ -2,4 +2,4 @@
 
 export PATH="../src:$PATH"
 
-scuba hello world
+scuba sample_source.txt

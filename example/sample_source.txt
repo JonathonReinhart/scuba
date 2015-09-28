@@ -1,0 +1,3 @@
+SUCCESS!
+
+This is some source code to be "built" under SCUBA.
