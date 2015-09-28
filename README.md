@@ -10,7 +10,7 @@ the entire build environment is encapsulated in a Docker container.
 Its purpose is to lower the barrier to using Docker for everyday builds. SCUBA keeps you from
 having to remember a verbose `docker run` command line, and turns this
 
-    $ docker run -it --rm -v $(pwd):/build:z -w /build make -j4 myprogram
+    $ docker run -it --rm -v $(pwd):/build:z -w /build -u $(id -u):$(id -g) name/image make -j4 myprogram
 
 into this:
 
