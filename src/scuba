@@ -3,6 +3,7 @@ import os, os.path
 import sys
 import yaml
 import subprocess
+import shlex
 
 SCUBA_YML = '.scuba.yml'
 BUILD_DIR = '/build'
@@ -64,12 +65,15 @@ def main():
 
         # Docker image
         config['image'],
-
-        # Command, args
-        config['command'],
     ]
 
+    # Command, args
+    args += shlex.split(config['command'])
+
     args += sys.argv[1:]
+
+    #from pprint import pprint; pprint(args)
+    #return 42
 
     return subprocess.call(args)
 
