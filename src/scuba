@@ -68,6 +68,9 @@ def main():
         # ...and set the working dir there
         '-w', BUILD_DIR,
 
+        # Run as the current user:group
+        '--user={0}:{1}'.format(os.getuid(), os.getgid()),
+
         # Docker image
         config['image'],
     ]
