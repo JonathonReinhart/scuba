@@ -1,7 +1,7 @@
 SCUBA
 -----
 
-Simple Container-Utilizing Build Architecture
+Simple Container-Utilizing Build Apparatus
 
 SCUBA is a simple tool that makes it easier to use Docker containers in everyday development.
 It is intended to be used by developers in 'make' or 'scons' based build environments, where
