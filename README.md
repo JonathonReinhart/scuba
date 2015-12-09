@@ -16,14 +16,15 @@ into this:
 
     $ scuba myprogram
 
-## Requirements
-
-- Python 2.6 or 2.7
-   - [PyYAML](http://pyyaml.org/)
-
 ## Installation
 
-Simply put `scuba` from the `src` directory somewhere in your `$PATH` (e.g. `/usr/local/bin`).
+To install:
+
+    $ sudo pip install .
+
+To uninstall:
+
+    $ sudo pip uninstall scuba
 
 ## Configuration
 
