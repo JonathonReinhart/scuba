@@ -28,12 +28,21 @@ def load_config():
             appmsg('Error opening {0}: {1}', SCUBA_YML, e)
         sys.exit(2)
 
-    # Sanity checks
     required_nodes = ('image',)
+    optional_nodes = ()
+
+    # Check for missing required nodes
     missing = [n for n in required_nodes if not n in config]
     if missing:
         appmsg('{0}: Required node{1} missing: {2}', SCUBA_YML,
                 's' if len(missing) > 1 else '', ', '.join(missing))
+        sys.exit(2)
+
+    # Check for unrecognized nodes
+    extra = [n for n in config if not n in required_nodes + optional_nodes]
+    if extra:
+        appmsg('{0}: Unrecognized node{1}: {2}', SCUBA_YML,
+                's' if len(extra) > 1 else '', ', '.join(extra))
         sys.exit(2)
 
     return config
