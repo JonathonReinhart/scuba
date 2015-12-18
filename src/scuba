@@ -29,7 +29,7 @@ def load_config():
         sys.exit(2)
 
     # Sanity checks
-    required_nodes = ('image', 'command')
+    required_nodes = ('image',)
     missing = [n for n in required_nodes if not n in config]
     if missing:
         appmsg('{0}: Required node{1} missing: {2}', SCUBA_YML,
@@ -76,8 +76,6 @@ def main():
     ]
 
     # Command, args
-    args += shlex.split(config['command'])
-
     args += sys.argv[1:]
 
     #from pprint import pprint; pprint(args)
