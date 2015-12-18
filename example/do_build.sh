@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 echo "Hello world from sample build script!"
 echo "This is running inside a docker container."
 
