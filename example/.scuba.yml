@@ -1,2 +1,1 @@
 image: busybox:latest
-command: /bin/sh ./do_build.sh here are "args from .scuba.yml"

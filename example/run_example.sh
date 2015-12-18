@@ -2,4 +2,4 @@
 
 export PATH="../src:$PATH"
 
-scuba "and more args" from user "via scuba invocation"
+scuba /bin/sh ./do_build.sh "here are args" from user "via scuba invocation"
