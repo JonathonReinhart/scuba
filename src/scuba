@@ -9,6 +9,9 @@ import sys
 import yaml
 import subprocess
 import shlex
+import argparse
+
+__version__ = '0.1.0'
 
 SCUBA_YML = '.scuba.yml'
 BUILD_DIR = '/build'
@@ -56,10 +59,20 @@ def make_vol_opt(hostdir, contdir, options=None):
         vol += ':' + ','.join(options)
     return vol
 
+def parse_args():
+    ap = argparse.ArgumentParser(description='Simple Container-Utilizing Build Apparatus')
+    ap.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
+    ap.add_argument('command', nargs=argparse.REMAINDER)
+    args = ap.parse_args()
+
+    return args
+
 def main():
+    args = parse_args()
+
     config = load_config()
 
-    args = ['docker', 'run',
+    run_args = ['docker', 'run',
         # interactive: keep STDIN open
         '-i',
 
@@ -84,13 +97,12 @@ def main():
         config['image'],
     ]
 
-    # Command, args
-    args += sys.argv[1:]
+    run_args += args.command
 
-    #from pprint import pprint; pprint(args)
+    #from pprint import pprint; pprint(run_args)
     #return 42
 
-    return subprocess.call(args)
+    return subprocess.call(run_args)
 
 if __name__ == '__main__':
     main()
