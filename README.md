@@ -8,13 +8,13 @@ It is intended to be used by developers in 'make' or 'scons' based build environ
 the entire build environment is encapsulated in a Docker container.
 
 Its purpose is to lower the barrier to using Docker for everyday builds. SCUBA keeps you from
-having to remember a verbose `docker run` command line, and turns this
+having to remember a complex `docker run` command line, and turns this
 
-    $ docker run -it --rm -v $(pwd):/build:z -w /build -u $(id -u):$(id -g) name/image make -j4 myprogram
+    $ docker run -it --rm -v $(pwd):/build:z -w /build -u $(id -u):$(id -g) gcc:5.1 make myprogram
 
 into this:
 
-    $ scuba myprogram
+    $ scuba make myprogram
 
 ## Installation
 
@@ -30,22 +30,20 @@ To uninstall:
 
 Configuration is done using a [YAML](http://yaml.org/) file named `.scuba.yml` in the root
 directory of your project. It is expected that `.scuba.yml` be checked in to version control.
-`.scuba.yml` currently has two required nodes:
+`.scuba.yml` currently has one required node:
 
 - `image` - The Docker image to run
-- `command` - The command to run inside the container (in the current directory)
 
 
 A `.scuba.yml` file might look like this:
 
 ```yaml
 image: gcc:5.1
-command: make -j4
 ```
 
 This tells SCUBA:
 - Use the `gcc:5.1` Docker image
-- Run `make -j4`, plus whatever you specify on the command-line to scuba
+- Run whatever is specified by the user on the command-line inside a container
 
 ## License
 
