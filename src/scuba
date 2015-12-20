@@ -32,7 +32,7 @@ def load_config():
         sys.exit(2)
 
     required_nodes = ('image',)
-    optional_nodes = ()
+    optional_nodes = ('aliases',)
 
     # Check for missing required nodes
     missing = [n for n in required_nodes if not n in config]
@@ -49,6 +49,16 @@ def load_config():
         sys.exit(2)
 
     return config
+
+def process_command(config, command):
+    if command:
+        rep = config['aliases'].get(command[0])
+        if rep:
+            command.pop(0)
+            command = shlex.split(rep) + command
+
+    return command
+
 
 def make_vol_opt(hostdir, contdir, options=None):
     '''Generate a docker volume option'''
@@ -97,7 +107,7 @@ def main():
         config['image'],
     ]
 
-    run_args += args.command
+    run_args += process_command(config, args.command)
 
     #from pprint import pprint; pprint(run_args)
     #return 42
