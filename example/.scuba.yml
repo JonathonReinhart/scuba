@@ -1,1 +1,3 @@
 image: busybox:latest
+aliases:
+    build: ./do_build.sh arguments from "scuba 'build' alias"
