@@ -30,20 +30,27 @@ To uninstall:
 
 Configuration is done using a [YAML](http://yaml.org/) file named `.scuba.yml` in the root
 directory of your project. It is expected that `.scuba.yml` be checked in to version control.
-`.scuba.yml` currently has one required node:
+
+Required nodes:
 
 - `image` - The Docker image to run
 
+Optional nodes:
 
-A `.scuba.yml` file might look like this:
+- `aliases` - A dictionary of bash-like aliases
+
+An example `.scuba.yml` file might look like this:
 
 ```yaml
 image: gcc:5.1
+aliases:
+  build: make -j4
 ```
 
 This tells SCUBA:
 - Use the `gcc:5.1` Docker image
-- Run whatever is specified by the user on the command-line inside a container
+- `build` is an alias for `make -j4`.
+In this example, `scuba build foo` would execute `make -j4 foo` in a `gcc:5.1` container.
 
 ## License
 
