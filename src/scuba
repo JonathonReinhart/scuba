@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 # SCUBA - Simple Container-Utilizing Build Architecture
 # (C) 2015 Jonathon Reinhart
@@ -101,13 +101,17 @@ def main():
 
         # ...and set the working dir there
         '-w', BUILD_DIR,
-
-        # Run as the current user:group
-        '--user={0}:{1}'.format(os.getuid(), os.getgid()),
-
-        # Docker image
-        config['image'],
     ]
+
+    # Run as the current user:group
+    # Only pass the --user option if we're running docker locally/natively.
+    # This is to work around a permissions issue in the container when running
+    # on OSX using boot2docker.
+    if not 'DOCKER_HOST' in os.environ:
+        run_args.append('--user={0}:{1}'.format(os.getuid(), os.getgid()))
+
+    # Docker image
+    run_args.append(config['image'])
 
     run_args += process_command(config, args.command)
 
