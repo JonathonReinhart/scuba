@@ -51,8 +51,10 @@ def load_config():
     return config
 
 def process_command(config, command):
+    aliases = config.get('aliases', {})
+
     if command:
-        rep = config['aliases'].get(command[0])
+        rep = aliases.get(command[0])
         if rep:
             command.pop(0)
             command = shlex.split(rep) + command
