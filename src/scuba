@@ -27,12 +27,18 @@ def find_config():
         rel     The relative path from the directory where .scuba.yml was found
                 to the current directory
     '''
+    cross_fs = 'SCUBA_DISCOVERY_ACROSS_FILESYSTEM' in os.environ
     path = os.getcwd()
 
     rel = ''
     while True:
         if os.path.exists(os.path.join(path, SCUBA_YML)):
             return path, rel
+
+        if not cross_fs and os.path.ismount(path):
+            appmsg('{0} not found here or any parent up to mount point {1}'.format(SCUBA_YML, path))
+            print 'Stopping at filesystem boundary (SCUBA_DISCOVERY_ACROSS_FILESYSTEM not set).'
+            sys.exit(128)
 
         # Traverse up directory hierarchy
         path, rest = os.path.split(path)
@@ -42,7 +48,7 @@ def find_config():
         # Accumulate the relative path back to where we started
         rel = os.path.join(rest, rel)
 
-    appmsg('No {0} found.', SCUBA_YML)
+    appmsg('{0} not found here or any parent directories'.format(SCUBA_YML))
     sys.exit(128)
 
 
