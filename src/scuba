@@ -19,16 +19,39 @@ BUILD_DIR = '/build'
 def appmsg(fmt, *args):
     print 'scuba: ' + fmt.format(*args)
 
-def load_config():
+def find_config():
+    '''Search up the diretcory hierarchy for .scuba.yml
+
+    Returns: path, rel on success, or None if not found
+        path    The absolute path of the directory where .scuba.yml was found
+        rel     The relative path from the directory where .scuba.yml was found
+                to the current directory
+    '''
+    path = os.getcwd()
+
+    rel = ''
+    while True:
+        if os.path.exists(os.path.join(path, SCUBA_YML)):
+            return path, rel
+
+        # Traverse up directory hierarchy
+        path, rest = os.path.split(path)
+        if not rest:
+            break
+
+        # Accumulate the relative path back to where we started
+        rel = os.path.join(rest, rel)
+
+    appmsg('No {0} found.', SCUBA_YML)
+    sys.exit(128)
+
+
+def load_config(path):
     try: 
-        with open(SCUBA_YML) as f:
+        with open(path) as f:
             config = yaml.safe_load(f)
     except IOError as e:
-        if e.errno == 2:
-            # Pretty message for the most common error
-            appmsg('No {0} found.', SCUBA_YML)
-        else:
-            appmsg('Error opening {0}: {1}', SCUBA_YML, e)
+        appmsg('Error opening {0}: {1}', SCUBA_YML, e)
         sys.exit(2)
 
     required_nodes = ('image',)
@@ -82,7 +105,13 @@ def parse_args():
 def main():
     args = parse_args()
 
-    config = load_config()
+    # top_path is where .scuba.yml is found, and becomes the top of our bind mount
+    # top_rel is the relative path from top_path to the current working directory,
+    # and is where we'll set the working directory in the container (relative to
+    # the bind mount point).
+    top_path, top_rel = find_config()
+
+    config = load_config(os.path.join(top_path, SCUBA_YML))
 
     run_args = ['docker', 'run',
         # interactive: keep STDIN open
@@ -97,10 +126,10 @@ def main():
         # Mount build directory...
         # NOTE: This tells Docker to re-label the directory for compatibility
         # with SELinux. See `man docker-run` for more information.
-        make_vol_opt(os.getcwd(), BUILD_DIR, 'z'),
+        make_vol_opt(top_path, BUILD_DIR, 'z'),
 
         # ...and set the working dir there
-        '-w', BUILD_DIR,
+        '-w', os.path.join(BUILD_DIR, top_rel),
     ]
 
     # Run as the current user:group
