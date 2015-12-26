@@ -19,10 +19,62 @@ BUILD_DIR = '/build'
 def appmsg(fmt, *args):
     print 'scuba: ' + fmt.format(*args)
 
+# http://stackoverflow.com/a/9577670
+class Loader(yaml.Loader):
+    def __init__(self, stream):
+        self._root = os.path.split(stream.name)[0]
+        super(Loader, self).__init__(stream)
+
+    def from_yaml(self, node):
+        '''
+        Implementes a !from_yaml constructor with the following syntax:
+            !from_yaml filename key
+
+        Arguments:
+            filename:   Filename of external YAML document from which to load,
+                        relative to the current YAML file.
+            key:        Key from external YAML document to return,
+                        using a dot-separated syntax for nested keys.
+
+        Examples:
+            !from_yaml external.yml pop
+            !from_yaml external.yml foo.bar.pop
+            !from_yaml "another file.yml" "foo bar.snap crackle.pop"
+        '''
+        # Load the content from the node, as a scalar
+        content = self.construct_scalar(node)
+
+        # Split on unquoted spaces
+        parts = shlex.split(content)
+        if len(parts) != 2:
+            raise yaml.YAMLError('Two arguments expected to !from_yaml')
+        filename, key = parts
+
+        # path is relative to the current YAML document
+        path = os.path.join(self._root, filename)
+
+        # Load the other YAML document
+        with open(path, 'r') as f:
+            doc = yaml.load(f, self.__class__)
+
+        # Retrieve the key
+        try:
+            cur = doc
+            for k in key.split('.'):
+                cur = cur[k]
+        except KeyError:
+            raise yaml.YAMLError('Key "{0}" not found in {1}'.format(key, filename))
+        return cur
+
+
+
+Loader.add_constructor('!from_yaml', Loader.from_yaml)
+
+
 def load_config():
-    try: 
+    try:
         with open(SCUBA_YML) as f:
-            config = yaml.safe_load(f)
+            config = yaml.load(f, Loader)
     except IOError as e:
         if e.errno == 2:
             # Pretty message for the most common error
