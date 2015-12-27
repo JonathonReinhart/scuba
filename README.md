@@ -52,6 +52,27 @@ This tells SCUBA:
 - `build` is an alias for `make -j4`.
 In this example, `scuba build foo` would execute `make -j4 foo` in a `gcc:5.1` container.
 
+### Extended syntax
+In addition to normal YAML syntax, an additional constructor, `!from_yaml`, is available for `.scuba.yml` which allows a key to be retrieved from an external YAML file. Is has the following syntax:
+```yaml
+!from_yaml filename key
+```
+where `filename` is the path of an external YAML file, and `key` is a dot-separated locator of the key to retrieve.
+
+This is useful for projects where a Docker image in which to build is already specified in another YAML file, for example in [`.gitlab-ci.yml`](http://doc.gitlab.com/ce/ci/yaml/README.html). This eliminates the redundancy between the configuration files. An example which uses this:
+
+**`.gitlab-ci.yml`**
+```yaml
+image: gcc:5.1
+# ...
+```
+
+**`.scuba.yml`**
+```yaml
+image: !from_yaml .gitlab-ci.yml image
+```
+
+
 ## License
 
 This software is released under the [MIT License](https://opensource.org/licenses/MIT).
