@@ -3,7 +3,7 @@
 from distutils.core import setup
 
 setup(name='SCUBA',
-      version='1.1.2',
+      version='1.2.0',
       description='Simplify use of Docker containers for building software',
       author='Jonathon Reinhart',
       author_email='jonathon.reinhart@gmail.com',
