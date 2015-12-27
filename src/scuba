@@ -5,6 +5,7 @@
 # https://github.com/JonathonReinhart/scuba
 
 import os, os.path
+import errno
 import sys
 import yaml
 import subprocess
@@ -203,7 +204,14 @@ def main():
     #from pprint import pprint; pprint(run_args)
     #return 42
 
-    return subprocess.call(run_args)
+    try:
+        rc = subprocess.call(run_args)
+    except OSError as e:
+        if e.errno == errno.ENOENT:
+            appmsg('Failed to execute docker. Is it installed?')
+            sys.exit(2)
+
+    sys.exit(rc)
 
 if __name__ == '__main__':
     main()
