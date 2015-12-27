@@ -4,6 +4,17 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [1.2.0] - 2015-12-27
+### Added
+- Search up the directory hierarchy for .scuba.yml; this allows invoking
+  scuba from a project subdirectory.
+- Add `!from_yaml` support to YAML loading; this allows specifying image
+  from an external YAML file (e.g. `.gitlab-ci.yml`).
+- Add CHANGELOG
+
+### Changed
+- Show better error message when docker cannot be executed
+
 ## [1.1.2] - 2015-12-22
 ### Fixed
 - Don't pass `--user` option when remote docker is being used
