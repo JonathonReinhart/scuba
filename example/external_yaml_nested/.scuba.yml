@@ -1,0 +1,1 @@
+image: !from_yaml .other.yml foo.bar.image
