@@ -11,6 +11,9 @@ import yaml
 import subprocess
 import shlex
 import argparse
+from tempfile import NamedTemporaryFile
+import atexit
+import pipes
 
 __version__ = '1.2.0'
 
@@ -151,6 +154,24 @@ def make_vol_opt(hostdir, contdir, options=None):
         vol += ':' + ','.join(options)
     return vol
 
+def writeln(f, line):
+    f.write(line + '\n')
+
+def generate_scubainit(config, command):
+    command = process_command(config, command)
+
+    with NamedTemporaryFile(prefix='scubainit', delete=False) as f:
+        #atexit.register(os.remove, f.name)
+
+        # TODO: What if we're not on Linux?
+        os.chmod(f.name, 0777)
+
+        writeln(f, '#!/bin/sh')
+        writeln(f, 'echo "hello from scubainit"')
+        writeln(f, ' '.join(pipes.quote(c) for c in command))
+
+        return f.name
+
 def parse_args():
     ap = argparse.ArgumentParser(description='Simple Container-Utilizing Build Apparatus')
     ap.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
@@ -170,6 +191,8 @@ def main():
 
     config = load_config(os.path.join(top_path, SCUBA_YML))
 
+    scubainit_path = generate_scubainit(config, args.command)
+
     run_args = ['docker', 'run',
         # interactive: keep STDIN open
         '-i',
@@ -179,6 +202,9 @@ def main():
 
         # remove container after exit
         '--rm',
+
+        # Mount scubainit script
+        make_vol_opt(scubainit_path, '/.scubainit', 'z'),
 
         # Mount build directory...
         # NOTE: This tells Docker to re-label the directory for compatibility
@@ -199,10 +225,11 @@ def main():
     # Docker image
     run_args.append(config['image'])
 
-    run_args += process_command(config, args.command)
+    # Command to run
+    run_args.append('/.scubainit')
 
     #from pprint import pprint; pprint(run_args)
-    #return 42
+    #sys.exit(42)
 
     try:
         rc = subprocess.call(run_args)
