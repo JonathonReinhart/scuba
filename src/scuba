@@ -189,6 +189,11 @@ def get_image_command(image):
     info = json.loads(stdout)[0]
     return info['Config']['Cmd']
 
+def get_umask():
+    # Same logic as bash/builtins/umask.def
+    val = os.umask(022)
+    os.umask(val)
+    return val 
 
 def generate_scubainit(config, command):
     '''Generate a .scubainit script
@@ -244,6 +249,9 @@ def generate_scubainit(config, command):
             users = [SCUBA_USER],
             )
         write_cmd('echo', shell_quote(entry), '>>', '/etc/group')
+
+        # Set the umask
+        write_cmd('umask', oct(get_umask()))
 
         # Execute the command indicated by the user, as the scuba user
         write_cmd('su', SCUBA_USER, '-c', shell_quote(command))
