@@ -205,11 +205,7 @@ def generate_scubainit(config, command):
     "/bin/sh .scubainit" to be run, scuba must emulate the default behavior
     itself.
     '''
-
-    if len(command) > 0:
-        # Expand any aliases
-        command = process_command(config, command)
-    else:
+    if len(command) == 0:
         # No user-provided command; we want to run the image's default command
         command = get_image_command(config['image'])
 
@@ -277,8 +273,48 @@ def main():
 
     config = load_config(os.path.join(top_path, SCUBA_YML))
 
-    scubainit_path = generate_scubainit(config, args.command)
+    # Process any aliases
+    usercmd = process_command(config, args.command)
 
+    # Determine if Docker is running locally or remotely
+    if 'DOCKER_HOST' in os.environ:
+        '''
+        Docker is running remotely (e.g. boot2docker on OSX).
+        We don't need to do any user setup whatsoever.
+
+        TODO: For now, remote instances won't have any .scubainit
+
+        See:
+        https://github.com/JonathonReinhart/scuba/issues/17
+        '''
+        docker_opts = []
+        docker_cmd = usercmd
+        vol_opts = None
+
+    else:
+        '''
+        Docker is running natively (e.g. on Linux).
+
+        We want files created inside the container (in scubaroot) to appear to the
+        host as if they were created there (owned by the same uid/gid, with same
+        umask, etc.) So, we use a .scubainit script to create a user with the same
+        uid/gid, su(1) to that user, and run the usercommand.
+        '''
+        # Generate a .scubainit script
+        scubainit_path = generate_scubainit(config, usercmd)
+
+        # Mount scubainit script
+        docker_opts = [make_vol_opt(scubainit_path, '/.scubainit', 'z')]
+
+        # Run the .scubainit at startup
+        docker_cmd = ['/bin/sh', '/.scubainit']
+
+        # NOTE: This tells Docker to re-label the directory for compatibility
+        # with SELinux. See `man docker-run` for more information.
+        vol_opts = ['z']
+
+
+    # Build the docker command line
     run_args = ['docker', 'run',
         # interactive: keep STDIN open
         '-i',
@@ -289,23 +325,18 @@ def main():
         # remove container after exit
         '--rm',
 
-        # Mount scubainit script
-        make_vol_opt(scubainit_path, '/.scubainit', 'z'),
+        # Mount scuba root directory...
+        make_vol_opt(top_path, SCUBA_ROOT, vol_opts),
 
-        # Mount build directory...
-        # NOTE: This tells Docker to re-label the directory for compatibility
-        # with SELinux. See `man docker-run` for more information.
-        make_vol_opt(top_path, SCUBA_ROOT, 'z'),
-
-        # ...and set the working dir there
+        # ...and set the working dir relative to it
         '-w', os.path.join(SCUBA_ROOT, top_rel),
-    ]
+    ] + docker_opts
 
     # Docker image
     run_args.append(config['image'])
 
-    # Command to run
-    run_args += ['/bin/sh', '/.scubainit']
+    # Command to run in container
+    run_args += docker_cmd
 
     #from pprint import pprint; pprint(run_args)
     #sys.exit(42)
