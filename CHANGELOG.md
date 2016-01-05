@@ -3,6 +3,8 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Changed
+- Change working directory from /build to /scubaroot
 
 ## [1.2.0] - 2015-12-27
 ### Added
