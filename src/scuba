@@ -172,9 +172,6 @@ def generate_scubainit(config, command):
     with NamedTemporaryFile(prefix='scubainit', delete=False) as f:
         atexit.register(os.remove, f.name)
 
-        # TODO: What if we're not on Linux?
-        os.chmod(f.name, 0777)
-
         def write_cmd(*args):
             f.write(' '.join(c for c in args) + '\n')
 
@@ -211,7 +208,7 @@ def parse_args():
 def main():
     args = parse_args()
 
-    # top_path is where .scuba.yml is found, and becomes the top of our bind mount
+    # top_path is where .scuba.yml is found, and becomes the top of our bind mount.
     # top_rel is the relative path from top_path to the current working directory,
     # and is where we'll set the working directory in the container (relative to
     # the bind mount point).
@@ -243,18 +240,11 @@ def main():
         '-w', os.path.join(SCUBA_ROOT, top_rel),
     ]
 
-    # Run as the current user:group
-    # Only pass the --user option if we're running docker locally/natively.
-    # This is to work around a permissions issue in the container when running
-    # on OSX using boot2docker.
-    if False: # not 'DOCKER_HOST' in os.environ:
-        run_args.append('--user={0}:{1}'.format(os.getuid(), os.getgid()))
-
     # Docker image
     run_args.append(config['image'])
 
     # Command to run
-    run_args.append('/.scubainit')
+    run_args += ['/bin/sh', '/.scubainit']
 
     #from pprint import pprint; pprint(run_args)
     #sys.exit(42)
