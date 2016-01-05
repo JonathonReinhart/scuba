@@ -20,6 +20,7 @@ __version__ = '1.2.0'
 SCUBA_YML = '.scuba.yml'
 SCUBA_ROOT = '/scubaroot'
 SCUBA_USER = 'scubauser'
+SCUBA_GROUP = SCUBA_USER
 
 def appmsg(fmt, *args):
     print 'scuba: ' + fmt.format(*args)
@@ -158,6 +159,13 @@ def make_vol_opt(hostdir, contdir, options=None):
 def passwd_entry(**kw):
     return '{username}:{password}:{uid}:{gid}:{gecos}:{homedir}:{shell}'.format(**kw)
 
+def group_entry(groupname, password, gid, users=[]):
+    return '{groupname}:{password}:{gid}:{users}'.format(
+            groupname = groupname,
+            password = password,
+            gid = gid,
+            users = ','.join(users))
+
 def shell_quote(s):
     # http://stackoverflow.com/a/847800/119527
     return pipes.quote(s)
@@ -191,6 +199,15 @@ def generate_scubainit(config, command):
             shell = '/bin/sh',
             )
         write_cmd('echo', shell_quote(entry), '>>', '/etc/passwd')
+
+        # Add scubauser group
+        entry = group_entry(
+            groupname = SCUBA_GROUP,
+            password = 'x',
+            gid = os.getgid(),
+            users = [SCUBA_USER],
+            )
+        write_cmd('echo', shell_quote(entry), '>>', '/etc/group')
 
         # Execute the command indicated by the user, as the scuba user
         write_cmd('su', SCUBA_USER, '-c', shell_quote(command))
