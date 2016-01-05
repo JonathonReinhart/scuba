@@ -19,6 +19,7 @@ __version__ = '1.2.0'
 
 SCUBA_YML = '.scuba.yml'
 SCUBA_ROOT = '/scubaroot'
+SCUBA_USER = 'scubauser'
 
 def appmsg(fmt, *args):
     print 'scuba: ' + fmt.format(*args)
@@ -154,21 +155,49 @@ def make_vol_opt(hostdir, contdir, options=None):
         vol += ':' + ','.join(options)
     return vol
 
-def writeln(f, line):
-    f.write(line + '\n')
+def passwd_entry(**kw):
+    return '{username}:{password}:{uid}:{gid}:{gecos}:{homedir}:{shell}'.format(**kw)
+
+def shell_quote(s):
+    # http://stackoverflow.com/a/847800/119527
+    return pipes.quote(s)
 
 def generate_scubainit(config, command):
     command = process_command(config, command)
 
     with NamedTemporaryFile(prefix='scubainit', delete=False) as f:
-        #atexit.register(os.remove, f.name)
+        atexit.register(os.remove, f.name)
 
         # TODO: What if we're not on Linux?
         os.chmod(f.name, 0777)
 
-        writeln(f, '#!/bin/sh')
-        writeln(f, 'echo "hello from scubainit"')
-        writeln(f, ' '.join(pipes.quote(c) for c in command))
+        def write_cmd(*args):
+            f.write(' '.join(c for c in args) + '\n')
+
+        write_cmd('#!/bin/sh')
+
+        write_cmd('echo', shell_quote('hello from scubainit'))
+
+        # Add scubauser with current uid/gid
+        # BusyBox only has 'adduser', with arguments incompatible with
+        # that of the standard 'useradd'.
+        # Instead, we'll just write the entry ourselves.
+        entry = passwd_entry(
+            username = SCUBA_USER,
+            password = 'x',
+            uid = os.getuid(),
+            gid = os.getgid(),
+            gecos = 'Scuba User',
+            homedir = '/',          # Docker sets $HOME=/
+            shell = '/bin/sh',
+            )
+        write_cmd('echo', shell_quote(entry), '>>', '/etc/passwd')
+
+        write_cmd('su', SCUBA_USER)
+
+        # Finally, execute the command indicated by the user
+        command = [shell_quote(c) for c in command]
+        write_cmd(*command)
 
         return f.name
 
@@ -192,6 +221,7 @@ def main():
     config = load_config(os.path.join(top_path, SCUBA_YML))
 
     scubainit_path = generate_scubainit(config, args.command)
+    #os._exit(66)
 
     run_args = ['docker', 'run',
         # interactive: keep STDIN open
@@ -219,7 +249,7 @@ def main():
     # Only pass the --user option if we're running docker locally/natively.
     # This is to work around a permissions issue in the container when running
     # on OSX using boot2docker.
-    if not 'DOCKER_HOST' in os.environ:
+    if False: # not 'DOCKER_HOST' in os.environ:
         run_args.append('--user={0}:{1}'.format(os.getuid(), os.getgid()))
 
     # Docker image
