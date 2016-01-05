@@ -15,7 +15,7 @@ import argparse
 __version__ = '1.2.0'
 
 SCUBA_YML = '.scuba.yml'
-BUILD_DIR = '/build'
+SCUBA_ROOT = '/scubaroot'
 
 def appmsg(fmt, *args):
     print 'scuba: ' + fmt.format(*args)
@@ -183,10 +183,10 @@ def main():
         # Mount build directory...
         # NOTE: This tells Docker to re-label the directory for compatibility
         # with SELinux. See `man docker-run` for more information.
-        make_vol_opt(top_path, BUILD_DIR, 'z'),
+        make_vol_opt(top_path, SCUBA_ROOT, 'z'),
 
         # ...and set the working dir there
-        '-w', os.path.join(BUILD_DIR, top_rel),
+        '-w', os.path.join(SCUBA_ROOT, top_rel),
     ]
 
     # Run as the current user:group
