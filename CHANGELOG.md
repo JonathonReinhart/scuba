@@ -3,6 +3,9 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Added
+- Set umask in container to the same as the host
+
 ### Changed
 - Change working directory from `/build` to `/scubaroot`
 - Use `.scubainit` script to create `scubauser` user/group at container
