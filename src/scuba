@@ -163,7 +163,11 @@ def shell_quote(s):
     return pipes.quote(s)
 
 def generate_scubainit(config, command):
+    # Expand any aliases
     command = process_command(config, command)
+
+    # Turn command into a string which you would enter in a shell
+    command = ' '.join(shell_quote(c) for c in command)
 
     with NamedTemporaryFile(prefix='scubainit', delete=False) as f:
         atexit.register(os.remove, f.name)
@@ -175,8 +179,6 @@ def generate_scubainit(config, command):
             f.write(' '.join(c for c in args) + '\n')
 
         write_cmd('#!/bin/sh')
-
-        write_cmd('echo', shell_quote('hello from scubainit'))
 
         # Add scubauser with current uid/gid
         # BusyBox only has 'adduser', with arguments incompatible with
@@ -193,11 +195,8 @@ def generate_scubainit(config, command):
             )
         write_cmd('echo', shell_quote(entry), '>>', '/etc/passwd')
 
-        write_cmd('su', SCUBA_USER)
-
-        # Finally, execute the command indicated by the user
-        command = [shell_quote(c) for c in command]
-        write_cmd(*command)
+        # Execute the command indicated by the user, as the scuba user
+        write_cmd('su', SCUBA_USER, '-c', shell_quote(command))
 
         return f.name
 
@@ -221,7 +220,6 @@ def main():
     config = load_config(os.path.join(top_path, SCUBA_YML))
 
     scubainit_path = generate_scubainit(config, args.command)
-    #os._exit(66)
 
     run_args = ['docker', 'run',
         # interactive: keep STDIN open
