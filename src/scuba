@@ -14,6 +14,7 @@ import argparse
 from tempfile import NamedTemporaryFile
 import atexit
 import pipes
+import json
 
 __version__ = '1.2.0'
 
@@ -170,14 +171,49 @@ def shell_quote(s):
     # http://stackoverflow.com/a/847800/119527
     return pipes.quote(s)
 
+def get_image_command(image):
+    '''Gets the default command for an image'''
+    args = ['docker', 'inspect', image]
+    try:
+        p = subprocess.Popen(args, stdout = subprocess.PIPE)
+    except OSError as e:
+        if e.errno == errno.ENOENT:
+            appmsg('Failed to execute docker. Is it installed?')
+            sys.exit(2)
+    
+    stdout, _ = p.communicate()
+    if not p.returncode == 0:
+        appmsg('Failed to inspect image')
+        sys.exit(2)
+
+    info = json.loads(stdout)[0]
+    return info['Config']['Cmd']
+
+
 def generate_scubainit(config, command):
-    # Expand any aliases
-    command = process_command(config, command)
+    '''Generate a .scubainit script
+
+    This script is executed by /bin/sh, as passed to "docker run".
+    It is responsible for setting up the environment, and running the
+    user-specified command. Normally, if the user provides no command to
+    "docker run", the image's default CMD is run. Because we force
+    "/bin/sh .scubainit" to be run, scuba must emulate the default behavior
+    itself.
+    '''
+
+    if len(command) > 0:
+        # Expand any aliases
+        command = process_command(config, command)
+    else:
+        # No user-provided command; we want to run the image's default command
+        command = get_image_command(config['image'])
 
     # Turn command into a string which you would enter in a shell
     command = ' '.join(shell_quote(c) for c in command)
 
+    # Open a temporary file
     with NamedTemporaryFile(prefix='scubainit', delete=False) as f:
+        # Delete this file when scuba exits
         atexit.register(os.remove, f.name)
 
         def write_cmd(*args):
