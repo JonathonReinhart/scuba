@@ -4,7 +4,10 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 ### Changed
-- Change working directory from /build to /scubaroot
+- Change working directory from `/build` to `/scubaroot`
+- Use `.scubainit` script to create `scubauser` user/group at container
+  startup. This avoids the oddity of running as a uid not listed in
+  `/etc/passwd`, avoiding various bugs (see [issue 11]).
 
 ## [1.2.0] - 2015-12-27
 ### Added
@@ -49,3 +52,5 @@ First versioned release
 [1.1.1]: https://github.com/JonathonReinhart/scuba/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/JonathonReinhart/scuba/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/JonathonReinhart/scuba/compare/v0.1.0...v1.0.0
+
+[issue 11]: https://github.com/JonathonReinhart/scuba/issues/11
