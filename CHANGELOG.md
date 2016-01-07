@@ -4,13 +4,13 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 ### Added
-- Set umask in container to the same as the host
+- Set umask in container to the same as the host (local Docker only)
 
 ### Changed
 - Change working directory from `/build` to `/scubaroot`
 - Use `.scubainit` script to create `scubauser` user/group at container
   startup. This avoids the oddity of running as a uid not listed in
-  `/etc/passwd`, avoiding various bugs (see [issue 11]).
+  `/etc/passwd`, avoiding various bugs (see [issue 11]). (local Docker only)
 
 ## [1.2.0] - 2015-12-27
 ### Added
