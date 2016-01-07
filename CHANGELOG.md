@@ -3,6 +3,9 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+
+
+## [1.3.0] - 2016-01-07
 ### Added
 - Set umask in container to the same as the host (local Docker only)
 
@@ -11,6 +14,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Use `.scubainit` script to create `scubauser` user/group at container
   startup. This avoids the oddity of running as a uid not listed in
   `/etc/passwd`, avoiding various bugs (see [issue 11]). (local Docker only)
+
 
 ## [1.2.0] - 2015-12-27
 ### Added
@@ -23,17 +27,21 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 - Show better error message when docker cannot be executed
 
+
 ## [1.1.2] - 2015-12-22
 ### Fixed
 - Don't pass `--user` option when remote docker is being used
+
 
 ## [1.1.1] - 2015-12-22
 ### Fixed
 - Fix bug when `aliases` is not found in `.scuba.yml`
 
+
 ## [1.1.0] - 2015-12-20
 ### Added
 - Support for Bash-like aliases, specified in `.scuba.yml`
+
 
 ## [1.0.0] - 2015-12-18
 ### Removed
@@ -45,11 +53,13 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Argument parsing to scuba (-v for version)
 - Check for and reject extraneous nodes in `.scuba.yml`
 
+
 ## 0.1.0 - 2015-12-09
 First versioned release
 
 
-[Unreleased]: https://github.com/JonathonReinhart/scuba/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/JonathonReinhart/scuba/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/JonathonReinhart/scuba/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/JonathonReinhart/scuba/compare/v1.1.2...v1.2.0
 [1.1.2]: https://github.com/JonathonReinhart/scuba/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/JonathonReinhart/scuba/compare/v1.1.0...v1.1.1
