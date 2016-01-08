@@ -4,7 +4,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 ### Added
-- Added `--verbose` option
+- Added `--verbose` and `--dry-run` options
 
 ## [1.3.0] - 2016-01-07
 ### Added
