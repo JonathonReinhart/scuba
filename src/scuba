@@ -188,6 +188,19 @@ def group_entry(groupname, password, gid, users=[]):
             gid = gid,
             users = ','.join(users))
 
+def shadow_entry(username, **kw):
+    return '{username}:{password}:{lstchg}:{minchg}:{maxchg}:{warn}:{inact}:{expire}:{flag}'.format(
+            username = username,
+            password = kw.get('password', '*'),
+            lstchg = kw.get('lstchg', ''),
+            minchg = kw.get('minchg', ''),
+            maxchg = kw.get('maxchg', ''),
+            warn = kw.get('warn', ''),
+            inact = kw.get('inact', ''),
+            expire = kw.get('expire', ''),
+            flag = '',
+            )
+
 def shell_quote(s):
     # http://stackoverflow.com/a/847800/119527
     return pipes.quote(s)
@@ -270,7 +283,17 @@ def get_native_opts():
             gid = gid,
             ))
 
+    # /etc/shadow
+    with NamedTemporaryFile(prefix='scuba', delete=False) as f:
+        cleanup.add(f.name)
+        opts.append(make_vol_opt(f.name, '/etc/shadow', 'z'))
 
+        writeln(f, shadow_entry(
+            username = 'root',
+            ))
+        writeln(f, shadow_entry(
+            username = SCUBA_USER,
+            ))
 
     return opts
 
