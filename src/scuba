@@ -31,6 +31,22 @@ def verbose_msg(fmt, *args):
     if g_verbose:
         appmsg(fmt, *args)
 
+class FileCleanup(object):
+    def __init__(self, skip=False):
+        self.files = []
+        if not skip:
+            atexit.register(self.__cleanup)
+
+    def add(self, path):
+        self.files.append(path)
+
+    def __cleanup(self):
+        for f in self.files:
+            try:
+                os.remove(f)
+            except OSError:
+                pass
+
 
 # http://stackoverflow.com/a/9577670
 class Loader(yaml.Loader):
@@ -221,8 +237,7 @@ def generate_scubainit(config, command):
 
     # Open a temporary file
     with NamedTemporaryFile(prefix='scubainit', delete=False) as f:
-        # Delete this file when scuba exits
-        atexit.register(os.remove, f.name)
+        cleanup.add(f.name)
 
         def write_cmd(*args):
             f.write(' '.join(c for c in args) + '\n')
@@ -275,6 +290,9 @@ def parse_args():
 
 def main():
     args = parse_args()
+
+    global cleanup
+    cleanup = FileCleanup()
 
     # top_path is where .scuba.yml is found, and becomes the top of our bind mount.
     # top_rel is the relative path from top_path to the current working directory,
