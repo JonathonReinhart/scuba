@@ -278,6 +278,7 @@ def generate_scubainit(config, command):
 
 def parse_args():
     ap = argparse.ArgumentParser(description='Simple Container-Utilizing Build Apparatus')
+    ap.add_argument('-n', '--dry-run', action='store_true')
     ap.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
     ap.add_argument('-V', '--verbose', action='store_true')
     ap.add_argument('command', nargs=argparse.REMAINDER)
@@ -292,7 +293,7 @@ def main():
     args = parse_args()
 
     global cleanup
-    cleanup = FileCleanup()
+    cleanup = FileCleanup(skip=args.dry_run)
 
     # top_path is where .scuba.yml is found, and becomes the top of our bind mount.
     # top_rel is the relative path from top_path to the current working directory,
@@ -370,11 +371,16 @@ def main():
     # Command to run in container
     run_args += docker_cmd
 
-    if g_verbose:
+    if g_verbose or args.dry_run:
         from pprint import pprint
-        verbose_msg('Running Docker:')
+        appmsg('Docker arguments:')
         pprint(run_args)
-    #sys.exit(42)
+
+    if args.dry_run:
+        appmsg('Exiting for dry run. Temporary files not removed:')
+        for f in cleanup.files:
+            print('   ' + f, file=sys.stderr)
+        sys.exit(42)
 
     try:
         rc = subprocess.call(run_args)
