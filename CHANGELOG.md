@@ -6,6 +6,14 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - Added `--verbose` and `--dry-run` options
 
+### Removed
+- umask is no longer set in the container. (See [#24])
+
+### Fixed
+- Problems with Ctrl+C in images are fixed. The user command now runs
+  as PID 1 again, as there is no more `.scubainit` script.
+
+
 ## [1.3.0] - 2016-01-07
 ### Added
 - Set umask in container to the same as the host (local Docker only)
@@ -68,3 +76,4 @@ First versioned release
 [1.0.0]: https://github.com/JonathonReinhart/scuba/compare/v0.1.0...v1.0.0
 
 [issue 11]: https://github.com/JonathonReinhart/scuba/issues/11
+[#24]: https://github.com/JonathonReinhart/scuba/pull/24

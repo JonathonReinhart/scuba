@@ -188,93 +188,85 @@ def group_entry(groupname, password, gid, users=[]):
             gid = gid,
             users = ','.join(users))
 
-def shell_quote(s):
-    # http://stackoverflow.com/a/847800/119527
-    return pipes.quote(s)
+def shadow_entry(username, **kw):
+    return '{username}:{password}:{lstchg}:{minchg}:{maxchg}:{warn}:{inact}:{expire}:{flag}'.format(
+            username = username,
+            password = kw.get('password', '*'),
+            lstchg = kw.get('lstchg', ''),
+            minchg = kw.get('minchg', ''),
+            maxchg = kw.get('maxchg', ''),
+            warn = kw.get('warn', ''),
+            inact = kw.get('inact', ''),
+            expire = kw.get('expire', ''),
+            flag = '',
+            )
 
-def get_image_command(image):
-    '''Gets the default command for an image'''
-    args = ['docker', 'inspect', image]
-    try:
-        p = subprocess.Popen(args, stdout = subprocess.PIPE)
-    except OSError as e:
-        if e.errno == errno.ENOENT:
-            appmsg('Failed to execute docker. Is it installed?')
-            sys.exit(2)
-    
-    stdout, _ = p.communicate()
-    if not p.returncode == 0:
-        appmsg('Failed to inspect image')
-        sys.exit(2)
+def get_native_opts():
+    opts = []
 
-    info = json.loads(stdout)[0]
-    return info['Config']['Cmd']
+    uid = os.getuid()
+    gid = os.getgid()
 
-def get_umask():
-    # Same logic as bash/builtins/umask.def
-    val = os.umask(022)
-    os.umask(val)
-    return val 
+    opts.append('--user={uid}:{gid}'.format(uid=uid, gid=gid))
 
-def generate_scubainit(config, command):
-    '''Generate a .scubainit script
+    def writeln(f, line):
+        f.write(line + '\n')
 
-    This script is executed by /bin/sh, as passed to "docker run".
-    It is responsible for setting up the environment, and running the
-    user-specified command. Normally, if the user provides no command to
-    "docker run", the image's default CMD is run. Because we force
-    "/bin/sh .scubainit" to be run, scuba must emulate the default behavior
-    itself.
-    '''
-    if len(command) == 0:
-        # No user-provided command; we want to run the image's default command
-        verbose_msg('No user command; getting command from image')
-        command = get_image_command(config['image'])
-        verbose_msg('{0} Cmd: "{1}"'.format(config['image'], command))
-
-    # Turn command into a string which you would enter in a shell
-    command = ' '.join(shell_quote(c) for c in command)
-
-    # Open a temporary file
-    with NamedTemporaryFile(prefix='scubainit', delete=False) as f:
+    # /etc/passwd
+    with NamedTemporaryFile(prefix='scuba', delete=False) as f:
         cleanup.add(f.name)
+        opts.append(make_vol_opt(f.name, '/etc/passwd', 'z'))
 
-        def write_cmd(*args):
-            f.write(' '.join(c for c in args) + '\n')
+        writeln(f, passwd_entry(
+            username = 'root',
+            password = 'x',
+            uid = 0,
+            gid = 0,
+            gecos = 'root',
+            homedir = '/root',
+            shell = '/bin/sh',
+            ))
 
-        write_cmd('#!/bin/sh')
-
-        # Add scubauser with current uid/gid
-        # BusyBox only has 'adduser', with arguments incompatible with
-        # that of the standard 'useradd'.
-        # Instead, we'll just write the entry ourselves.
-        entry = passwd_entry(
+        writeln(f, passwd_entry(
             username = SCUBA_USER,
             password = 'x',
-            uid = os.getuid(),
-            gid = os.getgid(),
+            uid = uid,
+            gid = gid,
             gecos = 'Scuba User',
             homedir = '/',          # Docker sets $HOME=/
             shell = '/bin/sh',
-            )
-        write_cmd('echo', shell_quote(entry), '>>', '/etc/passwd')
+            ))
 
-        # Add scubauser group
-        entry = group_entry(
+    # /etc/group
+    with NamedTemporaryFile(prefix='scuba', delete=False) as f:
+        cleanup.add(f.name)
+        opts.append(make_vol_opt(f.name, '/etc/group', 'z'))
+
+        writeln(f, group_entry(
+            groupname = 'root',
+            password = 'x',
+            gid = 0,
+            ))
+
+        writeln(f, group_entry(
             groupname = SCUBA_GROUP,
             password = 'x',
-            gid = os.getgid(),
-            users = [SCUBA_USER],
-            )
-        write_cmd('echo', shell_quote(entry), '>>', '/etc/group')
+            gid = gid,
+            ))
 
-        # Set the umask
-        write_cmd('umask', oct(get_umask()))
+    # /etc/shadow
+    with NamedTemporaryFile(prefix='scuba', delete=False) as f:
+        cleanup.add(f.name)
+        opts.append(make_vol_opt(f.name, '/etc/shadow', 'z'))
 
-        # Execute the command indicated by the user, as the scuba user
-        write_cmd('su', SCUBA_USER, '-c', shell_quote(command))
+        writeln(f, shadow_entry(
+            username = 'root',
+            ))
+        writeln(f, shadow_entry(
+            username = SCUBA_USER,
+            ))
 
-        return f.name
+    return opts
 
 def parse_args():
     ap = argparse.ArgumentParser(description='Simple Container-Utilizing Build Apparatus')
@@ -328,19 +320,12 @@ def main():
 
         We want files created inside the container (in scubaroot) to appear to the
         host as if they were created there (owned by the same uid/gid, with same
-        umask, etc.) So, we use a .scubainit script to create a user with the same
-        uid/gid, su(1) to that user, and run the usercommand.
+        umask, etc.)
         '''
         verbose_msg('Docker running natively')
 
-        # Generate a .scubainit script
-        scubainit_path = generate_scubainit(config, usercmd)
-
-        # Mount scubainit script
-        docker_opts = [make_vol_opt(scubainit_path, '/.scubainit', 'z')]
-
-        # Run the .scubainit at startup
-        docker_cmd = ['/bin/sh', '/.scubainit']
+        docker_opts = get_native_opts()
+        docker_cmd = usercmd
 
         # NOTE: This tells Docker to re-label the directory for compatibility
         # with SELinux. See `man docker-run` for more information.
