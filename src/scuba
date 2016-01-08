@@ -4,6 +4,7 @@
 # (C) 2015 Jonathon Reinhart
 # https://github.com/JonathonReinhart/scuba
 
+from __future__ import print_function
 import os, os.path
 import errno
 import sys
@@ -24,7 +25,11 @@ SCUBA_USER = 'scubauser'
 SCUBA_GROUP = SCUBA_USER
 
 def appmsg(fmt, *args):
-    print 'scuba: ' + fmt.format(*args)
+    print('scuba: ' + fmt.format(*args), file=sys.stderr)
+
+def verbose_msg(fmt, *args):
+    if g_verbose:
+        appmsg(fmt, *args)
 
 
 # http://stackoverflow.com/a/9577670
@@ -94,8 +99,8 @@ def find_config():
             return path, rel
 
         if not cross_fs and os.path.ismount(path):
-            appmsg('{0} not found here or any parent up to mount point {1}'.format(SCUBA_YML, path))
-            print 'Stopping at filesystem boundary (SCUBA_DISCOVERY_ACROSS_FILESYSTEM not set).'
+            appmsg('{0} not found here or any parent up to mount point {1}'.format(SCUBA_YML, path)
+                   + '\nStopping at filesystem boundary (SCUBA_DISCOVERY_ACROSS_FILESYSTEM not set).')
             sys.exit(128)
 
         # Traverse up directory hierarchy
@@ -207,7 +212,9 @@ def generate_scubainit(config, command):
     '''
     if len(command) == 0:
         # No user-provided command; we want to run the image's default command
+        verbose_msg('No user command; getting command from image')
         command = get_image_command(config['image'])
+        verbose_msg('{0} Cmd: "{1}"'.format(config['image'], command))
 
     # Turn command into a string which you would enter in a shell
     command = ' '.join(shell_quote(c) for c in command)
@@ -257,8 +264,12 @@ def generate_scubainit(config, command):
 def parse_args():
     ap = argparse.ArgumentParser(description='Simple Container-Utilizing Build Apparatus')
     ap.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
+    ap.add_argument('-V', '--verbose', action='store_true')
     ap.add_argument('command', nargs=argparse.REMAINDER)
     args = ap.parse_args()
+
+    global g_verbose
+    g_verbose = args.verbose
 
     return args
 
@@ -287,6 +298,7 @@ def main():
         See:
         https://github.com/JonathonReinhart/scuba/issues/17
         '''
+        verbose_msg('DOCKER_HOST in environment, Docker running remotely')
         docker_opts = []
         docker_cmd = usercmd
         vol_opts = None
@@ -300,6 +312,8 @@ def main():
         umask, etc.) So, we use a .scubainit script to create a user with the same
         uid/gid, su(1) to that user, and run the usercommand.
         '''
+        verbose_msg('Docker running natively')
+
         # Generate a .scubainit script
         scubainit_path = generate_scubainit(config, usercmd)
 
@@ -338,7 +352,10 @@ def main():
     # Command to run in container
     run_args += docker_cmd
 
-    #from pprint import pprint; pprint(run_args)
+    if g_verbose:
+        from pprint import pprint
+        verbose_msg('Running Docker:')
+        pprint(run_args)
     #sys.exit(42)
 
     try:
