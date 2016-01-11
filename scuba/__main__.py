@@ -19,6 +19,7 @@ import json
 from .constants import *
 from .config import find_config, load_config, ConfigError
 from .etcfiles import *
+from . import filecleanup
 
 __version__ = '1.4.0'
 
@@ -28,23 +29,6 @@ def appmsg(fmt, *args):
 def verbose_msg(fmt, *args):
     if g_verbose:
         appmsg(fmt, *args)
-
-class FileCleanup(object):
-    def __init__(self, skip=False):
-        self.files = []
-        if not skip:
-            atexit.register(self.__cleanup)
-
-    def add(self, path):
-        self.files.append(path)
-
-    def __cleanup(self):
-        for f in self.files:
-            try:
-                os.remove(f)
-            except OSError:
-                pass
-
 
 def process_command(config, command):
     aliases = config.get('aliases', {})
@@ -80,7 +64,7 @@ def get_native_opts():
 
     # /etc/passwd
     with NamedTemporaryFile(prefix='scuba', delete=False) as f:
-        cleanup.add(f.name)
+        filecleanup.register(f.name)
         opts.append(make_vol_opt(f.name, '/etc/passwd', 'z'))
 
         writeln(f, passwd_entry(
@@ -105,7 +89,7 @@ def get_native_opts():
 
     # /etc/group
     with NamedTemporaryFile(prefix='scuba', delete=False) as f:
-        cleanup.add(f.name)
+        filecleanup.register(f.name)
         opts.append(make_vol_opt(f.name, '/etc/group', 'z'))
 
         writeln(f, group_entry(
@@ -122,7 +106,7 @@ def get_native_opts():
 
     # /etc/shadow
     with NamedTemporaryFile(prefix='scuba', delete=False) as f:
-        cleanup.add(f.name)
+        filecleanup.register(f.name)
         opts.append(make_vol_opt(f.name, '/etc/shadow', 'z'))
 
         writeln(f, shadow_entry(
@@ -150,8 +134,7 @@ def parse_args(argv):
 def main(argv=None):
     args = parse_args(argv)
 
-    global cleanup
-    cleanup = FileCleanup(skip=args.dry_run)
+    filecleanup.skip(args.dry_run)
 
     # top_path is where .scuba.yml is found, and becomes the top of our bind mount.
     # top_rel is the relative path from top_path to the current working directory,
@@ -232,7 +215,7 @@ def main(argv=None):
 
     if args.dry_run:
         appmsg('Exiting for dry run. Temporary files not removed:')
-        for f in cleanup.files:
+        for f in filecleanup.files():
             print('   ' + f, file=sys.stderr)
         sys.exit(42)
 
