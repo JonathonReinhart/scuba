@@ -268,21 +268,21 @@ def get_native_opts():
 
     return opts
 
-def parse_args():
+def parse_args(argv):
     ap = argparse.ArgumentParser(description='Simple Container-Utilizing Build Apparatus')
     ap.add_argument('-n', '--dry-run', action='store_true')
     ap.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
     ap.add_argument('-V', '--verbose', action='store_true')
     ap.add_argument('command', nargs=argparse.REMAINDER)
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     global g_verbose
     g_verbose = args.verbose
 
     return args
 
-def main():
-    args = parse_args()
+def main(argv=None):
+    args = parse_args(argv)
 
     global cleanup
     cleanup = FileCleanup(skip=args.dry_run)
