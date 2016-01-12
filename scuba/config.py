@@ -97,6 +97,9 @@ def load_config(path):
     except yaml.YAMLError as e:
         raise ConfigError('Error loading {0}: {1}', SCUBA_YML, e)
 
+    if config == None:
+        config = {}
+
     required_nodes = ('image',)
     optional_nodes = ('aliases',)
 
