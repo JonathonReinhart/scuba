@@ -1,2 +1,5 @@
 build
 *.pyc
+
+cover
+.coverage
