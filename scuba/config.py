@@ -1,5 +1,6 @@
 import os
 import yaml
+import shlex
 
 from .constants import *
 
@@ -93,6 +94,11 @@ def load_config(path):
             config = yaml.load(f, Loader)
     except IOError as e:
         raise ConfigError('Error opening {0}: {1}', SCUBA_YML, e)
+    except yaml.YAMLError as e:
+        raise ConfigError('Error loading {0}: {1}', SCUBA_YML, e)
+
+    if config == None:
+        config = {}
 
     required_nodes = ('image',)
     optional_nodes = ('aliases',)
