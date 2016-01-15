@@ -73,8 +73,7 @@ class TestConfig(TestCase):
         assert_paths_equal(rel, join(*subdirs))
 
     def test_find_config_nonexist(self):
-        with assert_raises(scuba.config.ConfigError):
-            scuba.config.find_config()
+        assert_raises(scuba.config.ConfigError, scuba.config.find_config)
 
     ######################################################################
     # Load config
@@ -83,8 +82,7 @@ class TestConfig(TestCase):
         with open('.scuba.yml', 'w') as f:
             pass
 
-        with assert_raises(scuba.config.ConfigError):
-            scuba.config.load_config('.scuba.yml')
+        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
 
     def test_load_config_minimal(self):
         with open('.scuba.yml', 'w') as f:
@@ -137,15 +135,13 @@ class TestConfig(TestCase):
         with open('.scuba.yml', 'w') as f:
             f.write('image: !from_yaml .gitlab.yml somewhere.NONEXISTANT\n')
 
-        with assert_raises(scuba.config.ConfigError):
-            scuba.config.load_config('.scuba.yml')
+        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
 
     def test_load_config_image_from_yaml_missing_file(self):
         with open('.scuba.yml', 'w') as f:
             f.write('image: !from_yaml .NONEXISTANT.yml image\n')
 
-        with assert_raises(scuba.config.ConfigError):
-            scuba.config.load_config('.scuba.yml')
+        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
 
     def test_load_config_image_from_yaml_missing_arg(self):
         with open('.gitlab.yml', 'w') as f:
@@ -154,5 +150,4 @@ class TestConfig(TestCase):
         with open('.scuba.yml', 'w') as f:
             f.write('image: !from_yaml .gitlab.yml\n')
 
-        with assert_raises(scuba.config.ConfigError):
-            scuba.config.load_config('.scuba.yml')
+        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')

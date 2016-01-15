@@ -1,0 +1,6 @@
+PyYAML
+nose
+
+# Keep coverage at a lower version to prevent TravisCI failures:
+# https://github.com/travis-ci/travis-ci/issues/4866
+coverage<4
