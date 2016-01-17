@@ -85,6 +85,13 @@ class TestConfig(TestCase):
 
         assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
 
+    def test_load_unexpected_node(self):
+        with open('.scuba.yml', 'w') as f:
+            f.write('image: busybox\n')
+            f.write('unexpected_node_123456: value\n')
+
+        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
+
     def test_load_config_minimal(self):
         with open('.scuba.yml', 'w') as f:
             f.write('image: busybox\n')
