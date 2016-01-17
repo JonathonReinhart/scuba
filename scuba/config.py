@@ -7,6 +7,13 @@ from .constants import *
 class ConfigError(Exception):
     pass
 
+def shlex_split(s):
+    # shlex.split doesn't properly handle unicode input in Python 2.6.
+    # First try to encode it as an ASCII string. which
+    # may raise a UnicodeEncodeError.
+    s = str(s)
+    return shlex.split(s)
+
 # http://stackoverflow.com/a/9577670
 class Loader(yaml.Loader):
     def __init__(self, stream):
@@ -29,11 +36,16 @@ class Loader(yaml.Loader):
             !from_yaml external.yml foo.bar.pop
             !from_yaml "another file.yml" "foo bar.snap crackle.pop"
         '''
+
         # Load the content from the node, as a scalar
         content = self.construct_scalar(node)
 
         # Split on unquoted spaces
-        parts = shlex.split(content)
+        try:
+            parts = shlex_split(content)
+        except UnicodeEncodeError:
+            raise yaml.YAMLError('Non-ASCII arguments to !from_yaml are unsupported')
+
         if len(parts) != 2:
             raise yaml.YAMLError('Two arguments expected to !from_yaml')
         filename, key = parts
