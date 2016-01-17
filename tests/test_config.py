@@ -1,3 +1,4 @@
+ # coding=utf-8
 from __future__ import print_function
 
 from nose.tools import *
@@ -140,6 +141,12 @@ class TestConfig(TestCase):
     def test_load_config_image_from_yaml_missing_file(self):
         with open('.scuba.yml', 'w') as f:
             f.write('image: !from_yaml .NONEXISTANT.yml image\n')
+
+        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
+
+    def test_load_config_image_from_yaml_unicode_args(self):
+        with open('.scuba.yml', 'w') as f:
+            f.write('image: !from_yaml .NONEXISTANT.yml ½\n')
 
         assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
 
