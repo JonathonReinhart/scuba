@@ -30,16 +30,6 @@ def verbose_msg(fmt, *args):
     if g_verbose:
         appmsg(fmt, *args)
 
-def process_command(config, command):
-    aliases = config.get('aliases', {})
-
-    if command:
-        rep = aliases.get(command[0])
-        if rep:
-            command.pop(0)
-            command = shlex.split(rep) + command
-
-    return command
 
 
 def make_vol_opt(hostdir, contdir, options=None):
@@ -148,7 +138,7 @@ def main(argv=None):
         sys.exit(128)
 
     # Process any aliases
-    usercmd = process_command(config, args.command)
+    usercmd = config.process_command(args.command)
 
     # Determine if Docker is running locally or remotely
     if 'DOCKER_HOST' in os.environ:
@@ -203,7 +193,7 @@ def main(argv=None):
     ] + docker_opts
 
     # Docker image
-    run_args.append(config['image'])
+    run_args.append(config.image)
 
     # Command to run in container
     run_args += docker_cmd
