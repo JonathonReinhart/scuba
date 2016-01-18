@@ -46,7 +46,7 @@ def make_vol_opt(hostdir, contdir, options=None):
     '''Generate a docker volume option'''
     vol = '--volume={0}:{1}'.format(hostdir, contdir)
     if options != None:
-        if isinstance(options, basestring):
+        if isinstance(options, str):
             options = (options,)
         vol += ':' + ','.join(options)
     return vol
