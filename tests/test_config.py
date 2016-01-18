@@ -169,3 +169,46 @@ class TestConfig(TestCase):
             f.write('image: !from_yaml .gitlab.yml\n')
 
         assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
+
+    ######################################################################
+    # process_command
+
+    def test_process_command_no_aliases(self):
+        cfg = scuba.config.ScubaConfig(
+                image = 'na',
+                )
+        result = cfg.process_command(['cmd', 'arg1', 'arg2'])
+        assert_equal(result, ['cmd', 'arg1', 'arg2'])
+
+    def test_process_command_aliases_unused(self):
+        cfg = scuba.config.ScubaConfig(
+                image = 'na',
+                aliases = dict(
+                    apple = 'banana',
+                    cat = 'dog',
+                    ),
+                )
+        result = cfg.process_command(['cmd', 'arg1', 'arg2'])
+        assert_equal(result, ['cmd', 'arg1', 'arg2'])
+
+    def test_process_command_aliases_used_noargs(self):
+        cfg = scuba.config.ScubaConfig(
+                image = 'na',
+                aliases = dict(
+                    apple = 'banana',
+                    cat = 'dog',
+                    ),
+                )
+        result = cfg.process_command(['apple', 'arg1', 'arg2'])
+        assert_equal(result, ['banana', 'arg1', 'arg2'])
+
+    def test_process_command_aliases_used_withargs(self):
+        cfg = scuba.config.ScubaConfig(
+                image = 'na',
+                aliases = dict(
+                    apple = 'banana cherry "pie is good"',
+                    cat = 'dog',
+                    ),
+                )
+        result = cfg.process_command(['apple', 'arg1', 'arg2'])
+        assert_equal(result, ['banana', 'cherry', 'pie is good', 'arg1', 'arg2'])
