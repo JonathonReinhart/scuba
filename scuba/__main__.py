@@ -63,7 +63,7 @@ def get_native_opts():
         f.write(line + '\n')
 
     # /etc/passwd
-    with NamedTemporaryFile(prefix='scuba', delete=False) as f:
+    with NamedTemporaryFile(mode='wt', prefix='scuba', delete=False) as f:
         filecleanup.register(f.name)
         opts.append(make_vol_opt(f.name, '/etc/passwd', 'z'))
 
@@ -88,7 +88,7 @@ def get_native_opts():
             ))
 
     # /etc/group
-    with NamedTemporaryFile(prefix='scuba', delete=False) as f:
+    with NamedTemporaryFile(mode='wt', prefix='scuba', delete=False) as f:
         filecleanup.register(f.name)
         opts.append(make_vol_opt(f.name, '/etc/group', 'z'))
 
@@ -105,7 +105,7 @@ def get_native_opts():
             ))
 
     # /etc/shadow
-    with NamedTemporaryFile(prefix='scuba', delete=False) as f:
+    with NamedTemporaryFile(mode='wt', prefix='scuba', delete=False) as f:
         filecleanup.register(f.name)
         opts.append(make_vol_opt(f.name, '/etc/shadow', 'z'))
 
