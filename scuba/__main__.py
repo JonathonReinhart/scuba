@@ -210,7 +210,13 @@ def main(argv=None):
         sys.exit(42)
 
     try:
-        rc = subprocess.call(run_args)
+        # Explicitly pass sys.stdout/stderr so they apply to the
+        # child process if overridden (by tests).
+        rc = subprocess.call(
+                args = run_args,
+                stdout = sys.stdout,
+                stderr = sys.stderr,
+                )
     except OSError as e:
         if e.errno == errno.ENOENT:
             appmsg('Failed to execute docker. Is it installed?')
