@@ -21,6 +21,13 @@ def assert_str_equalish(exp, act):
     act = str(act).strip()
     assert_equal(exp, act)
 
+def assert_startswith(s, prefix):
+    s = str(s)
+    prefix = str(prefix)
+    if not s.startswith(prefix):
+        raise AssertionError('"{0}" does not start with "{1}"'
+                .format(s.encode('string_escape'), prefix))
+
 
 class BetterAssertRaisesMixin(object):
     def assertRaises2(self, exc_type, func, *args, **kwargs):
@@ -108,7 +115,7 @@ class TestMain(TestCase, BetterAssertRaisesMixin):
 
         _, err = self.run_scuba(['-v'])
 
-        assert_true(err.startswith('scuba '))
+        assert_startswith(err, 'scuba')
 
         ver = err.split()[1]
         assert_equal(ver, main.__version__)
