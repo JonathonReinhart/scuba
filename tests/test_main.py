@@ -16,6 +16,12 @@ from shutil import rmtree
 
 import scuba.__main__ as main
 
+def assert_str_equalish(exp, act):
+    exp = str(exp).strip()
+    act = str(act).strip()
+    assert_equal(exp, act)
+
+
 class BetterAssertRaisesMixin(object):
     def assertRaises2(self, exc_type, func, *args, **kwargs):
         try:
@@ -84,7 +90,7 @@ class TestMain(TestCase, BetterAssertRaisesMixin):
         args = ['/bin/echo', '-n', 'my output']
         out, _ = self.run_scuba(args)
 
-        assert_equal('my output', out)
+        assert_str_equalish('my output', out)
 
 
     def test_config_error(self):
