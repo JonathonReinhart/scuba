@@ -10,6 +10,7 @@ import scuba.etcfiles
 class TestEtcfiles(TestCase):
 
     def test_passwd_entry(self):
+        '''passwd_entry returns a valid /etc/passwd entry'''
         ret = scuba.etcfiles.passwd_entry(
             username = 'nobody',
             password = 'x',
@@ -22,6 +23,7 @@ class TestEtcfiles(TestCase):
         assert_equal('nobody:x:99:99:Nobody:/:/sbin/nologin', ret)
 
     def test_group_entry(self):
+        '''group_entry returns a valid /etc/group entry'''
         ret = scuba.etcfiles.group_entry(
             groupname = 'nobody',
             password = 'x',
@@ -31,6 +33,7 @@ class TestEtcfiles(TestCase):
         assert_equal('nobody:x:99:nope,uhuh,neep', ret)
 
     def test_shadow_entry(self):
+        '''shadow_entry returns a valid /etc/shadow entry'''
         ret = scuba.etcfiles.shadow_entry(
             username = 'nobody',
             password = '*',
