@@ -37,6 +37,7 @@ class TestConfig(TestCase):
     # Find config
 
     def test_find_config_cur_dir(self):
+        '''find_config can find the config in the current directory'''
         with open('.scuba.yml', 'w') as f:
             f.write('image: busybox\n')
 
@@ -46,6 +47,7 @@ class TestConfig(TestCase):
 
 
     def test_find_config_parent_dir(self):
+        '''find_config cuba can find the config in the parent directory'''
         with open('.scuba.yml', 'w') as f:
             f.write('image: busybox\n')
 
@@ -60,6 +62,7 @@ class TestConfig(TestCase):
         assert_paths_equal(rel, 'subdir')
 
     def test_find_config_way_up(self):
+        '''find_config can find the config way up the directory hierarchy'''
         with open('.scuba.yml', 'w') as f:
             f.write('image: busybox\n')
 
@@ -77,18 +80,21 @@ class TestConfig(TestCase):
         assert_paths_equal(rel, join(*subdirs))
 
     def test_find_config_nonexist(self):
+        '''find_config raises ConfigError if the config cannot be found'''
         assert_raises(scuba.config.ConfigError, scuba.config.find_config)
 
     ######################################################################
     # Load config
 
     def test_load_config_empty(self):
+        '''load_config raises ConfigError if the config is empty'''
         with open('.scuba.yml', 'w') as f:
             pass
 
         assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
 
     def test_load_unexpected_node(self):
+        '''load_config raises ConfigError on unexpected config node'''
         with open('.scuba.yml', 'w') as f:
             f.write('image: busybox\n')
             f.write('unexpected_node_123456: value\n')
@@ -96,6 +102,7 @@ class TestConfig(TestCase):
         assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
 
     def test_load_config_minimal(self):
+        '''load_config loads a minimal config'''
         with open('.scuba.yml', 'w') as f:
             f.write('image: busybox\n')
 
@@ -103,6 +110,7 @@ class TestConfig(TestCase):
         assert_equals(config.image, 'busybox')
 
     def test_load_config_with_aliases(self):
+        '''load_config loads a config with aliases'''
         with open('.scuba.yml', 'w') as f:
             f.write('image: busybox\n')
             f.write('aliases:\n')
@@ -118,6 +126,7 @@ class TestConfig(TestCase):
 
 
     def test_load_config_image_from_yaml(self):
+        '''load_config loads a config using !from_yaml'''
         with open('.gitlab.yml', 'w') as f:
             f.write('image: debian:8.2\n')
 
@@ -128,6 +137,7 @@ class TestConfig(TestCase):
         assert_equals(config.image, 'debian:8.2')
 
     def test_load_config_image_from_yaml_nested_keys(self):
+        '''load_config loads a config using !from_yaml with nested keys'''
         with open('.gitlab.yml', 'w') as f:
             f.write('somewhere:\n')
             f.write('  down:\n')
@@ -140,6 +150,7 @@ class TestConfig(TestCase):
         assert_equals(config.image, 'debian:8.2')
 
     def test_load_config_image_from_yaml_nested_key_missing(self):
+        '''load_config raises ConfigError when !from_yaml references nonexistant key'''
         with open('.gitlab.yml', 'w') as f:
             f.write('somewhere:\n')
             f.write('  down:\n')
@@ -150,18 +161,21 @@ class TestConfig(TestCase):
         assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
 
     def test_load_config_image_from_yaml_missing_file(self):
+        '''load_config raises ConfigError when !from_yaml references nonexistant file'''
         with open('.scuba.yml', 'w') as f:
             f.write('image: !from_yaml .NONEXISTANT.yml image\n')
 
         assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
 
     def test_load_config_image_from_yaml_unicode_args(self):
+        '''load_config raises ConfigError when !from_yaml has unicode args'''
         with open('.scuba.yml', 'w') as f:
             f.write('image: !from_yaml .NONEXISTANT.yml ½\n')
 
         assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
 
     def test_load_config_image_from_yaml_missing_arg(self):
+        '''load_config raises ConfigError when !from_yaml has missing args'''
         with open('.gitlab.yml', 'w') as f:
             f.write('image: debian:8.2\n')
 
@@ -174,6 +188,7 @@ class TestConfig(TestCase):
     # process_command
 
     def test_process_command_no_aliases(self):
+        '''process_command handles no aliases'''
         cfg = scuba.config.ScubaConfig(
                 image = 'na',
                 )
@@ -181,6 +196,7 @@ class TestConfig(TestCase):
         assert_equal(result, ['cmd', 'arg1', 'arg2'])
 
     def test_process_command_aliases_unused(self):
+        '''process_command handles unused aliases'''
         cfg = scuba.config.ScubaConfig(
                 image = 'na',
                 aliases = dict(
@@ -192,6 +208,7 @@ class TestConfig(TestCase):
         assert_equal(result, ['cmd', 'arg1', 'arg2'])
 
     def test_process_command_aliases_used_noargs(self):
+        '''process_command handles aliases with no args'''
         cfg = scuba.config.ScubaConfig(
                 image = 'na',
                 aliases = dict(
@@ -203,6 +220,7 @@ class TestConfig(TestCase):
         assert_equal(result, ['banana', 'arg1', 'arg2'])
 
     def test_process_command_aliases_used_withargs(self):
+        '''process_command handles aliases with args'''
         cfg = scuba.config.ScubaConfig(
                 image = 'na',
                 aliases = dict(
