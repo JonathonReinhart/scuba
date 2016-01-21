@@ -110,14 +110,14 @@ class ScubaConfig(object):
         # Check for missing required nodes
         missing = [n for n in required_nodes if not n in data]
         if missing:
-            raise ConfigError('{0}: Required node{1} missing: {2}', SCUBA_YML,
-                    's' if len(missing) > 1 else '', ', '.join(missing))
+            raise ConfigError('{0}: Required node{1} missing: {2}'.format(SCUBA_YML,
+                    's' if len(missing) > 1 else '', ', '.join(missing)))
 
         # Check for unrecognized nodes
         extra = [n for n in data if not n in required_nodes + optional_nodes]
         if extra:
-            raise ConfigError('{0}: Unrecognized node{1}: {2}', SCUBA_YML,
-                    's' if len(extra) > 1 else '', ', '.join(extra))
+            raise ConfigError('{0}: Unrecognized node{1}: {2}'.format(SCUBA_YML,
+                    's' if len(extra) > 1 else '', ', '.join(extra)))
 
         self._image = data['image']
 
@@ -148,8 +148,8 @@ def load_config(path):
         with open(path) as f:
             data = yaml.load(f, Loader)
     except IOError as e:
-        raise ConfigError('Error opening {0}: {1}', SCUBA_YML, e)
+        raise ConfigError('Error opening {0}: {1}'.format(SCUBA_YML, e))
     except yaml.YAMLError as e:
-        raise ConfigError('Error loading {0}: {1}', SCUBA_YML, e)
+        raise ConfigError('Error loading {0}: {1}'.format(SCUBA_YML, e))
 
     return ScubaConfig(**(data or {}))
