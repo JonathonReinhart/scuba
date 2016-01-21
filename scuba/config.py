@@ -100,31 +100,56 @@ def find_config():
 
     raise ConfigError('{0} not found here or any parent directories'.format(SCUBA_YML))
 
+
+
+class ScubaConfig(object):
+    def __init__(self, **data):
+        required_nodes = ('image',)
+        optional_nodes = ('aliases',)
+
+        # Check for missing required nodes
+        missing = [n for n in required_nodes if not n in data]
+        if missing:
+            raise ConfigError('{0}: Required node{1} missing: {2}'.format(SCUBA_YML,
+                    's' if len(missing) > 1 else '', ', '.join(missing)))
+
+        # Check for unrecognized nodes
+        extra = [n for n in data if not n in required_nodes + optional_nodes]
+        if extra:
+            raise ConfigError('{0}: Unrecognized node{1}: {2}'.format(SCUBA_YML,
+                    's' if len(extra) > 1 else '', ', '.join(extra)))
+
+        self._image = data['image']
+
+        self._aliases = {}
+        for alias, cmdstr in data.get('aliases', {}).items():
+            self._aliases[alias] = shlex_split(cmdstr)
+
+    @property
+    def image(self):
+        return self._image
+
+    @property
+    def aliases(self):
+        return self._aliases
+
+    def process_command(self, command):
+        if command:
+            rep = self.aliases.get(command[0])
+            if rep:
+                command.pop(0)
+                command = rep + command
+
+        return command
+
+
 def load_config(path):
     try:
         with open(path) as f:
-            config = yaml.load(f, Loader)
+            data = yaml.load(f, Loader)
     except IOError as e:
-        raise ConfigError('Error opening {0}: {1}', SCUBA_YML, e)
+        raise ConfigError('Error opening {0}: {1}'.format(SCUBA_YML, e))
     except yaml.YAMLError as e:
-        raise ConfigError('Error loading {0}: {1}', SCUBA_YML, e)
+        raise ConfigError('Error loading {0}: {1}'.format(SCUBA_YML, e))
 
-    if config == None:
-        config = {}
-
-    required_nodes = ('image',)
-    optional_nodes = ('aliases',)
-
-    # Check for missing required nodes
-    missing = [n for n in required_nodes if not n in config]
-    if missing:
-        raise ConfigError('{0}: Required node{1} missing: {2}', SCUBA_YML,
-                's' if len(missing) > 1 else '', ', '.join(missing))
-
-    # Check for unrecognized nodes
-    extra = [n for n in config if not n in required_nodes + optional_nodes]
-    if extra:
-        raise ConfigError('{0}: Unrecognized node{1}: {2}', SCUBA_YML,
-                's' if len(extra) > 1 else '', ', '.join(extra))
-
-    return config
+    return ScubaConfig(**(data or {}))

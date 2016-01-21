@@ -30,23 +30,13 @@ def verbose_msg(fmt, *args):
     if g_verbose:
         appmsg(fmt, *args)
 
-def process_command(config, command):
-    aliases = config.get('aliases', {})
-
-    if command:
-        rep = aliases.get(command[0])
-        if rep:
-            command.pop(0)
-            command = shlex.split(rep) + command
-
-    return command
 
 
 def make_vol_opt(hostdir, contdir, options=None):
     '''Generate a docker volume option'''
     vol = '--volume={0}:{1}'.format(hostdir, contdir)
     if options != None:
-        if isinstance(options, basestring):
+        if isinstance(options, str):
             options = (options,)
         vol += ':' + ','.join(options)
     return vol
@@ -63,7 +53,7 @@ def get_native_opts():
         f.write(line + '\n')
 
     # /etc/passwd
-    with NamedTemporaryFile(prefix='scuba', delete=False) as f:
+    with NamedTemporaryFile(mode='wt', prefix='scuba', delete=False) as f:
         filecleanup.register(f.name)
         opts.append(make_vol_opt(f.name, '/etc/passwd', 'z'))
 
@@ -88,7 +78,7 @@ def get_native_opts():
             ))
 
     # /etc/group
-    with NamedTemporaryFile(prefix='scuba', delete=False) as f:
+    with NamedTemporaryFile(mode='wt', prefix='scuba', delete=False) as f:
         filecleanup.register(f.name)
         opts.append(make_vol_opt(f.name, '/etc/group', 'z'))
 
@@ -105,7 +95,7 @@ def get_native_opts():
             ))
 
     # /etc/shadow
-    with NamedTemporaryFile(prefix='scuba', delete=False) as f:
+    with NamedTemporaryFile(mode='wt', prefix='scuba', delete=False) as f:
         filecleanup.register(f.name)
         opts.append(make_vol_opt(f.name, '/etc/shadow', 'z'))
 
@@ -148,7 +138,7 @@ def main(argv=None):
         sys.exit(128)
 
     # Process any aliases
-    usercmd = process_command(config, args.command)
+    usercmd = config.process_command(args.command)
 
     # Determine if Docker is running locally or remotely
     if 'DOCKER_HOST' in os.environ:
@@ -203,7 +193,7 @@ def main(argv=None):
     ] + docker_opts
 
     # Docker image
-    run_args.append(config['image'])
+    run_args.append(config.image)
 
     # Command to run in container
     run_args += docker_cmd
