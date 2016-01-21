@@ -111,7 +111,7 @@ def get_native_opts():
 def parse_args(argv):
     ap = argparse.ArgumentParser(description='Simple Container-Utilizing Build Apparatus')
     ap.add_argument('-n', '--dry-run', action='store_true')
-    ap.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
+    ap.add_argument('-v', '--version', action='version', version='scuba ' + __version__)
     ap.add_argument('-V', '--verbose', action='store_true')
     ap.add_argument('command', nargs=argparse.REMAINDER)
     args = ap.parse_args(argv)
