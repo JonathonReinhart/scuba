@@ -160,3 +160,18 @@ class TestMain(TestCase, BetterAssertRaisesMixin):
             _, err = self.run_scuba(args, 2)
         finally:
             os.environ['PATH'] = old_PATH
+
+    @mock.patch('subprocess.call')
+    def test_dry_run(self, subproc_call_mock):
+        '''Verify scuba handles --dry-run and --verbose'''
+
+        with open('.scuba.yml', 'w') as f:
+            f.write('image: debian:8.2\n')
+
+        args = ['--dry-run', '--verbose', '/bin/false']
+
+        _, err = self.run_scuba(args, 42)
+
+        assert_false(subproc_call_mock.called)
+
+        #TODO: Assert temp files are not cleaned up?
