@@ -81,27 +81,35 @@ class TestMain(TestCase, BetterAssertRaisesMixin):
 
         # Capture both scuba and docker's stdout/stderr,
         # just as the user would see it.
+        # Also mock atexit.register(), so we can simulate file cleanup.
+
+        atexit_funcs = []
+        def atexit_reg(cb, *args, **kw):
+            atexit_funcs.append((cb, args, kw))
 
         with TemporaryFile(prefix='scubatest-stdout', mode='w+t') as stdout:
             with TemporaryFile(prefix='scubatest-stderr', mode='w+t') as stderr:
-                old_stdout = sys.stdout
-                old_stderr = sys.stderr
+                with mock.patch('atexit.register', side_effect=atexit_reg) as atexit_reg_mock:
+                    old_stdout = sys.stdout
+                    old_stderr = sys.stderr
 
-                sys.stdout = stdout
-                sys.stderr = stderr
+                    sys.stdout = stdout
+                    sys.stderr = stderr
 
-                try:
-                    # Call scuba's main(), and expect it to exit() with a given return code.
-                    exc = self.assertRaises2(SystemExit, main.main, argv = args)
-                    assert_equal(exp_retval, exc.args[0])
+                    try:
+                        # Call scuba's main(), and expect it to exit() with a given return code.
+                        exc = self.assertRaises2(SystemExit, main.main, argv = args)
+                        assert_equal(exp_retval, exc.args[0])
 
-                    stdout.seek(0)
-                    stderr.seek(0)
-                    return stdout.read(), stderr.read()
+                        stdout.seek(0)
+                        stderr.seek(0)
+                        return stdout.read(), stderr.read()
 
-                finally:
-                    sys.stdout = old_stdout
-                    sys.stderr = old_stderr
+                    finally:
+                        sys.stdout = old_stdout
+                        sys.stderr = old_stderr
+                        for f, args, kw in atexit_funcs:
+                            f(*args, **kw)
 
 
     def test_basic(self):
