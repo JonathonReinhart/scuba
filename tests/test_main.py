@@ -26,7 +26,23 @@ def assert_startswith(s, prefix):
     prefix = str(prefix)
     if not s.startswith(prefix):
         raise AssertionError('"{0}" does not start with "{1}"'
-                .format(s.encode('string_escape'), prefix))
+                .format(escape_str(s), prefix))
+
+def escape_str(s):
+    # Python 3 won't let us use s.encode('string_escape') :-(
+    replacements = [
+        ('\a', '\\a'),
+        ('\b', '\\b'),
+        ('\f', '\\f'),
+        ('\n', '\\n'),
+        ('\r', '\\r'),
+        ('\t', '\\t'),
+        ('\v', '\\v'),
+    ]
+
+    for r in replacements:
+        s = s.replace(*r)
+    return s
 
 
 class BetterAssertRaisesMixin(object):
