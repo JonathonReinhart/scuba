@@ -119,3 +119,20 @@ class TestMain(TestCase, BetterAssertRaisesMixin):
 
         ver = err.split()[1]
         assert_equal(ver, main.__version__)
+
+
+    def test_no_docker(self):
+        '''Verify scuba gracefully handles docker not being installed'''
+
+        with open('.scuba.yml', 'w') as f:
+            f.write('image: debian:8.2\n')
+
+        args = ['/bin/echo', '-n', 'my output']
+
+        old_PATH = os.environ['PATH']
+        os.environ['PATH'] = ''
+
+        try:
+            _, err = self.run_scuba(args, 2)
+        finally:
+            os.environ['PATH'] = old_PATH
