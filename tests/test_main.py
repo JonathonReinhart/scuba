@@ -87,3 +87,22 @@ class TestMain(TestCase, BetterAssertRaisesMixin):
         assert_equal('my output', out)
 
 
+    def test_config_error(self):
+        '''Verify config errors are handled gracefully'''
+
+        with open('.scuba.yml', 'w') as f:
+            f.write('invalid_key: is no good\n')
+
+        # ConfigError -> exit(128)
+        self.run_scuba([], 128)
+
+
+    def test_version(self):
+        '''Verify scuba prints its version for -v'''
+
+        _, err = self.run_scuba(['-v'])
+
+        assert_true(err.startswith('scuba '))
+
+        ver = err.split()[1]
+        assert_equal(ver, main.__version__)
