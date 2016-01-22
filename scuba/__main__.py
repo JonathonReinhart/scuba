@@ -19,7 +19,7 @@ import json
 from .constants import *
 from .config import find_config, load_config, ConfigError
 from .etcfiles import *
-from . import filecleanup
+from .filecleanup import FileCleanup
 
 __version__ = '1.4.0'
 
@@ -121,10 +121,14 @@ def parse_args(argv):
 
     return args
 
+
 def main(argv=None):
     args = parse_args(argv)
 
-    filecleanup.skip(args.dry_run)
+    global filecleanup
+    filecleanup = FileCleanup()
+    if not args.dry_run:
+        atexit.register(filecleanup.cleanup)
 
     # top_path is where .scuba.yml is found, and becomes the top of our bind mount.
     # top_rel is the relative path from top_path to the current working directory,
@@ -205,7 +209,7 @@ def main(argv=None):
 
     if args.dry_run:
         appmsg('Exiting for dry run. Temporary files not removed:')
-        for f in filecleanup.files():
+        for f in filecleanup.files:
             print('   ' + f, file=sys.stderr)
         sys.exit(42)
 
