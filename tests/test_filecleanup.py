@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 from nose.tools import *
+from .utils import *
 from unittest import TestCase
 try:
     from unittest import mock
@@ -8,10 +9,6 @@ except ImportError:
     import mock
 
 from scuba.filecleanup import FileCleanup
-
-def assert_set_equal(a, b):
-    assert_equal(set(a), set(b))
-
 
 class TestFilecleanup(TestCase):
 
