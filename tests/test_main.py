@@ -154,7 +154,7 @@ class TestMain(TestCase, BetterAssertRaisesMixin):
         with open('test.sh', 'w') as f:
             f.write('#!/bin/sh\n')
             f.write('for a in "$@"; do echo $a; done\n')
-        os.chmod('test.sh', 0700)
+        make_executable('test.sh')
 
         lines = ['here', 'are', 'some args']
 

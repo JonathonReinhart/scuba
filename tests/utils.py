@@ -1,3 +1,4 @@
+import os
 from nose.tools import *
 from os.path import normpath
 
@@ -37,6 +38,11 @@ def escape_str(s):
     for r in replacements:
         s = s.replace(*r)
     return s
+
+def make_executable(path):
+    mode = os.stat(path).st_mode
+    mode |= (mode & 0o444) >> 2    # copy R bits to X
+    os.chmod(path, mode)
 
 class BetterAssertRaisesMixin(object):
     def assertRaises2(self, exc_type, func, *args, **kwargs):
