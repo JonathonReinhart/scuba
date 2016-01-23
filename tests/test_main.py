@@ -16,6 +16,7 @@ from shutil import rmtree
 
 import scuba.__main__ as main
 
+DOCKER_IMAGE = 'debian:8.2'
 
 class TestMain(TestCase, BetterAssertRaisesMixin):
     def setUp(self):
@@ -77,7 +78,7 @@ class TestMain(TestCase, BetterAssertRaisesMixin):
         '''Verify basic scuba functionality'''
 
         with open('.scuba.yml', 'w') as f:
-            f.write('image: debian:8.2\n')
+            f.write('image: {0}\n'.format(DOCKER_IMAGE))
 
         args = ['/bin/echo', '-n', 'my output']
         out, _ = self.run_scuba(args)
@@ -116,7 +117,7 @@ class TestMain(TestCase, BetterAssertRaisesMixin):
         '''Verify scuba gracefully handles docker not being installed'''
 
         with open('.scuba.yml', 'w') as f:
-            f.write('image: debian:8.2\n')
+            f.write('image: {0}\n'.format(DOCKER_IMAGE))
 
         args = ['/bin/echo', '-n', 'my output']
 
@@ -133,7 +134,7 @@ class TestMain(TestCase, BetterAssertRaisesMixin):
         '''Verify scuba handles --dry-run and --verbose'''
 
         with open('.scuba.yml', 'w') as f:
-            f.write('image: debian:8.2\n')
+            f.write('image: {0}\n'.format(DOCKER_IMAGE))
 
         args = ['--dry-run', '--verbose', '/bin/false']
 
