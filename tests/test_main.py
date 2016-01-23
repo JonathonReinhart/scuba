@@ -137,11 +137,17 @@ class TestMain(TestCase, BetterAssertRaisesMixin):
     def test_version(self):
         '''Verify scuba prints its version for -v'''
 
-        _, err = self.run_scuba(['-v'])
+        out, err = self.run_scuba(['-v'])
 
-        assert_startswith(err, 'scuba')
 
-        ver = err.split()[1]
+        # Argparse in Python < 3.4 printed version to stderr, but
+        # changed that to stdout in 3.4. We don't care where it goes.
+        # https://bugs.python.org/issue18920
+        check = out or err
+
+        assert_startswith(check, 'scuba')
+
+        ver = check.split()[1]
         assert_equal(ver, main.__version__)
 
 
