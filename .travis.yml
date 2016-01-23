@@ -1,3 +1,8 @@
+# We need sudo, in order to install and run Docker.
+sudo: required
+services:
+  - docker
+
 language: python
 python:
   - "2.6"
@@ -12,6 +17,9 @@ python:
 matrix:
   allow_failures:
     - python: "nightly"
+
+before_script:
+  - docker version
 
 script:
   - ./run_tests.sh

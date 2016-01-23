@@ -1,32 +1,26 @@
 import os
 import atexit
 
-__all__ = ['files', 'register', 'skip']
+class FileCleanup(object):
+    def __init__(self):
+        self._files = []
 
-_rmfiles = []
-_skip = False
+    def register(self, path):
+        '''Register a file to be removed at exit'''
+        self._files.append(path)
 
-def register(path):
-    '''Register a file to be removed at exit'''
-    _rmfiles.append(path)
+    @property
+    def files(self):
+        '''Get files registered for cleanup'''
+        return iter(self._files)
 
-def skip(skip=True):
-    '''Don't actually cleanup'''
-    global _skip
-    _skip = skip
+    def cleanup(self):
+        '''Cleanup registered files'''
 
-def files():
-    '''Get files registered for cleanup'''
-    return iter(_rmfiles)
+        for f in self._files:
+            try:
+                os.remove(f)
+            except OSError:
+                pass
 
-def __cleanup():
-    if _skip:
-        return
-
-    for f in _rmfiles:
-        try:
-            os.remove(f)
-        except OSError:
-            pass
-
-atexit.register(__cleanup)
+        self._files = []

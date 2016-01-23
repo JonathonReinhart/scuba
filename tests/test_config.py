@@ -2,21 +2,16 @@
 from __future__ import print_function
 
 from nose.tools import *
+from .utils import *
 from unittest import TestCase
 
 import logging
 import os
-from os.path import join, normpath
+from os.path import join
 from tempfile import mkdtemp
 from shutil import rmtree
 
 import scuba.config
-
-def assert_paths_equal(a, b):
-    assert_equals(normpath(a), normpath(b))
-
-def assert_seq_equal(a, b):
-    assert_equals(list(a), list(b))
 
 class TestConfig(TestCase):
     def setUp(self):

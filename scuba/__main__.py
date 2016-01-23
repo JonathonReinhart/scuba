@@ -19,7 +19,7 @@ import json
 from .constants import *
 from .config import find_config, load_config, ConfigError
 from .etcfiles import *
-from . import filecleanup
+from .filecleanup import FileCleanup
 
 __version__ = '1.4.0'
 
@@ -111,7 +111,7 @@ def get_native_opts():
 def parse_args(argv):
     ap = argparse.ArgumentParser(description='Simple Container-Utilizing Build Apparatus')
     ap.add_argument('-n', '--dry-run', action='store_true')
-    ap.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
+    ap.add_argument('-v', '--version', action='version', version='scuba ' + __version__)
     ap.add_argument('-V', '--verbose', action='store_true')
     ap.add_argument('command', nargs=argparse.REMAINDER)
     args = ap.parse_args(argv)
@@ -121,10 +121,14 @@ def parse_args(argv):
 
     return args
 
+
 def main(argv=None):
     args = parse_args(argv)
 
-    filecleanup.skip(args.dry_run)
+    global filecleanup
+    filecleanup = FileCleanup()
+    if not args.dry_run:
+        atexit.register(filecleanup.cleanup)
 
     # top_path is where .scuba.yml is found, and becomes the top of our bind mount.
     # top_rel is the relative path from top_path to the current working directory,
@@ -205,12 +209,18 @@ def main(argv=None):
 
     if args.dry_run:
         appmsg('Exiting for dry run. Temporary files not removed:')
-        for f in filecleanup.files():
+        for f in filecleanup.files:
             print('   ' + f, file=sys.stderr)
         sys.exit(42)
 
     try:
-        rc = subprocess.call(run_args)
+        # Explicitly pass sys.stdout/stderr so they apply to the
+        # child process if overridden (by tests).
+        rc = subprocess.call(
+                args = run_args,
+                stdout = sys.stdout,
+                stderr = sys.stderr,
+                )
     except OSError as e:
         if e.errno == errno.ENOENT:
             appmsg('Failed to execute docker. Is it installed?')

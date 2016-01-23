@@ -93,13 +93,10 @@ def find_config():
         # Traverse up directory hierarchy
         path, rest = os.path.split(path)
         if not rest:
-            break
+            raise ConfigError('{0} not found here or any parent directories'.format(SCUBA_YML))
 
         # Accumulate the relative path back to where we started
         rel = os.path.join(rest, rel)
-
-    raise ConfigError('{0} not found here or any parent directories'.format(SCUBA_YML))
-
 
 
 class ScubaConfig(object):
