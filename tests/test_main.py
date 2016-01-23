@@ -143,3 +143,36 @@ class TestMain(TestCase, BetterAssertRaisesMixin):
         assert_false(subproc_call_mock.called)
 
         #TODO: Assert temp files are not cleaned up?
+
+
+    def test_args(self):
+        '''Verify scuba handles cmdline args'''
+
+        with open('.scuba.yml', 'w') as f:
+            f.write('image: {0}\n'.format(DOCKER_IMAGE))
+
+        with open('test.sh', 'w') as f:
+            f.write('#!/bin/sh\n')
+            f.write('for a in "$@"; do echo $a; done\n')
+        os.chmod('test.sh', 0700)
+
+        lines = ['here', 'are', 'some args']
+
+        out, _ = self.run_scuba(['./test.sh'] + lines)
+
+        assert_seq_equal(out.splitlines(), lines)
+
+
+    def test_created_file_ownership(self):
+        '''Verify files created under scuba have correct ownership'''
+
+        with open('.scuba.yml', 'w') as f:
+            f.write('image: {0}\n'.format(DOCKER_IMAGE))
+
+        filename = 'newfile.txt'
+
+        self.run_scuba(['/bin/touch', filename])
+
+        st = os.stat(filename)
+        assert_equal(st.st_uid, os.getuid())
+        assert_equal(st.st_gid, os.getgid())
