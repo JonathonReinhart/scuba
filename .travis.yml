@@ -22,7 +22,7 @@ before_script:
   - docker version
 
 script:
-  - ./run_tests.sh
+  - ./run_nosetests.sh
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
