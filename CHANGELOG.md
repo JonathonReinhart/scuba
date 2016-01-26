@@ -3,6 +3,17 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Added
+- Automated testing (both unit and system tests) now in-place.
+- Add support for Python 2.6 - 3.5
+
+### Changed
+- Scuba is now a package, and setup.py installs it as such, including an
+  auto-generated `console_script` wrapper.
+
+### Fixed
+- Better handle empty `.scuba.yml` and other yaml-related errors
+- Fix numerous bugs when running under Python 3
 
 ## [1.4.0] - 2016-01-08
 ### Added
