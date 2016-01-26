@@ -20,6 +20,7 @@ from .constants import *
 from .config import find_config, load_config, ConfigError
 from .etcfiles import *
 from .filecleanup import FileCleanup
+from .utils import *
 
 __version__ = '1.4.0'
 
@@ -203,9 +204,8 @@ def main(argv=None):
     run_args += docker_cmd
 
     if g_verbose or args.dry_run:
-        from pprint import pprint
-        appmsg('Docker arguments:')
-        pprint(run_args)
+        appmsg('Docker command line:')
+        print(format_cmdline(run_args))
 
     if args.dry_run:
         appmsg('Exiting for dry run. Temporary files not removed:')
