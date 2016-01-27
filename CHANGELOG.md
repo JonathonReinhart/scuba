@@ -11,6 +11,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Scuba is now a package, and setup.py installs it as such, including an
   auto-generated `console_script` wrapper.
 - `--dry-run` output now shows an actual docker command-line.
+- Only pass --tty to docker if scuba's stdout is a TTY.
 
 ### Fixed
 - Better handle empty `.scuba.yml` and other yaml-related errors
