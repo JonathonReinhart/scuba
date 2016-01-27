@@ -20,6 +20,7 @@ matrix:
 
 before_script:
   - docker version
+  - ./test_setup.sh
 
 script:
   - ./run_nosetests.sh
