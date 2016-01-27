@@ -5,4 +5,5 @@ nosetests -v \
     --cover-package=scuba \
     --processes=-1 \
     --detailed-errors \
+    --process-timeout=60 \
     $@
