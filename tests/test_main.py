@@ -15,6 +15,7 @@ from tempfile import mkdtemp, TemporaryFile
 from shutil import rmtree
 
 import scuba.__main__ as main
+import scuba.constants
 
 DOCKER_IMAGE = 'debian:8.2'
 
@@ -207,3 +208,36 @@ class TestMain(TestCase, BetterAssertRaisesMixin):
         out, _ = self.run_scuba(['./check_tty.sh'])
 
         assert_str_equalish(out, 'notatty')
+
+
+    def _test_user(self, scuba_args=[]):
+        with open('.scuba.yml', 'w') as f:
+            f.write('image: {0}\n'.format(DOCKER_IMAGE))
+
+        args = scuba_args + ['/bin/sh', '-c', 'echo $(id -u) $(id -un) $(id -g) $(id -gn)']
+        out, _ = self.run_scuba(args)
+
+        uid, username, gid, groupname = out.split()
+        return int(uid), username, int(gid), groupname
+
+
+    def test_user_scubauser(self):
+        '''Verify scuba runs container as the current (host) uid/gid'''
+
+        uid, username, gid, groupname = self._test_user()
+
+        assert_equal(uid, os.getuid())
+        assert_equal(username, scuba.constants.SCUBA_USER)
+        assert_equal(gid, os.getgid())
+        assert_equal(groupname, scuba.constants.SCUBA_GROUP)
+
+
+    def test_user_root(self):
+        '''Verify scuba -r runs container as root'''
+
+        uid, username, gid, groupname = self._test_user(['-r'])
+
+        assert_equal(uid, 0)
+        assert_equal(username, 'root')
+        assert_equal(gid, 0)
+        assert_equal(groupname, 'root')
