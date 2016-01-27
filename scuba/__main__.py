@@ -184,9 +184,6 @@ def main(argv=None):
         # interactive: keep STDIN open
         '-i',
 
-        # allocate TTY
-        '-t',
-
         # remove container after exit
         '--rm',
 
@@ -196,6 +193,10 @@ def main(argv=None):
         # ...and set the working dir relative to it
         '-w', os.path.join(SCUBA_ROOT, top_rel),
     ] + docker_opts
+
+    # allocate TTY if scuba's output is going to a terminal
+    if sys.stdout.isatty():
+        run_args.append('--tty')
 
     # Docker image
     run_args.append(config.image)
