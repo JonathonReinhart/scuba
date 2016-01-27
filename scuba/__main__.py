@@ -42,7 +42,8 @@ def make_vol_opt(hostdir, contdir, options=None):
         vol += ':' + ','.join(options)
     return vol
 
-def get_native_opts():
+
+def get_native_user_opts():
     opts = []
 
     uid = os.getuid()
@@ -109,9 +110,20 @@ def get_native_opts():
 
     return opts
 
+
+def get_native_opts(scuba_args):
+    opts = []
+
+    if not scuba_args.root:
+        opts += get_native_user_opts()
+
+    return opts
+
+
 def parse_scuba_args(argv):
     ap = argparse.ArgumentParser(description='Simple Container-Utilizing Build Apparatus')
     ap.add_argument('-n', '--dry-run', action='store_true')
+    ap.add_argument('-r', '--root', action='store_true')
     ap.add_argument('-v', '--version', action='version', version='scuba ' + __version__)
     ap.add_argument('-V', '--verbose', action='store_true')
     ap.add_argument('command', nargs=argparse.REMAINDER)
@@ -171,7 +183,7 @@ def main(argv=None):
         '''
         verbose_msg('Docker running natively')
 
-        docker_opts = get_native_opts()
+        docker_opts = get_native_opts(scuba_args)
         docker_cmd = usercmd
 
         # NOTE: This tells Docker to re-label the directory for compatibility
