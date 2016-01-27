@@ -53,3 +53,13 @@ class BetterAssertRaisesMixin(object):
         else:
             self.fail('"{0}" was expected to throw "{1}" exception'
                           .format(func.__name__, exception_type.__name__))
+
+
+# http://stackoverflow.com/a/8389373/119527
+class PseudoTTY(object):
+    def __init__(self, underlying):
+        self.__underlying = underlying
+    def __getattr__(self, name):
+        return getattr(self.__underlying, name)
+    def isatty(self):
+        return True

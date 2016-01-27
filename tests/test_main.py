@@ -35,7 +35,7 @@ class TestMain(TestCase, BetterAssertRaisesMixin):
         self.orig_path = None
 
 
-    def run_scuba(self, args, exp_retval=0):
+    def run_scuba(self, args, exp_retval=0, mock_isatty=False):
         '''Run scuba, checking its return value
 
         Returns scuba/docker stdout data.
@@ -52,6 +52,11 @@ class TestMain(TestCase, BetterAssertRaisesMixin):
         with TemporaryFile(prefix='scubatest-stdout', mode='w+t') as stdout:
             with TemporaryFile(prefix='scubatest-stderr', mode='w+t') as stderr:
                 with mock.patch('atexit.register', side_effect=atexit_reg) as atexit_reg_mock:
+
+                    if mock_isatty:
+                        stdout = PseudoTTY(stdout)
+                        stderr = PseudoTTY(stderr)
+
                     old_stdout = sys.stdout
                     old_stderr = sys.stderr
 
@@ -176,3 +181,29 @@ class TestMain(TestCase, BetterAssertRaisesMixin):
         st = os.stat(filename)
         assert_equal(st.st_uid, os.getuid())
         assert_equal(st.st_gid, os.getgid())
+
+
+    def _setup_test_tty(self):
+        with open('.scuba.yml', 'w') as f:
+            f.write('image: {0}\n'.format(DOCKER_IMAGE))
+
+        with open('check_tty.sh', 'w') as f:
+            f.write('#!/bin/sh\n')
+            f.write('if [ -t 1 ]; then echo "isatty"; else echo "notatty"; fi\n')
+        make_executable('check_tty.sh')
+
+    def test_with_tty(self):
+        '''Verify docker allocates tty if stdout is a tty.'''
+        self._setup_test_tty()
+
+        out, _ = self.run_scuba(['./check_tty.sh'], mock_isatty=True)
+
+        assert_str_equalish(out, 'isatty')
+
+    def test_without_tty(self):
+        '''Verify docker doesn't allocate tty if stdout is not a tty.'''
+        self._setup_test_tty()
+
+        out, _ = self.run_scuba(['./check_tty.sh'])
+
+        assert_str_equalish(out, 'notatty')
