@@ -42,7 +42,8 @@ def make_vol_opt(hostdir, contdir, options=None):
         vol += ':' + ','.join(options)
     return vol
 
-def get_native_opts():
+
+def get_native_user_opts():
     opts = []
 
     uid = os.getuid()
@@ -109,9 +110,20 @@ def get_native_opts():
 
     return opts
 
-def parse_args(argv):
+
+def get_native_opts(scuba_args):
+    opts = []
+
+    if not scuba_args.root:
+        opts += get_native_user_opts()
+
+    return opts
+
+
+def parse_scuba_args(argv):
     ap = argparse.ArgumentParser(description='Simple Container-Utilizing Build Apparatus')
     ap.add_argument('-n', '--dry-run', action='store_true')
+    ap.add_argument('-r', '--root', action='store_true')
     ap.add_argument('-v', '--version', action='version', version='scuba ' + __version__)
     ap.add_argument('-V', '--verbose', action='store_true')
     ap.add_argument('command', nargs=argparse.REMAINDER)
@@ -124,11 +136,11 @@ def parse_args(argv):
 
 
 def main(argv=None):
-    args = parse_args(argv)
+    scuba_args = parse_scuba_args(argv)
 
     global filecleanup
     filecleanup = FileCleanup()
-    if not args.dry_run:
+    if not scuba_args.dry_run:
         atexit.register(filecleanup.cleanup)
 
     # top_path is where .scuba.yml is found, and becomes the top of our bind mount.
@@ -143,7 +155,7 @@ def main(argv=None):
         sys.exit(128)
 
     # Process any aliases
-    usercmd = config.process_command(args.command)
+    usercmd = config.process_command(scuba_args.command)
 
     # Determine if Docker is running locally or remotely
     if 'DOCKER_HOST' in os.environ:
@@ -171,7 +183,7 @@ def main(argv=None):
         '''
         verbose_msg('Docker running natively')
 
-        docker_opts = get_native_opts()
+        docker_opts = get_native_opts(scuba_args)
         docker_cmd = usercmd
 
         # NOTE: This tells Docker to re-label the directory for compatibility
@@ -204,11 +216,11 @@ def main(argv=None):
     # Command to run in container
     run_args += docker_cmd
 
-    if g_verbose or args.dry_run:
+    if g_verbose or scuba_args.dry_run:
         appmsg('Docker command line:')
         print(format_cmdline(run_args))
 
-    if args.dry_run:
+    if scuba_args.dry_run:
         appmsg('Exiting for dry run. Temporary files not removed:')
         for f in filecleanup.files:
             print('   ' + f, file=sys.stderr)

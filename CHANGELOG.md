@@ -4,6 +4,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 ### Added
+- Add -r option to run container as root
 - Automated testing (both unit and system tests) now in-place.
 - Add support for Python 2.6 - 3.5
 
