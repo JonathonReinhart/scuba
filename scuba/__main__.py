@@ -21,8 +21,7 @@ from .config import find_config, load_config, ConfigError
 from .etcfiles import *
 from .filecleanup import FileCleanup
 from .utils import *
-
-__version__ = '1.4.0'
+from .version import __version__
 
 def appmsg(fmt, *args):
     print('scuba: ' + fmt.format(*args), file=sys.stderr)
