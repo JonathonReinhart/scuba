@@ -16,6 +16,7 @@ from shutil import rmtree
 
 import scuba.__main__ as main
 import scuba.constants
+import scuba
 
 DOCKER_IMAGE = 'debian:8.2'
 
@@ -116,7 +117,7 @@ class TestMain(TestCase, BetterAssertRaisesMixin):
         assert_startswith(check, 'scuba')
 
         ver = check.split()[1]
-        assert_equal(ver, main.__version__)
+        assert_equal(ver, scuba.__version__)
 
 
     def test_no_docker(self):
