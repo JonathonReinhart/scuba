@@ -1,10 +1,10 @@
 #!/usr/bin/env python
-
+import scuba.version
 from distutils.core import setup
 
 setup(
     name = 'SCUBA',
-    version = '1.4.0',
+    version = scuba.version.__version__,
     description = 'Simplify use of Docker containers for building software',
     author = 'Jonathon Reinhart',
     author_email = 'jonathon.reinhart@gmail.com',
