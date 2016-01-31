@@ -4,18 +4,18 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 ### Added
-- Add -r option to run container as root
-- Automated testing (both unit and system tests) now in-place.
+- Add `-r` option to run container as root
+- Add automated testing (both unit and system tests)
 - Add support for Python 2.6 - 3.5
 
 ### Changed
 - Scuba is now a package, and setup.py installs it as such, including an
   auto-generated `console_script` wrapper.
 - `--dry-run` output now shows an actual docker command-line.
-- Only pass --tty to docker if scuba's stdout is a TTY.
+- Only pass `--tty` to docker if scuba's stdout is a TTY.
 
 ### Fixed
-- Better handle empty `.scuba.yml` and other yaml-related errors
+- Better handle empty `.scuba.yml` and other YAML-related errors
 - Fix numerous bugs when running under Python 3
 
 ## [1.4.0] - 2016-01-08
@@ -48,7 +48,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
   scuba from a project subdirectory.
 - Add `!from_yaml` support to YAML loading; this allows specifying image
   from an external YAML file (e.g. `.gitlab-ci.yml`).
-- Add CHANGELOG
+- Add CHANGELOG.md
 
 ### Changed
 - Show better error message when docker cannot be executed
