@@ -1,5 +1,4 @@
 import os
-import atexit
 
 class FileCleanup(object):
     def __init__(self):
