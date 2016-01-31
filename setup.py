@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import scuba.version
-from distutils.core import setup
+from setuptools import setup
 
 setup(
     name = 'SCUBA',
