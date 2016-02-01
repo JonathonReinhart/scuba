@@ -217,7 +217,7 @@ def main(argv=None):
 
     if g_verbose or scuba_args.dry_run:
         appmsg('Docker command line:')
-        print(format_cmdline(run_args))
+        print('$ ' + format_cmdline(run_args))
 
     if scuba_args.dry_run:
         appmsg('Exiting for dry run. Temporary files not removed:')
