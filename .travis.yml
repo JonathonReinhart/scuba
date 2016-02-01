@@ -29,3 +29,13 @@ script:
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
+
+deploy:
+  provider: pypi
+  user: jreinhart
+  password:
+    secure: kbjV+UQNXYZbW3jGMaEvK4wYUorVMyrzn5fdVqKmTMLVB6Rl/MwABi5O8ciVHf0bAZzi1xuGud399zLEMWG0P5fYE5UfJplRTg22p/urwZ7OoLQGgD8v5QcOfyyPOGxriapE0I05VdrVi1MUeD6mwQLVOnrVPOSBW/PWvgguyyW9tqWkHCo7flhx8Me5EgD3+39d9027Uaw8IGZFvwCiB6xghOJn8vr2ADhGA/yZtx674UOkmiVMrh7eFLnbSHxiWemTCsf1UiqKF7UyQ7Z6j5qTno+HWPX++Z8nsAdma48jYJQt6OIfXgz8TIStuJxzile5l67TqEZ8QNN7bjggkUKSMSS+v91E0fkc35saGZqKIXQ1Mj3xDgCk91kyaahNfo+pnrxb/wyc/3PaXkTnm517v/b8J6tUR583pYnNcfhiPQWnNGCYI3T0I2JSAvVaCMc3ab0B9jSxia5maiL9AtuPNHa1aB97hgTxQHYazCd8a7X0Bnvl/eiFsr9XQudDM8AG2U8wvKmbf/MCZlMMvptD7UNP1KXEhoUih4XtOKnYeCrpgW9ID83RSae6ClqtQBxTZlRoh9nzxBQMa6NbM3+I6cpDUgfP3oMzMrqaJ38eVlgT7ReFUcfNVb7MworCkca1lNKPLNo1zib0+sWwqbqLSTwP/7+gW5EGkO1fPzU=
+  on:
+    tags: true
+    distributions: sdist bdist_wheel
+    repo: JonathonReinhart/scuba
