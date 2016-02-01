@@ -2,11 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [1.5.0] - 2016-02-01
 ### Added
 - Add `-r` option to run container as root
 - Add automated testing (both unit and system tests)
 - Add support for Python 2.6 - 3.5
+- Added to PyPi
 
 ### Changed
 - Scuba is now a package, and setup.py installs it as such, including an
@@ -84,7 +85,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 First versioned release
 
 
-[Unreleased]: https://github.com/JonathonReinhart/scuba/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/JonathonReinhart/scuba/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/JonathonReinhart/scuba/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/JonathonReinhart/scuba/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/JonathonReinhart/scuba/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/JonathonReinhart/scuba/compare/v1.1.2...v1.2.0
