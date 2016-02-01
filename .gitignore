@@ -1,5 +1,13 @@
-build
+# Compiled python files
 *.pyc
 
-cover
+# Python coverage output
+/cover/
 .coverage
+
+# Setuptools build and distribution directories
+/dist/
+/build/
+
+# Python egg metadata, regenerated from source files by setuptools
+/*.egg-info
