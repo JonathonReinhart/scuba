@@ -18,9 +18,11 @@ into this:
 
 ## Installation
 
+Scuba is [hosted at PyPI](https://pypi.python.org/pypi/scuba).
+
 To install:
 
-    $ sudo pip install .
+    $ sudo pip install scuba
 
 To uninstall:
 
