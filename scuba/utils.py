@@ -12,4 +12,4 @@ def format_cmdline(args, maxwidth=80):
                 line = ''
             line += ' ' + a
 
-    return '$' + ' \\\n'.join(lines())
+    return ' \\\n'.join(lines())[1:]
