@@ -44,16 +44,6 @@ def make_executable(path):
     mode |= (mode & 0o444) >> 2    # copy R bits to X
     os.chmod(path, mode)
 
-class BetterAssertRaisesMixin(object):
-    def assertRaises2(self, exc_type, func, *args, **kwargs):
-        try:
-            func(*args, **kwargs)
-        except exc_type as e:
-            return e
-        else:
-            self.fail('"{0}" was expected to throw "{1}" exception'
-                          .format(func.__name__, exception_type.__name__))
-
 
 # http://stackoverflow.com/a/8389373/119527
 class PseudoTTY(object):

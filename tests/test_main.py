@@ -20,7 +20,7 @@ import scuba
 
 DOCKER_IMAGE = 'debian:8.2'
 
-class TestMain(TestCase, BetterAssertRaisesMixin):
+class TestMain(TestCase):
     def setUp(self):
         # Run each test in its own temp directory
         self.orig_path = os.getcwd()
@@ -66,13 +66,31 @@ class TestMain(TestCase, BetterAssertRaisesMixin):
                     sys.stderr = stderr
 
                     try:
-                        # Call scuba's main(), and expect it to exit() with a given return code.
-                        exc = self.assertRaises2(SystemExit, main.main, argv = args)
-                        assert_equal(exp_retval, exc.args[0])
+                        '''
+                        Call scuba's main(), and expect it to either exit()
+                        with a given return code, or return (implying an exit
+                        status of 0).
+                        '''
+                        try:
+                            main.main(argv = args)
+                        except SystemExit as sysexit:
+                            retcode = sysexit.args[0]
+                        else:
+                            retcode = 0
 
                         stdout.seek(0)
                         stderr.seek(0)
-                        return stdout.read(), stderr.read()
+
+                        stdout_data = stdout.read()
+                        stderr_data = stderr.read()
+
+                        logging.info('scuba stdout:\n' + stdout_data)
+                        logging.info('scuba stderr:\n' + stderr_data)
+
+                        # Verify the return value was as expected
+                        assert_equal(exp_retval, retcode)
+
+                        return stdout_data, stderr_data
 
                     finally:
                         sys.stdout = old_stdout
