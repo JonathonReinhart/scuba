@@ -11,7 +11,7 @@ except ImportError:
 import logging
 import os
 import sys
-from tempfile import mkdtemp, TemporaryFile
+from tempfile import mkdtemp, TemporaryFile, NamedTemporaryFile
 from shutil import rmtree
 
 import scuba.__main__ as main
@@ -260,3 +260,25 @@ class TestMain(TestCase):
         assert_equal(username, 'root')
         assert_equal(gid, 0)
         assert_equal(groupname, 'root')
+
+
+    def test_arbitrary_docker_args(self):
+        '''Verify -d successfully passes arbitrary docker arguments'''
+
+        with open('.scuba.yml', 'w') as f:
+            f.write('image: {0}\n'.format(DOCKER_IMAGE))
+
+        data = 'Lorem ipsum dolor sit amet'
+        data_path = '/lorem/ipsum'
+
+        with NamedTemporaryFile(mode='wt') as tempf:
+            tempf.write(data)
+            tempf.flush()
+
+            args = [
+                '-d=-v {0}:{1}:ro,z'.format(tempf.name, data_path),
+                'cat', data_path,
+            ]
+            out, _ = self.run_scuba(args)
+
+        assert_str_equalish(out, data)
