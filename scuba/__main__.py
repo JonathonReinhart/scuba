@@ -10,6 +10,7 @@ import errno
 import sys
 import subprocess
 import shlex
+import itertools
 import argparse
 from tempfile import NamedTemporaryFile
 import atexit
@@ -121,12 +122,19 @@ def get_native_opts(scuba_args):
 
 def parse_scuba_args(argv):
     ap = argparse.ArgumentParser(description='Simple Container-Utilizing Build Apparatus')
+    ap.add_argument('-d', '--docker-arg', dest='docker_args', action='append',
+            type=lambda x: shlex.split(x), default=[],
+            help="Pass additional arguments to 'docker run'")
     ap.add_argument('-n', '--dry-run', action='store_true')
     ap.add_argument('-r', '--root', action='store_true')
     ap.add_argument('-v', '--version', action='version', version='scuba ' + __version__)
     ap.add_argument('-V', '--verbose', action='store_true')
     ap.add_argument('command', nargs=argparse.REMAINDER)
+
     args = ap.parse_args(argv)
+
+    # Flatten docker arguments into single list
+    args.docker_args = list(itertools.chain.from_iterable(args.docker_args))
 
     global g_verbose
     g_verbose = args.verbose
@@ -203,7 +211,7 @@ def main(argv=None):
 
         # ...and set the working dir relative to it
         '-w', os.path.join(SCUBA_ROOT, top_rel),
-    ] + docker_opts
+    ] + docker_opts + scuba_args.docker_args
 
     # allocate TTY if scuba's output is going to a terminal
     if sys.stdout.isatty():
