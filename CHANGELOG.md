@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+### Added
+- Add `-d` to pass arbitrary arguments to `docker run`
+
+
 ## [1.5.0] - 2016-02-01
 ### Added
 - Add `-r` option to run container as root
@@ -18,6 +23,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 - Better handle empty `.scuba.yml` and other YAML-related errors
 - Fix numerous bugs when running under Python 3
+
 
 ## [1.4.0] - 2016-01-08
 ### Added
