@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-
 # SCUBA - Simple Container-Utilizing Build Architecture
 # (C) 2015 Jonathon Reinhart
 # https://github.com/JonathonReinhart/scuba
@@ -14,8 +12,6 @@ import itertools
 import argparse
 from tempfile import NamedTemporaryFile
 import atexit
-import pipes
-import json
 
 from .constants import *
 from .config import find_config, load_config, ConfigError
