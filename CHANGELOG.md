@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [1.6.0] - 2016-02-06
 ### Added
 - Add `-d` to pass arbitrary arguments to `docker run`
 
@@ -91,7 +91,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 First versioned release
 
 
-[Unreleased]: https://github.com/JonathonReinhart/scuba/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/JonathonReinhart/scuba/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/JonathonReinhart/scuba/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/JonathonReinhart/scuba/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/JonathonReinhart/scuba/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/JonathonReinhart/scuba/compare/v1.2.0...v1.3.0
