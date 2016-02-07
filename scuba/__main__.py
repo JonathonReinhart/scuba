@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-
 # SCUBA - Simple Container-Utilizing Build Architecture
 # (C) 2015 Jonathon Reinhart
 # https://github.com/JonathonReinhart/scuba
