@@ -1,4 +1,5 @@
 #!/bin/bash
+rm -f .coverage
 nosetests -v \
     --with-coverage \
     --cover-inclusive \
