@@ -121,11 +121,15 @@ def parse_scuba_args(argv):
     ap.add_argument('-d', '--docker-arg', dest='docker_args', action='append',
             type=lambda x: shlex.split(x), default=[],
             help="Pass additional arguments to 'docker run'")
-    ap.add_argument('-n', '--dry-run', action='store_true')
-    ap.add_argument('-r', '--root', action='store_true')
+    ap.add_argument('-n', '--dry-run', action='store_true',
+            help="Don't actually invoke docker; just print the docker cmdline")
+    ap.add_argument('-r', '--root', action='store_true',
+            help="Run container as root (don't create scubauser)")
     ap.add_argument('-v', '--version', action='version', version='scuba ' + __version__)
-    ap.add_argument('-V', '--verbose', action='store_true')
-    ap.add_argument('command', nargs=argparse.REMAINDER)
+    ap.add_argument('-V', '--verbose', action='store_true',
+            help="Be verbose")
+    ap.add_argument('command', nargs=argparse.REMAINDER,
+            help="Command (and arguments) to run in the container")
 
     args = ap.parse_args(argv)
 
