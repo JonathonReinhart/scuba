@@ -38,17 +38,6 @@ static unsigned int m_uid;
 static unsigned int m_gid;
 static unsigned int m_umask;
 
-static void
-print_argv(int argc, char **argv)
-{
-    int i;
-
-    /* <= is intentional; include NULL terminator */
-    for (i = 0; i <= argc; i++) {
-        printf("   [%d] = \"%s\"\n", i, argv[i]);
-    }
-}
-
 /**
  * Add a group to a group file
  *
@@ -381,9 +370,6 @@ main(int argc, char **argv)
 
 
     /* Prepare for execution of user command */
-    printf("Program args:\n");
-    print_argv(argc, argv);
-
     new_argc = argc - 1;
     new_argv = argv + 1;
 
@@ -391,9 +377,6 @@ main(int argc, char **argv)
         errmsg("Missing command\n");
         exit(99);
     }
-
-    printf("To-be executed args:\n");
-    print_argv(new_argc, new_argv);
 
     if (change_user() < 0)
         exit(99);
