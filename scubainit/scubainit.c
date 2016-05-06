@@ -1,9 +1,13 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <errno.h>
 #include <limits.h>
-#include <grp.h>        /* setgroups(2) */
+#include <pwd.h>
+#include <grp.h>
+#include <shadow.h>
 #include <sys/stat.h>   /* umask(2) */
 
 /**
@@ -16,6 +20,14 @@
 #define errmsg(fmt, ...)     fprintf(stderr, APPNAME ": " fmt, ##__VA_ARGS__)
 #define verbose(fmt, ...)    errmsg(fmt, ##__VA_ARGS__)
 
+#define ETC_PASSWD          "/etc/passwd"
+#define ETC_GROUP           "/etc/group"
+#define ETC_SHADOW          "/etc/shadow"
+#define INVALID_PASSWORD    "x"
+
+#define SCUBA_USER          "scubauser"
+#define SCUBA_GROUP         "scubauser"
+#define SCUBA_USER_FULLNAME "Scuba User"
 
 #define SCUBAINIT_UID   "SCUBAINIT_UID"
 #define SCUBAINIT_GID   "SCUBAINIT_GID"
@@ -35,6 +47,220 @@ print_argv(int argc, char **argv)
     for (i = 0; i <= argc; i++) {
         printf("   [%d] = \"%s\"\n", i, argv[i]);
     }
+}
+
+/**
+ * Add a group to a group file
+ *
+ * Arguments:
+ * - path       Path to /etc/group
+ * - name       Group name to add
+ * - gid        Group ID
+ *
+ * Returns 0 on success, or -1 otherwise.
+ */
+static int
+add_group(const char *path, const char *name, unsigned int gid)
+{
+    int result = -1;
+    FILE *f = NULL;
+
+    /* Open for reading and appending (writing at end of file).  The file is
+     * created if it does not exist.  The initial file position for reading is
+     * at the beginning of the file, but output is always appended to the end
+     * of the file.
+     */
+    if ((f = fopen(path, "a+")) == NULL) {
+        errmsg("Failed to open %s: %m\n", path);
+        goto out;
+    }
+
+    /**
+     * Try to find a conflicting group (one matching name or gid).
+     */
+    for (;;) {
+        struct group *gr = fgetgrent(f);
+
+        if (gr == NULL)
+            break;
+
+        if (strcmp(gr->gr_name, name) == 0) {
+            errmsg("Group \"%s\" already exists in %s\n", name, path);
+            goto out;
+        }
+
+        if (gr->gr_gid == gid) {
+            errmsg("GID %u already exists in %s\n", gid, path);
+            goto out;
+        }
+    }
+
+    /* Okay, add scuba group */
+    struct group gr = {
+        .gr_name    = (char*)name,      /* putgrent will not modify */
+        .gr_passwd  = INVALID_PASSWORD,
+        .gr_gid     = gid,
+        .gr_mem     = NULL,
+    };
+
+    if (putgrent(&gr, f) != 0) {
+        errmsg("Failed to add group \"%s\" to %s: %m\n", name, path);
+        goto out;
+    }
+
+    verbose("Added group \"%s\" to %s\n", name, path);
+    result = 0;
+
+out:
+    if (f != NULL)
+        fclose(f);
+
+    return result;
+}
+
+/**
+ * Add a user to a passwd file
+ *
+ * Arguments:
+ * - path       Path to /etc/passwd
+ * - name       User name to add
+ * - uid        User ID
+ * - gid        User primary group ID
+ * - gecos      Full name
+ *
+ * Returns 0 on success, or -1 otherwise.
+ */
+static int
+add_user(const char *path, const char *name, unsigned int uid, unsigned int gid,
+         const char *gecos)
+{
+    int result = -1;
+    FILE *f = NULL;
+
+    /* Open for reading and appending (writing at end of file).  The file is
+     * created if it does not exist.  The initial file position for reading is
+     * at the beginning of the file, but output is always appended to the end
+     * of the file.
+     */
+    if ((f = fopen(path, "a+")) == NULL) {
+        errmsg("Failed to open %s: %m\n", path);
+        goto out;
+    }
+
+    /**
+     * Try to find a conflicting user (one matching name or uid).
+     */
+    for (;;) {
+        struct passwd *pw = fgetpwent(f);
+
+        if (pw == NULL)
+            break;
+
+        if (strcmp(pw->pw_name, name) == 0) {
+            errmsg("User \"%s\" already exists in %s\n", name, path);
+            goto out;
+        }
+
+        if (pw->pw_uid == uid) {
+            errmsg("UID %u already exists in %s\n", uid, path);
+            goto out;
+        }
+    }
+
+    /* Okay, add user */
+    struct passwd pw = {
+        .pw_name    = (char*)name,      /* putpwent will not modify */
+        .pw_passwd  = INVALID_PASSWORD,
+        .pw_uid     = uid,
+        .pw_gid     = gid,
+        .pw_gecos   = (char*)gecos,     /* putpwent will not modify */
+        .pw_dir     = "/",          /* Docker sets $HOME=/ */
+        .pw_shell   = "/bin/sh",
+    };
+
+    if (putpwent(&pw, f) != 0) {
+        errmsg("Failed to add user \"%s\" to %s: %m\n", name, path);
+        goto out;
+    }
+
+    verbose("Added user \"%s\" to %s\n", name, path);
+    result = 0;
+
+out:
+    if (f != NULL)
+        fclose(f);
+
+    return result;
+}
+
+/**
+ * Add an entry to a shadow password file
+ *
+ * Arguments:
+ * - path       Path to /etc/shadow
+ * - name       User name to add
+ *
+ * TODO: Add remaining shadow fields, which we don't care about today.
+ *
+ * Returns 0 on success, or -1 otherwise.
+ */
+static int
+add_shadow(const char *path, const char *name)
+{
+    int result = -1;
+    FILE *f = NULL;
+
+    /* Open for reading and appending (writing at end of file).  The file is
+     * created if it does not exist.  The initial file position for reading is
+     * at the beginning of the file, but output is always appended to the end
+     * of the file.
+     */
+    if ((f = fopen(path, "a+")) == NULL) {
+        errmsg("Failed to open %s: %m\n", path);
+        goto out;
+    }
+
+    /**
+     * Try to find a conflicting user (one matching name).
+     */
+    for (;;) {
+        struct spwd *sp = fgetspent(f);
+
+        if (sp == NULL)
+            break;
+
+        if (strcmp(sp->sp_namp, name) == 0) {
+            errmsg("User \"%s\" already exists in %s\n", name, path);
+            goto out;
+        }
+    }
+
+    /* Okay, add shadow password */
+    struct spwd sp = {
+        .sp_namp    = (char*) name,     /* putspent will not modify */
+        .sp_pwdp    = INVALID_PASSWORD,
+        .sp_lstchg  = (long) -1,
+        .sp_min     = (long) -1,
+        .sp_max     = (long) -1,
+        .sp_warn    = (long) -1,
+        .sp_inact   = (long) -1,
+        .sp_expire  = (long) -1,
+        .sp_flag    = (long) -1,
+    };
+
+    if (putspent(&sp, f) != 0) {
+        errmsg("Failed to add user \"%s\" to %s: %m\n", name, path);
+        goto out;
+    }
+
+    verbose("Added user \"%s\" to %s\n", name, path);
+    result = 0;
+
+out:
+    if (f != NULL)
+        fclose(f);
+
+    return result;
 }
 
 static int
@@ -145,6 +371,16 @@ main(int argc, char **argv)
     if (process_envvars() < 0)
         exit(99);
 
+    /* Add scuba user and group */
+    if (add_group(ETC_GROUP, SCUBA_GROUP, m_gid) != 0)
+        exit(99);
+    if (add_user(ETC_PASSWD, SCUBA_USER, m_uid, m_gid, SCUBA_USER_FULLNAME) != 0)
+        exit(99);
+    if (add_shadow(ETC_SHADOW, SCUBA_USER) != 0)
+        exit(99);
+
+
+    /* Prepare for execution of user command */
     printf("Program args:\n");
     print_argv(argc, argv);
 
