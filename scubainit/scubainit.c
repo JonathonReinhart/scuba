@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
@@ -18,7 +19,7 @@
 #define APPNAME             "scubainit"
 
 #define errmsg(fmt, ...)     fprintf(stderr, APPNAME ": " fmt, ##__VA_ARGS__)
-#define verbose(fmt, ...)    errmsg(fmt, ##__VA_ARGS__)
+#define verbose(fmt, ...)    (void)(m_verbose && errmsg(fmt, ##__VA_ARGS__))
 
 #define ETC_PASSWD          "/etc/passwd"
 #define ETC_GROUP           "/etc/group"
@@ -29,11 +30,13 @@
 #define SCUBA_GROUP         "scubauser"
 #define SCUBA_USER_FULLNAME "Scuba User"
 
-#define SCUBAINIT_UID   "SCUBAINIT_UID"
-#define SCUBAINIT_GID   "SCUBAINIT_GID"
-#define SCUBAINIT_UMASK "SCUBAINIT_UMASK"
-#define SCUBAINIT_HOOK  "SCUBAINIT_HOOK"
+#define SCUBAINIT_UID       "SCUBAINIT_UID"
+#define SCUBAINIT_GID       "SCUBAINIT_GID"
+#define SCUBAINIT_UMASK     "SCUBAINIT_UMASK"
+#define SCUBAINIT_HOOK      "SCUBAINIT_HOOK"
+#define SCUBAINIT_VERBOSE   "SCUBAINIT_VERBOSE"
 
+static bool m_verbose = false;
 static unsigned int m_uid;
 static unsigned int m_gid;
 static unsigned int m_umask;
@@ -330,6 +333,11 @@ process_envvars(void)
     }
     unsetenv(SCUBAINIT_UMASK);
     verbose("SCUBAINIT_UMASK= 0%o\n", m_umask);
+
+    if (getenv(SCUBAINIT_VERBOSE)) {
+        unsetenv(SCUBAINIT_VERBOSE);
+        m_verbose = true;
+    }
 
     /* Clear out other env. vars */
     unsetenv("USER");

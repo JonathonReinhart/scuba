@@ -80,6 +80,9 @@ def get_native_opts(config, scuba_args, usercmd):
         '--env=SCUBAINIT_UMASK={0:04o}'.format(get_umask()),
     ]
 
+    if g_verbose:
+        opts.append('--env=SCUBAINIT_VERBOSE=1')
+
     # Mount scubainit in the container
     opts.append(make_vol_opt(g_scubainit_path, '/scubainit', ['ro','z']))
 
