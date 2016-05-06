@@ -150,6 +150,15 @@ def main(argv=None):
     if not scuba_args.dry_run:
         atexit.register(filecleanup.cleanup)
 
+    pkg_path = os.path.dirname(__file__)
+
+    # Determine path to scubainit binary
+    scubainit_path = os.path.join(pkg_path, 'scubainit')
+    if not os.path.isfile(scubainit_path):
+        appmsg('scubainit not found at "{0}"'.format(scubainit_path))
+        sys.exit(128)
+
+
     # top_path is where .scuba.yml is found, and becomes the top of our bind mount.
     # top_rel is the relative path from top_path to the current working directory,
     # and is where we'll set the working directory in the container (relative to
