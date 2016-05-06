@@ -12,6 +12,7 @@ import itertools
 import argparse
 from tempfile import NamedTemporaryFile
 import atexit
+import json
 
 from .constants import *
 from .config import find_config, load_config, ConfigError
@@ -37,6 +38,34 @@ def make_vol_opt(hostdir, contdir, options=None):
             options = (options,)
         vol += ':' + ','.join(options)
     return vol
+
+def shell_quote(s):
+    # http://stackoverflow.com/a/847800/119527
+    return pipes.quote(s)
+
+def get_image_command(image):
+    '''Gets the default command for an image'''
+    args = ['docker', 'inspect', image]
+    try:
+        p = subprocess.Popen(args, stdout = subprocess.PIPE)
+    except OSError as e:
+        if e.errno == errno.ENOENT:
+            appmsg('Failed to execute docker. Is it installed?')
+            sys.exit(2)
+
+    stdout, _ = p.communicate()
+    if not p.returncode == 0:
+        appmsg('Failed to inspect image')
+        sys.exit(2)
+
+    info = json.loads(stdout)[0]
+    return info['Config']['Cmd']
+
+def get_umask():
+    # Same logic as bash/builtins/umask.def
+    val = os.umask(022)
+    os.umask(val)
+    return val
 
 
 def get_native_user_opts():
