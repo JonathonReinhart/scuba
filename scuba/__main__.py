@@ -182,9 +182,10 @@ def main(argv=None):
     pkg_path = os.path.dirname(__file__)
 
     # Determine path to scubainit binary
-    scubainit_path = os.path.join(pkg_path, 'scubainit')
-    if not os.path.isfile(scubainit_path):
-        appmsg('scubainit not found at "{0}"'.format(scubainit_path))
+    global g_scubainit_path
+    g_scubainit_path = os.path.join(pkg_path, 'scubainit')
+    if not os.path.isfile(g_scubainit_path):
+        appmsg('scubainit not found at "{0}"'.format(g_scubainit_path))
         sys.exit(128)
 
 
