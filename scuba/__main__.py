@@ -68,17 +68,38 @@ def get_umask():
     return val
 
 
+def get_native_opts(config, scuba_args, usercmd):
     opts = []
 
+    if scuba_args.root:
+        raise NotImplementedError('--root option has been removed (for now).')
+
+    opts += [
+        '--env=SCUBAINIT_UID={0}'.format(os.getuid()),
+        '--env=SCUBAINIT_GID={0}'.format(os.getgid()),
+        '--env=SCUBAINIT_UMASK={0:04o}'.format(get_umask()),
+    ]
+
+    # Mount scubainit in the container
+    opts.append(make_vol_opt(g_scubainit_path, '/scubainit', ['ro','z']))
+
+    # Make scubainit the entrypoint
+    # TODO: What if the image already defines an entrypoint?
+    opts.append('--entrypoint=/scubainit')
 
 
-def get_native_opts(scuba_args):
-    opts = []
+    '''
+    Normally, if the user provides no command to "docker run", the image's
+    default CMD is run. Because we set the entrypiont, scuba must emulate the
+    default behavior itself.
+    '''
+    if len(usercmd) == 0:
+        # No user-provided command; we want to run the image's default command
+        verbose_msg('No user command; getting command from image')
+        usercmd = get_image_command(config.image)
+        verbose_msg('{0} Cmd: "{1}"'.format(config.image, usercmd))
 
-    if not scuba_args.root:
-        opts += get_native_user_opts()
-
-    return opts
+    return opts, usercmd
 
 
 def parse_scuba_args(argv):
@@ -165,8 +186,7 @@ def main(argv=None):
         '''
         verbose_msg('Docker running natively')
 
-        docker_opts = get_native_opts(scuba_args)
-        docker_cmd = usercmd
+        docker_opts, docker_cmd = get_native_opts(config, scuba_args, usercmd)
 
         # NOTE: This tells Docker to re-label the directory for compatibility
         # with SELinux. See `man docker-run` for more information.
