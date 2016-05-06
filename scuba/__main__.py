@@ -68,72 +68,8 @@ def get_umask():
     return val
 
 
-def get_native_user_opts():
     opts = []
 
-    uid = os.getuid()
-    gid = os.getgid()
-
-    opts.append('--user={uid}:{gid}'.format(uid=uid, gid=gid))
-
-    def writeln(f, line):
-        f.write(line + '\n')
-
-    # /etc/passwd
-    with NamedTemporaryFile(mode='wt', prefix='scuba', delete=False) as f:
-        filecleanup.register(f.name)
-        opts.append(make_vol_opt(f.name, '/etc/passwd', 'z'))
-
-        writeln(f, passwd_entry(
-            username = 'root',
-            password = 'x',
-            uid = 0,
-            gid = 0,
-            gecos = 'root',
-            homedir = '/root',
-            shell = '/bin/sh',
-            ))
-
-        writeln(f, passwd_entry(
-            username = SCUBA_USER,
-            password = 'x',
-            uid = uid,
-            gid = gid,
-            gecos = 'Scuba User',
-            homedir = '/',          # Docker sets $HOME=/
-            shell = '/bin/sh',
-            ))
-
-    # /etc/group
-    with NamedTemporaryFile(mode='wt', prefix='scuba', delete=False) as f:
-        filecleanup.register(f.name)
-        opts.append(make_vol_opt(f.name, '/etc/group', 'z'))
-
-        writeln(f, group_entry(
-            groupname = 'root',
-            password = 'x',
-            gid = 0,
-            ))
-
-        writeln(f, group_entry(
-            groupname = SCUBA_GROUP,
-            password = 'x',
-            gid = gid,
-            ))
-
-    # /etc/shadow
-    with NamedTemporaryFile(mode='wt', prefix='scuba', delete=False) as f:
-        filecleanup.register(f.name)
-        opts.append(make_vol_opt(f.name, '/etc/shadow', 'z'))
-
-        writeln(f, shadow_entry(
-            username = 'root',
-            ))
-        writeln(f, shadow_entry(
-            username = SCUBA_USER,
-            ))
-
-    return opts
 
 
 def get_native_opts(scuba_args):
