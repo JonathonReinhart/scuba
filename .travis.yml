@@ -23,6 +23,7 @@ before_script:
   - ./test_setup.sh
 
 script:
+  - make
   - ./run_nosetests.sh
   - sudo pip install .
   - ./run_full_tests.py
