@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <assert.h>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
@@ -37,9 +38,9 @@
 #define SCUBAINIT_VERBOSE   "SCUBAINIT_VERBOSE"
 
 static bool m_verbose = false;
-static unsigned int m_uid;
-static unsigned int m_gid;
-static unsigned int m_umask;
+static int m_uid = -1;
+static int m_gid = -1;
+static int m_umask = -1;
 
 /**
  * Add a group to a group file
@@ -258,6 +259,15 @@ out:
 static int
 change_user(void)
 {
+    if (m_uid == -1 || m_gid == -1) {
+        verbose("Not changing user\n");
+        return 0;
+    }
+
+    assert(m_uid >= 0);
+    assert(m_gid >= 0);
+
+
     /* TODO: Would we ever want to get this list from scuba, too? */
     if (setgroups(0, NULL) != 0) {
         errmsg("Failed to setgroups(): %m\n");
@@ -282,14 +292,10 @@ change_user(void)
 }
 
 static int
-getenv_uint(const char *name, unsigned int *result)
+str2uint(const char *val, unsigned int *result)
 {
-    char *val;
     char *end;
     unsigned long int temp;
-
-    if ((val = getenv(name)) == NULL)
-        return -1;
 
     if (*val == '\0')
         return -1;
@@ -309,30 +315,81 @@ getenv_uint(const char *name, unsigned int *result)
     return 0;
 }
 
+/**
+ * Gets an optional uint environment variable, unsetting it
+ * from the environment.
+ *
+ * Returns:
+ * -1   Variable was set but invalid
+ *  0   Variable was set to a valid value, assigned to *result
+ *  1   Varibale was not set
+ */
+static int
+getenv_uint_opt_unset(const char *name, int *result)
+{
+    char *var;
+    unsigned int uval;
+
+    var = getenv(name);
+    if (!var)
+        return 1;
+
+    if (str2uint(var, &uval) != 0) {
+        errmsg("%s invalid: \"%s\"\n", name, var);
+        return -1;
+    }
+
+    verbose("%s = %u\n", name, uval);
+    unsetenv(name);
+    *result = uval;
+
+    return 0;
+}
+
+
 static int
 process_envvars(void)
 {
+    int ids_set = 0;
+
     /* Get the env. vars from scuba */
-    if (getenv_uint(SCUBAINIT_UID, &m_uid)) {
-        errmsg("SCUBAINIT_UID not set or invalid\n");
-        return -1;
-    }
-    unsetenv(SCUBAINIT_UID);
-    verbose("SCUBAINIT_UID = %u\n", m_uid);
 
-    if (getenv_uint(SCUBAINIT_GID, &m_gid)) {
-        errmsg("SCUBAINIT_GID not set or invalid\n");
-        return -1;
+    /**
+     * SCUBAINIT_UID and SCUBAINIT_GID are optional,
+     * but if either is set, both must be set.
+     */
+    switch (getenv_uint_opt_unset(SCUBAINIT_UID, &m_uid)) {
+        case -1:
+            return -1;
+        case 0:
+            ids_set++;
+            break;
     }
-    unsetenv(SCUBAINIT_GID);
-    verbose("SCUBAINIT_GID = %u\n", m_gid);
+    switch (getenv_uint_opt_unset(SCUBAINIT_GID, &m_gid)) {
+        case -1:
+            return -1;
+        case 0:
+            ids_set++;
+            break;
+    }
+    switch (ids_set) {
+        case 0:
+        case 2:
+            break;
+        default:
+            errmsg("If SCUBAINIT_UID or SCUBAINIT_GID are set, both must be set.\n");
+            return -1;
+    }
 
-    if (getenv_uint(SCUBAINIT_UMASK, &m_umask)) {
-        errmsg("SCUBAINIT_UMASK not set or invalid\n");
-        return -1;
+
+    /**
+     * SCUBAINIT_UMASK is optional.
+     */
+    switch (getenv_uint_opt_unset(SCUBAINIT_UMASK, &m_umask)) {
+        case -1:
+            return -1;
     }
-    unsetenv(SCUBAINIT_UMASK);
-    verbose("SCUBAINIT_UMASK= 0%o\n", m_umask);
+
 
     if (getenv(SCUBAINIT_VERBOSE)) {
         unsetenv(SCUBAINIT_VERBOSE);
@@ -389,8 +446,10 @@ main(int argc, char **argv)
     if (change_user() < 0)
         exit(99);
 
-    verbose("Setting umask to 0%o\n", m_umask);
-    umask(m_umask);
+    if (m_umask >= 0) {
+        verbose("Setting umask to 0%o\n", m_umask);
+        umask(m_umask);
+    }
 
     verbose("execvp(\"%s\", ...)\n", new_argv[0]);
     execvp(new_argv[0], new_argv);
