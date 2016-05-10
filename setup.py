@@ -23,6 +23,12 @@ setup(
     author_email = 'jonathon.reinhart@gmail.com',
     url = 'https://github.com/JonathonReinhart/scuba',
     packages = ['scuba'],
+    package_data = {
+        'scuba': [
+            'scubainit',
+        ],
+    },
+    zip_safe = False,   # http://stackoverflow.com/q/24642788/119527
     entry_points = {
         'console_scripts': [
             'scuba = scuba.__main__:main',
