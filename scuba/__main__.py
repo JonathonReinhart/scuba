@@ -69,16 +69,15 @@ def get_umask():
 
 
 def get_native_opts(config, scuba_args, usercmd):
-    opts = []
-
-    if scuba_args.root:
-        raise NotImplementedError('--root option has been removed (for now).')
-
-    opts += [
-        '--env=SCUBAINIT_UID={0}'.format(os.getuid()),
-        '--env=SCUBAINIT_GID={0}'.format(os.getgid()),
+    opts = [
         '--env=SCUBAINIT_UMASK={0:04o}'.format(get_umask()),
     ]
+
+    if not scuba_args.root:
+        opts += [
+            '--env=SCUBAINIT_UID={0}'.format(os.getuid()),
+            '--env=SCUBAINIT_GID={0}'.format(os.getgid()),
+        ]
 
     if g_verbose:
         opts.append('--env=SCUBAINIT_VERBOSE=1')
