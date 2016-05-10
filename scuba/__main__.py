@@ -63,7 +63,7 @@ def get_image_command(image):
 
 def get_umask():
     # Same logic as bash/builtins/umask.def
-    val = os.umask(022)
+    val = os.umask(0o22)
     os.umask(val)
     return val
 
