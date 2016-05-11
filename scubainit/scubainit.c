@@ -42,6 +42,21 @@ static int m_uid = -1;
 static int m_gid = -1;
 static int m_umask = -1;
 
+
+/* Returns true if the scuba user should be used */
+static bool
+use_scuba_user(void)
+{
+    if (m_uid >= 0) {
+        assert(m_gid >= 0);
+        return true;
+    }
+
+    assert(m_gid == -1);
+    return false;
+}
+
+
 /**
  * Add a group to a group file
  *
@@ -259,15 +274,6 @@ out:
 static int
 change_user(void)
 {
-    if (m_uid == -1 || m_gid == -1) {
-        verbose("Not changing user\n");
-        return 0;
-    }
-
-    assert(m_uid >= 0);
-    assert(m_gid >= 0);
-
-
     /* TODO: Would we ever want to get this list from scuba, too? */
     if (setgroups(0, NULL) != 0) {
         errmsg("Failed to setgroups(): %m\n");
@@ -425,13 +431,30 @@ main(int argc, char **argv)
     if (process_envvars() < 0)
         exit(99);
 
-    /* Add scuba user and group */
-    if (add_group(ETC_GROUP, SCUBA_GROUP, m_gid) != 0)
-        exit(99);
-    if (add_user(ETC_PASSWD, SCUBA_USER, m_uid, m_gid, SCUBA_USER_FULLNAME) != 0)
-        exit(99);
-    if (add_shadow(ETC_SHADOW, SCUBA_USER) != 0)
-        exit(99);
+    if (use_scuba_user()) {
+        /* Add scuba user and group */
+        if (add_group(ETC_GROUP, SCUBA_GROUP, m_gid) != 0)
+            exit(99);
+        if (add_user(ETC_PASSWD, SCUBA_USER, m_uid, m_gid, SCUBA_USER_FULLNAME) != 0)
+            exit(99);
+        if (add_shadow(ETC_SHADOW, SCUBA_USER) != 0)
+            exit(99);
+    }
+
+    /* FUTURE: Call pre-su hook */
+
+    /* Handle the scuba user */
+    if (use_scuba_user()) {
+        if (change_user() < 0)
+            exit(99);
+
+        if (m_umask >= 0) {
+            verbose("Setting umask to 0%o\n", m_umask);
+            umask(m_umask);
+        }
+    }
+
+    /* FUTURE: Call post-su hook */
 
 
     /* Prepare for execution of user command */
@@ -441,14 +464,6 @@ main(int argc, char **argv)
     if (new_argc == 0) {
         errmsg("Missing command\n");
         exit(99);
-    }
-
-    if (change_user() < 0)
-        exit(99);
-
-    if (m_umask >= 0) {
-        verbose("Setting umask to 0%o\n", m_umask);
-        umask(m_umask);
     }
 
     verbose("execvp(\"%s\", ...)\n", new_argv[0]);
