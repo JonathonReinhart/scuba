@@ -12,10 +12,10 @@ import itertools
 import argparse
 from tempfile import NamedTemporaryFile
 import atexit
+import json
 
 from .constants import *
 from .config import find_config, load_config, ConfigError
-from .etcfiles import *
 from .filecleanup import FileCleanup
 from .utils import *
 from .version import __version__
@@ -38,82 +38,69 @@ def make_vol_opt(hostdir, contdir, options=None):
         vol += ':' + ','.join(options)
     return vol
 
+def shell_quote(s):
+    # http://stackoverflow.com/a/847800/119527
+    return pipes.quote(s)
 
-def get_native_user_opts():
-    opts = []
+def get_image_command(image):
+    '''Gets the default command for an image'''
+    args = ['docker', 'inspect', image]
+    try:
+        p = subprocess.Popen(args, stdout = subprocess.PIPE)
+    except OSError as e:
+        if e.errno == errno.ENOENT:
+            appmsg('Failed to execute docker. Is it installed?')
+            sys.exit(2)
 
-    uid = os.getuid()
-    gid = os.getgid()
+    stdout, _ = p.communicate()
+    if not p.returncode == 0:
+        appmsg('Failed to inspect image')
+        sys.exit(2)
 
-    opts.append('--user={uid}:{gid}'.format(uid=uid, gid=gid))
+    info = json.loads(stdout)[0]
+    return info['Config']['Cmd']
 
-    def writeln(f, line):
-        f.write(line + '\n')
-
-    # /etc/passwd
-    with NamedTemporaryFile(mode='wt', prefix='scuba', delete=False) as f:
-        filecleanup.register(f.name)
-        opts.append(make_vol_opt(f.name, '/etc/passwd', 'z'))
-
-        writeln(f, passwd_entry(
-            username = 'root',
-            password = 'x',
-            uid = 0,
-            gid = 0,
-            gecos = 'root',
-            homedir = '/root',
-            shell = '/bin/sh',
-            ))
-
-        writeln(f, passwd_entry(
-            username = SCUBA_USER,
-            password = 'x',
-            uid = uid,
-            gid = gid,
-            gecos = 'Scuba User',
-            homedir = '/',          # Docker sets $HOME=/
-            shell = '/bin/sh',
-            ))
-
-    # /etc/group
-    with NamedTemporaryFile(mode='wt', prefix='scuba', delete=False) as f:
-        filecleanup.register(f.name)
-        opts.append(make_vol_opt(f.name, '/etc/group', 'z'))
-
-        writeln(f, group_entry(
-            groupname = 'root',
-            password = 'x',
-            gid = 0,
-            ))
-
-        writeln(f, group_entry(
-            groupname = SCUBA_GROUP,
-            password = 'x',
-            gid = gid,
-            ))
-
-    # /etc/shadow
-    with NamedTemporaryFile(mode='wt', prefix='scuba', delete=False) as f:
-        filecleanup.register(f.name)
-        opts.append(make_vol_opt(f.name, '/etc/shadow', 'z'))
-
-        writeln(f, shadow_entry(
-            username = 'root',
-            ))
-        writeln(f, shadow_entry(
-            username = SCUBA_USER,
-            ))
-
-    return opts
+def get_umask():
+    # Same logic as bash/builtins/umask.def
+    val = os.umask(0o22)
+    os.umask(val)
+    return val
 
 
-def get_native_opts(scuba_args):
-    opts = []
+def get_native_opts(config, scuba_args, usercmd):
+    opts = [
+        '--env=SCUBAINIT_UMASK={0:04o}'.format(get_umask()),
+    ]
 
     if not scuba_args.root:
-        opts += get_native_user_opts()
+        opts += [
+            '--env=SCUBAINIT_UID={0}'.format(os.getuid()),
+            '--env=SCUBAINIT_GID={0}'.format(os.getgid()),
+        ]
 
-    return opts
+    if g_verbose:
+        opts.append('--env=SCUBAINIT_VERBOSE=1')
+
+    # Mount scubainit in the container
+    opts.append(make_vol_opt(g_scubainit_path, '/scubainit', ['ro','z']))
+
+    # Make scubainit the entrypoint
+    # TODO: What if the image already defines an entrypoint?
+    opts.append('--entrypoint=/scubainit')
+
+
+    '''
+    Normally, if the user provides no command to "docker run", the image's
+    default CMD is run. Because we set the entrypiont, scuba must emulate the
+    default behavior itself.
+    '''
+    if len(usercmd) == 0:
+        # No user-provided command; we want to run the image's default command
+        verbose_msg('No user command; getting command from image')
+        usercmd = get_image_command(config.image)
+        verbose_msg('{0} Cmd: "{1}"'.format(config.image, usercmd))
+
+    return opts, usercmd
 
 
 def parse_scuba_args(argv):
@@ -149,6 +136,16 @@ def main(argv=None):
     filecleanup = FileCleanup()
     if not scuba_args.dry_run:
         atexit.register(filecleanup.cleanup)
+
+    pkg_path = os.path.dirname(__file__)
+
+    # Determine path to scubainit binary
+    global g_scubainit_path
+    g_scubainit_path = os.path.join(pkg_path, 'scubainit')
+    if not os.path.isfile(g_scubainit_path):
+        appmsg('scubainit not found at "{0}"'.format(g_scubainit_path))
+        sys.exit(128)
+
 
     # top_path is where .scuba.yml is found, and becomes the top of our bind mount.
     # top_rel is the relative path from top_path to the current working directory,
@@ -190,8 +187,7 @@ def main(argv=None):
         '''
         verbose_msg('Docker running natively')
 
-        docker_opts = get_native_opts(scuba_args)
-        docker_cmd = usercmd
+        docker_opts, docker_cmd = get_native_opts(config, scuba_args, usercmd)
 
         # NOTE: This tells Docker to re-label the directory for compatibility
         # with SELinux. See `man docker-run` for more information.
