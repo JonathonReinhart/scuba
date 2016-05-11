@@ -19,11 +19,12 @@ matrix:
     - python: "nightly"
 
 before_script:
+  - ci/install_musl-libc.sh
   - docker version
   - ./test_setup.sh
 
 script:
-  - make
+  - CC=/usr/local/musl/bin/musl-gcc make
   - ./run_nosetests.sh
   - sudo pip install .
   - ./run_full_tests.py
