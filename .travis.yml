@@ -18,6 +18,10 @@ matrix:
   allow_failures:
     - python: "nightly"
 
+cache:
+  directories:
+  - /usr/local/musl
+
 before_script:
   - ci/install_musl-libc.sh
   - docker version

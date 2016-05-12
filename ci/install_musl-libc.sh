@@ -1,8 +1,18 @@
 #!/bin/bash
 set -e
 
-MUSL_RELEASE=musl-1.1.14
+MUSL_VERSION="1.1.14"
+MUSL_RELEASE="musl-${MUSL_VERSION}"
 
+# Is it already installed?
+ver=$(/usr/local/musl/lib/libc.so 2>&1 | grep Version | awk '{ print $2 }')
+if [[ $ver == "$MUSL_VERSION" ]]; then
+    echo "$MUSL_RELEASE already installed!"
+    exit 0
+fi
+
+
+# Install it
 cd /tmp
 
 echo "Downloading ${MUSL_RELEASE}..."
