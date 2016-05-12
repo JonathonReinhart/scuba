@@ -6,7 +6,7 @@ MUSL_RELEASE="musl-${MUSL_VERSION}"
 
 # Provide a default value for MUSL_PATH
 : ${MUSL_PATH:=/usr/local/musl}
-echo "$$MUSL_PATH = $MUSL_PATH"
+echo "\$MUSL_PATH = $MUSL_PATH"
 
 
 # Is it already installed?
@@ -30,7 +30,7 @@ echo "Building ${MUSL_RELEASE}..."
 make
 
 echo "Installing ${MUSL_RELEASE}..."
-sudo make install
+make install
 
 
 echo "${MUSL_RELEASE} installed!"
