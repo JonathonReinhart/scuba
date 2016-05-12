@@ -18,6 +18,7 @@ into this:
 
 ## Installation
 
+### Install via pip
 Scuba is [hosted at PyPI](https://pypi.python.org/pypi/scuba).
 
 To install:
@@ -27,6 +28,21 @@ To install:
 To uninstall:
 
     $ sudo pip uninstall scuba
+
+### Install from source
+Scuba can be built from source on Linux only (due to the fact that `scubainit`
+must be compiled):
+
+1. Run `make` to build `scubainit`
+2. Run `./run_nosetests.sh` to run the unit tests
+3. Run `sudo python setup.py install` to install scuba
+4. Run `./run_full_tests.py` to test the installed version of scuba
+
+If [musl-libc] is installed, it can be used to reduce the size of `scubainit`,
+by overriding the `CC` environment variable in step 1:
+
+`CC=/usr/local/musl/bin/musl-gcc make`
+
 
 ## Configuration
 
@@ -78,3 +94,8 @@ image: !from_yaml .gitlab-ci.yml image
 ## License
 
 This software is released under the [MIT License](https://opensource.org/licenses/MIT).
+
+
+
+
+[musl-libc]: https://www.musl-libc.org/
