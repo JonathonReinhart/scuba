@@ -13,6 +13,7 @@ import os
 import sys
 from tempfile import mkdtemp, TemporaryFile, NamedTemporaryFile
 from shutil import rmtree
+import subprocess
 
 import scuba.__main__ as main
 import scuba.constants
@@ -109,6 +110,29 @@ class TestMain(TestCase):
         out, _ = self.run_scuba(args)
 
         assert_str_equalish('my output', out)
+
+    def test_no_cmd(self):
+        '''Verify scuba works with no given command'''
+
+        with open('.scuba.yml', 'w') as f:
+            f.write('image: {0}\n'.format(DOCKER_IMAGE))
+
+        with TemporaryFile(prefix='scubatest-stdin', mode='w+t') as stdin:
+            stdin.write('echo okay')
+            stdin.seek(0)
+
+            # This mock exists to pass an extra stdin= arg
+            real_subprocess_call = subprocess.call
+            def mocked_subprocess_call(*args, **kw):
+                assert_false('stdin' in kw)
+                kw['stdin'] = stdin
+                return real_subprocess_call(*args, **kw)
+
+            with mock.patch('subprocess.call', side_effect=mocked_subprocess_call):
+                args = []
+                out, _ = self.run_scuba(args)
+
+        assert_str_equalish('okay', out)
 
 
     def test_config_error(self):
