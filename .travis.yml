@@ -29,7 +29,7 @@ cache:
 before_script:
   - ci/install_musl-libc.sh
   - docker version
-  - ./test_setup.sh
+  - ci/test_setup.sh
 
 script:
   - CC=$MUSL_PATH/bin/musl-gcc make
