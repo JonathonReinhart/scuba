@@ -447,11 +447,11 @@ main(int argc, char **argv)
     if (use_scuba_user()) {
         if (change_user() < 0)
             exit(99);
+    }
 
-        if (m_umask >= 0) {
-            verbose("Setting umask to 0%o\n", m_umask);
-            umask(m_umask);
-        }
+    if (m_umask >= 0) {
+        verbose("Setting umask to 0%o\n", m_umask);
+        umask(m_umask);
     }
 
     /* FUTURE: Call post-su hook */
