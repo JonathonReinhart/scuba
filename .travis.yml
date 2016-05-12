@@ -18,12 +18,21 @@ matrix:
   allow_failures:
     - python: "nightly"
 
+env:
+  global:
+    - MUSL_PATH=$HOME/musl
+
+cache:
+  directories:
+  - $MUSL_PATH
+
 before_script:
+  - ci/install_musl-libc.sh
   - docker version
   - ./test_setup.sh
 
 script:
-  - make
+  - CC=$MUSL_PATH/bin/musl-gcc make
   - ./run_nosetests.sh
   - sudo pip install .
   - ./run_full_tests.py
