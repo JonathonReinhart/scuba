@@ -2,6 +2,15 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+### Changed
+- `scubainit` re-implemented as a C program, which does the following:
+   - Creates the scubauser user/group
+   - Sets the umask
+   - Switches users then *execs* the user command
+  This is to provide more control during initialization, without the artifacts
+  caused by the use of 'su' in the .scubainit from 1.3.
+
 ## [1.6.0] - 2016-02-06
 ### Added
 - Add `-d` to pass arbitrary arguments to `docker run`
