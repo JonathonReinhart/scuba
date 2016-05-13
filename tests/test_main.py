@@ -17,6 +17,7 @@ import subprocess
 
 import scuba.__main__ as main
 import scuba.constants
+import scuba.dockerutil
 import scuba
 
 DOCKER_IMAGE = 'debian:8.2'
@@ -133,6 +134,21 @@ class TestMain(TestCase):
                 out, _ = self.run_scuba(args)
 
         assert_str_equalish('okay', out)
+
+    def test_handle_get_image_command_error(self):
+        '''Verify scuba handles a get_image_command error'''
+
+        with open('.scuba.yml', 'w') as f:
+            f.write('image: {0}\n'.format(DOCKER_IMAGE))
+
+        def mocked_gic(*args, **kw):
+            raise scuba.dockerutil.DockerError('mock error')
+
+        # http://alexmarandon.com/articles/python_mock_gotchas/#patching-in-the-wrong-place
+        # http://www.voidspace.org.uk/python/mock/patch.html#where-to-patch
+        with mock.patch('scuba.__main__.get_image_command', side_effect=mocked_gic):
+            # DockerError -> exit(128)
+            self.run_scuba([], 128)
 
 
     def test_config_error(self):
