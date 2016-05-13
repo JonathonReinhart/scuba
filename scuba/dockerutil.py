@@ -22,3 +22,13 @@ def get_image_command(image):
     info = json.loads(stdout.decode('utf-8'))[0]
     return info['Config']['Cmd']
 
+
+def make_vol_opt(hostdir, contdir, options=None):
+    '''Generate a docker volume option'''
+    vol = '--volume={0}:{1}'.format(hostdir, contdir)
+    if options != None:
+        if isinstance(options, str):
+            options = (options,)
+        vol += ':' + ','.join(options)
+    return vol
+

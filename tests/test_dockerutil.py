@@ -33,3 +33,23 @@ class TestDockerutil(TestCase):
 
         with mock.patch('subprocess.Popen', side_effect=mocked_popen) as popen_mock:
             assert_raises(uut.DockerError, uut.get_image_command, 'n/a')
+
+
+
+    def test_make_vol_opt_no_opts(self):
+        assert_equal(
+                uut.make_vol_opt('/hostdir', '/contdir'),
+                '--volume=/hostdir:/contdir'
+                )
+
+    def test_make_vol_opt_one_opt(self):
+        assert_equal(
+                uut.make_vol_opt('/hostdir', '/contdir', 'ro'),
+                '--volume=/hostdir:/contdir:ro'
+                )
+
+    def test_make_vol_opt_multi_opts(self):
+        assert_equal(
+                uut.make_vol_opt('/hostdir', '/contdir', ['ro', 'z']),
+                '--volume=/hostdir:/contdir:ro,z'
+                )

@@ -28,16 +28,6 @@ def verbose_msg(fmt, *args):
         appmsg(fmt, *args)
 
 
-
-def make_vol_opt(hostdir, contdir, options=None):
-    '''Generate a docker volume option'''
-    vol = '--volume={0}:{1}'.format(hostdir, contdir)
-    if options != None:
-        if isinstance(options, str):
-            options = (options,)
-        vol += ':' + ','.join(options)
-    return vol
-
 def shell_quote(s):
     # http://stackoverflow.com/a/847800/119527
     return pipes.quote(s)
