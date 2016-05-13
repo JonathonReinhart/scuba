@@ -27,11 +27,6 @@ def verbose_msg(fmt, *args):
     if g_verbose:
         appmsg(fmt, *args)
 
-
-def shell_quote(s):
-    # http://stackoverflow.com/a/847800/119527
-    return pipes.quote(s)
-
 def get_umask():
     # Same logic as bash/builtins/umask.def
     val = os.umask(0o22)
