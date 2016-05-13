@@ -12,13 +12,13 @@ import itertools
 import argparse
 from tempfile import NamedTemporaryFile
 import atexit
-import json
 
 from .constants import *
 from .config import find_config, load_config, ConfigError
 from .filecleanup import FileCleanup
 from .utils import *
 from .version import __version__
+from .dockerutil import *
 
 def appmsg(fmt, *args):
     print('scuba: ' + fmt.format(*args), file=sys.stderr)
@@ -26,39 +26,6 @@ def appmsg(fmt, *args):
 def verbose_msg(fmt, *args):
     if g_verbose:
         appmsg(fmt, *args)
-
-
-
-def make_vol_opt(hostdir, contdir, options=None):
-    '''Generate a docker volume option'''
-    vol = '--volume={0}:{1}'.format(hostdir, contdir)
-    if options != None:
-        if isinstance(options, str):
-            options = (options,)
-        vol += ':' + ','.join(options)
-    return vol
-
-def shell_quote(s):
-    # http://stackoverflow.com/a/847800/119527
-    return pipes.quote(s)
-
-def get_image_command(image):
-    '''Gets the default command for an image'''
-    args = ['docker', 'inspect', image]
-    try:
-        p = subprocess.Popen(args, stdout = subprocess.PIPE)
-    except OSError as e:
-        if e.errno == errno.ENOENT:
-            appmsg('Failed to execute docker. Is it installed?')
-            sys.exit(2)
-
-    stdout, _ = p.communicate()
-    if not p.returncode == 0:
-        appmsg('Failed to inspect image')
-        sys.exit(2)
-
-    info = json.loads(stdout)[0]
-    return info['Config']['Cmd']
 
 def get_umask():
     # Same logic as bash/builtins/umask.def
@@ -97,7 +64,11 @@ def get_native_opts(config, scuba_args, usercmd):
     if len(usercmd) == 0:
         # No user-provided command; we want to run the image's default command
         verbose_msg('No user command; getting command from image')
-        usercmd = get_image_command(config.image)
+        try:
+            usercmd = get_image_command(config.image)
+        except DockerError as e:
+            appmsg(str(e))
+            sys.exit(128)
         verbose_msg('{0} Cmd: "{1}"'.format(config.image, usercmd))
 
     return opts, usercmd

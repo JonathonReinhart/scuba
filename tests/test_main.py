@@ -13,9 +13,11 @@ import os
 import sys
 from tempfile import mkdtemp, TemporaryFile, NamedTemporaryFile
 from shutil import rmtree
+import subprocess
 
 import scuba.__main__ as main
 import scuba.constants
+import scuba.dockerutil
 import scuba
 
 DOCKER_IMAGE = 'debian:8.2'
@@ -109,6 +111,44 @@ class TestMain(TestCase):
         out, _ = self.run_scuba(args)
 
         assert_str_equalish('my output', out)
+
+    def test_no_cmd(self):
+        '''Verify scuba works with no given command'''
+
+        with open('.scuba.yml', 'w') as f:
+            f.write('image: {0}\n'.format(DOCKER_IMAGE))
+
+        with TemporaryFile(prefix='scubatest-stdin', mode='w+t') as stdin:
+            stdin.write('echo okay')
+            stdin.seek(0)
+
+            # This mock exists to pass an extra stdin= arg
+            real_subprocess_call = subprocess.call
+            def mocked_subprocess_call(*args, **kw):
+                assert_false('stdin' in kw)
+                kw['stdin'] = stdin
+                return real_subprocess_call(*args, **kw)
+
+            with mock.patch('subprocess.call', side_effect=mocked_subprocess_call):
+                args = []
+                out, _ = self.run_scuba(args)
+
+        assert_str_equalish('okay', out)
+
+    def test_handle_get_image_command_error(self):
+        '''Verify scuba handles a get_image_command error'''
+
+        with open('.scuba.yml', 'w') as f:
+            f.write('image: {0}\n'.format(DOCKER_IMAGE))
+
+        def mocked_gic(*args, **kw):
+            raise scuba.dockerutil.DockerError('mock error')
+
+        # http://alexmarandon.com/articles/python_mock_gotchas/#patching-in-the-wrong-place
+        # http://www.voidspace.org.uk/python/mock/patch.html#where-to-patch
+        with mock.patch('scuba.__main__.get_image_command', side_effect=mocked_gic):
+            # DockerError -> exit(128)
+            self.run_scuba([], 128)
 
 
     def test_config_error(self):
