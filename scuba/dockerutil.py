@@ -19,6 +19,6 @@ def get_image_command(image):
     if not p.returncode == 0:
         raise DockerError('Failed to inspect image')
 
-    info = json.loads(stdout)[0]
+    info = json.loads(stdout.decode('utf-8'))[0]
     return info['Config']['Cmd']
 
