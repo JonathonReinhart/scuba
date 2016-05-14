@@ -1,6 +1,10 @@
 import os
 import yaml
 import shlex
+try:
+    basestring
+except NameError:
+    basestring = str    # Python 3
 
 from .constants import *
 
@@ -102,7 +106,7 @@ def find_config():
 class ScubaConfig(object):
     def __init__(self, **data):
         required_nodes = ('image',)
-        optional_nodes = ('aliases',)
+        optional_nodes = ('aliases','hooks',)
 
         # Check for missing required nodes
         missing = [n for n in required_nodes if not n in data]
@@ -122,6 +126,59 @@ class ScubaConfig(object):
         for alias, cmdstr in data.get('aliases', {}).items():
             self._aliases[alias] = shlex_split(cmdstr)
 
+        self._load_hooks(data)
+
+
+    def _process_script(self, node, name):
+        '''Process a script-type node
+
+        This can handle yaml of either a simple form:
+
+            node: this is my script
+
+        Or a more complex form (which allows for other sub-nodes):
+
+            node:
+              script:
+                - this is my script
+                - it has multiple parts
+
+        Other forms are disallowed:
+
+            node:
+              - this
+              - is
+              - forbidden
+        '''
+        if isinstance(node, basestring):
+            # The script is just the text itself
+            return [node]
+
+
+        if isinstance(node, dict):
+            # There must be a "script" key, which must be a list of strings
+            script = node.get('script')
+            if not script:
+                raise ConfigError("{0}: must have a 'script' subkey".format(name))
+
+            if not isinstance(script, list):
+                raise ConfigError("{0}.script: must be a list".format(name))
+
+            return script
+
+        raise ConfigError("{0}: must be string or dict".format(name))
+
+
+    def _load_hooks(self, data):
+        self._hooks = {}
+
+        for name in ('user', 'root',):
+            node = data.get('hooks', {}).get(name)
+            if node:
+                hook = self._process_script(node, name)
+                self._hooks[name] = hook
+
+
     @property
     def image(self):
         return self._image
@@ -129,6 +186,11 @@ class ScubaConfig(object):
     @property
     def aliases(self):
         return self._aliases
+
+    @property
+    def hooks(self):
+        return self._hooks
+
 
     def process_command(self, command):
         if command:
