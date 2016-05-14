@@ -10,6 +10,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
    - Switches users then *execs* the user command
   This is to provide more control during initialization, without the artifacts
   caused by the use of 'su' in the .scubainit from 1.3.
+- scubauser now has a proper writable home directory in the container (#45)
 
 ## [1.6.0] - 2016-02-06
 ### Added

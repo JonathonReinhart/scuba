@@ -29,6 +29,7 @@
 
 #define SCUBA_USER          "scubauser"
 #define SCUBA_GROUP         "scubauser"
+#define SCUBA_HOME          "/home/scubauser"
 #define SCUBA_USER_FULLNAME "Scuba User"
 
 #define SCUBAINIT_UID       "SCUBAINIT_UID"
@@ -140,7 +141,7 @@ out:
  */
 static int
 add_user(const char *path, const char *name, unsigned int uid, unsigned int gid,
-         const char *gecos)
+         const char *gecos, const char *homedir)
 {
     int result = -1;
     FILE *f = NULL;
@@ -182,7 +183,7 @@ add_user(const char *path, const char *name, unsigned int uid, unsigned int gid,
         .pw_uid     = uid,
         .pw_gid     = gid,
         .pw_gecos   = (char*)gecos,     /* putpwent will not modify */
-        .pw_dir     = "/",          /* Docker sets $HOME=/ */
+        .pw_dir     = (char*)homedir,   /* putpwent will not modify */
         .pw_shell   = "/bin/sh",
     };
 
@@ -291,9 +292,72 @@ change_user(void)
         return -1;
     }
 
+    /* Set expected environment variables */
+    setenv("USER", SCUBA_USER, 1);
+    setenv("LOGNAME", SCUBA_USER, 1);
+    setenv("HOME", SCUBA_HOME, 1);
+
     verbose("Changed to uid=%u euid=%u  gid=%u egid=%u\n",
             getuid(), geteuid(), getgid(), getegid());
 
+    return 0;
+}
+
+static int
+mkdir_p(const char *path)
+{
+    /* Adapted from http://stackoverflow.com/a/2336245/119527 */
+    const size_t len = strlen(path);
+    char _path[PATH_MAX];
+    char *p;
+
+    errno = 0;
+
+    /* Copy string so its mutable */
+    if (len > sizeof(_path)-1) {
+        errno = ENAMETOOLONG;
+        return -1;
+    }
+    strcpy(_path, path);
+
+    /* Iterate the string */
+    for (p = _path + 1; *p; p++) {
+        if (*p == '/') {
+            /* Temporarily truncate */
+            *p = '\0';
+
+            if (mkdir(_path, S_IRWXU) != 0) {
+                if (errno != EEXIST)
+                    return -1;
+            }
+
+            *p = '/';
+        }
+    }
+
+    if (mkdir(_path, S_IRWXU) != 0) {
+        if (errno != EEXIST)
+            return -1;
+    }
+
+    return 0;
+}
+
+static int
+make_homedir(const char *path, unsigned int uid, unsigned int gid)
+{
+    if (mkdir_p(path) != 0) {
+        errmsg("Failed to create %s: %m\n", path);
+        return -1;
+    }
+    if (chmod(path, 0700) != 0) {
+        errmsg("Failed to chmod %s: %m\n", path);
+        return -1;
+    }
+    if (chown(path, uid, gid) != 0) {
+        errmsg("Failed to chown %s: %m\n", path);
+        return -1;
+    }
     return 0;
 }
 
@@ -403,9 +467,6 @@ process_envvars(void)
     }
 
     /* Clear out other env. vars */
-    unsetenv("USER");
-    unsetenv("HOME");
-    unsetenv("LOGNAME");
     unsetenv("PWD");
     unsetenv("OLDPWD");
     unsetenv("XAUTHORITY");
@@ -432,10 +493,15 @@ main(int argc, char **argv)
         exit(99);
 
     if (use_scuba_user()) {
+        /* Create scuba user home directory */
+        if (make_homedir(SCUBA_HOME, m_uid, m_gid) != 0)
+            exit(99);
+
         /* Add scuba user and group */
         if (add_group(ETC_GROUP, SCUBA_GROUP, m_gid) != 0)
             exit(99);
-        if (add_user(ETC_PASSWD, SCUBA_USER, m_uid, m_gid, SCUBA_USER_FULLNAME) != 0)
+        if (add_user(ETC_PASSWD, SCUBA_USER, m_uid, m_gid,
+                    SCUBA_USER_FULLNAME, SCUBA_HOME) != 0)
             exit(99);
         if (add_shadow(ETC_SHADOW, SCUBA_USER) != 0)
             exit(99);

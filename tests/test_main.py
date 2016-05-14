@@ -300,6 +300,26 @@ class TestMain(TestCase):
         assert_equal(username, 'root')
         assert_equal(gid, 0)
         assert_equal(groupname, 'root')
+    
+
+    def _test_home_writable(self, scuba_args=[]):
+        with open('.scuba.yml', 'w') as f:
+            f.write('image: {0}\n'.format(DOCKER_IMAGE))
+
+        args = scuba_args + ['/bin/sh', '-c', 'echo success >> ~/testfile; cat ~/testfile']
+        out, _ = self.run_scuba(args)
+
+        assert_str_equalish(out, 'success')
+
+
+    def test_home_writable_scubauser(self):
+        '''Verify scubauser has a writable homedir'''
+        self._test_home_writable()
+
+
+    def test_home_writable_root(self):
+        '''Verify root has a writable homedir'''
+        self._test_home_writable(['-r'])
 
 
     def test_arbitrary_docker_args(self):
