@@ -141,7 +141,7 @@ out:
  */
 static int
 add_user(const char *path, const char *name, unsigned int uid, unsigned int gid,
-         const char *gecos)
+         const char *gecos, const char *homedir)
 {
     int result = -1;
     FILE *f = NULL;
@@ -183,7 +183,7 @@ add_user(const char *path, const char *name, unsigned int uid, unsigned int gid,
         .pw_uid     = uid,
         .pw_gid     = gid,
         .pw_gecos   = (char*)gecos,     /* putpwent will not modify */
-        .pw_dir     = "/",          /* Docker sets $HOME=/ */
+        .pw_dir     = (char*)homedir,   /* putpwent will not modify */
         .pw_shell   = "/bin/sh",
     };
 
@@ -498,7 +498,8 @@ main(int argc, char **argv)
         /* Add scuba user and group */
         if (add_group(ETC_GROUP, SCUBA_GROUP, m_gid) != 0)
             exit(99);
-        if (add_user(ETC_PASSWD, SCUBA_USER, m_uid, m_gid, SCUBA_USER_FULLNAME) != 0)
+        if (add_user(ETC_PASSWD, SCUBA_USER, m_uid, m_gid,
+                    SCUBA_USER_FULLNAME, SCUBA_HOME) != 0)
             exit(99);
         if (add_shadow(ETC_SHADOW, SCUBA_USER) != 0)
             exit(99);
