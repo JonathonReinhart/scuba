@@ -467,9 +467,6 @@ process_envvars(void)
     }
 
     /* Clear out other env. vars */
-    unsetenv("USER");
-    unsetenv("HOME");
-    unsetenv("LOGNAME");
     unsetenv("PWD");
     unsetenv("OLDPWD");
     unsetenv("XAUTHORITY");
