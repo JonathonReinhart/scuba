@@ -292,6 +292,11 @@ change_user(void)
         return -1;
     }
 
+    /* Set expected environment variables */
+    setenv("USER", SCUBA_USER, 1);
+    setenv("LOGNAME", SCUBA_USER, 1);
+    setenv("HOME", SCUBA_HOME, 1);
+
     verbose("Changed to uid=%u euid=%u  gid=%u egid=%u\n",
             getuid(), geteuid(), getgid(), getegid());
 
