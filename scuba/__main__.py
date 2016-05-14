@@ -33,6 +33,28 @@ def get_umask():
     os.umask(val)
     return val
 
+def generate_hook_script(config, opts, name):
+    script = config.hooks.get(name)
+    if not script:
+        return
+
+    def writeln(f, line):
+        f.write(line + '\n')
+
+    # Generate the hook script, mount it into the container, and tell scubainit
+    with NamedTemporaryFile(mode='wt', prefix='scuba', delete=False) as f:
+        filecleanup.register(f.name)
+
+        cpath = '/.scuba/hooks/{0}.sh'.format(name)
+        opts.append(make_vol_opt(f.name, cpath))
+        opts.append('--env=SCUBAINIT_HOOK_{0}={1}'.format(name.upper(), cpath))
+
+        writeln(f, '#!/bin/sh')
+        writeln(f, '# Auto-generated from .scuba.yml')
+        writeln(f, 'set -e')
+        for cmd in script:
+            writeln(f, cmd)
+
 
 def get_native_opts(config, scuba_args, usercmd):
     opts = [
@@ -70,6 +92,10 @@ def get_native_opts(config, scuba_args, usercmd):
             appmsg(str(e))
             sys.exit(128)
         verbose_msg('{0} Cmd: "{1}"'.format(config.image, usercmd))
+
+    # Hooks
+    for name in ('root', 'user', ):
+        generate_hook_script(config, opts, name)
 
     return opts, usercmd
 
