@@ -230,7 +230,7 @@ class TestConfig(TestCase):
     # Hooks
 
     def test_hooks_mixed(self):
-        '''mixed types of hook syntax are valid'''
+        '''hooks of mixed forms are valid'''
         with open('.scuba.yml', 'w') as f:
             f.write('''
                 image: na
@@ -251,3 +251,41 @@ class TestConfig(TestCase):
         assert_seq_equal(
             config.hooks.get('user'),
             ['id'])
+
+    def test_hooks_invalid_list(self):
+        '''hooks with list not under "script" key are invalid'''
+        with open('.scuba.yml', 'w') as f:
+            f.write('''
+                image: na
+                hooks:
+                  user:
+                    - this list should be under
+                    - a 'script'
+                ''')
+
+        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
+
+    # TODO: Any reason this shouldn't be valid?
+    def test_hooks_invalid_script_type(self):
+        '''hooks with string "script" are invalid'''
+        with open('.scuba.yml', 'w') as f:
+            f.write('''
+                image: na
+                hooks:
+                  user:
+                    script: this should be in a list under script
+                ''')
+
+        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
+
+    def test_hooks_missing_script(self):
+        '''hooks with dict, but missing "script" are invalid'''
+        with open('.scuba.yml', 'w') as f:
+            f.write('''
+                image: na
+                hooks:
+                  user:
+                    not_script: missing "script" key
+                ''')
+
+        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
