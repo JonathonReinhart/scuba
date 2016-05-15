@@ -1,0 +1,16 @@
+image: busybox:latest
+
+# These hooks run during scubainit
+hooks:
+
+  # The "root" hook runs just before we switch users
+  root:
+    # This uses the complex form, with a 'script' subkey,
+    # which is a list of command strings making up the script.
+    script:
+      - 'echo "HOOK: This runs before we switch users"'
+      - id
+
+  # The "user" hook runs just before we execute the user command.
+  # This uses the simple form, which is just a single command string.
+  user: 'echo "HOOK: After switching users, uid=$(id -u) gid=$(id -g)"'
