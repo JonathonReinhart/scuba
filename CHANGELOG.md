@@ -3,6 +3,9 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Added
+- Add support for scubainit hooks
+
 ### Changed
 - `scubainit` re-implemented as a C program, which does the following:
    - Creates the scubauser user/group

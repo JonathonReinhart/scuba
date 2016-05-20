@@ -35,13 +35,17 @@
 #define SCUBAINIT_UID       "SCUBAINIT_UID"
 #define SCUBAINIT_GID       "SCUBAINIT_GID"
 #define SCUBAINIT_UMASK     "SCUBAINIT_UMASK"
-#define SCUBAINIT_HOOK      "SCUBAINIT_HOOK"
+#define SCUBAINIT_HOOK_USER "SCUBAINIT_HOOK_USER"
+#define SCUBAINIT_HOOK_ROOT "SCUBAINIT_HOOK_ROOT"
 #define SCUBAINIT_VERBOSE   "SCUBAINIT_VERBOSE"
 
 static bool m_verbose = false;
 static int m_uid = -1;
 static int m_gid = -1;
 static int m_umask = -1;
+
+static const char *m_user_hook;
+static const char *m_root_hook;
 
 
 /* Returns true if the scuba user should be used */
@@ -362,6 +366,59 @@ make_homedir(const char *path, unsigned int uid, unsigned int gid)
 }
 
 static int
+make_executable(const char *path)
+{
+    int ret = -1;
+    struct stat st;
+    mode_t mode;
+
+    if (stat(path, &st) != 0)
+        goto out;
+
+    mode = st.st_mode;
+
+    /* Copy R bits to X */
+    mode |= (mode & 0444) >> 2;
+
+    if (chmod(path, mode) != 0)
+        goto out;
+
+    ret = 0;
+
+out:
+    return ret;
+}
+
+static int
+call_hook(const char *hook_path)
+{
+    int rc;
+
+    /* Nothing to do? */
+    if (hook_path == NULL)
+        return 0;
+
+    if (make_executable(hook_path) != 0) {
+        errmsg("Failed to make executable %s: %m\n", hook_path);
+        exit(99);
+    }
+
+    verbose("About to execute %s\n", hook_path);
+    rc = system(hook_path);
+
+    if (rc < 0) {
+        errmsg("Failed to execute %s: %m\n", hook_path);
+        exit(99);
+    }
+    if (rc > 0) {
+        errmsg("%s exited with status %d\n", hook_path, rc);
+        exit(rc);
+    }
+
+    return 0;
+}
+
+static int
 str2uint(const char *val, unsigned int *result)
 {
     char *end;
@@ -416,6 +473,24 @@ getenv_uint_opt_unset(const char *name, int *result)
     return 0;
 }
 
+/**
+ * Gets an environment variable string, and unsets it
+ */
+static char *
+getenv_str_unset(const char *name)
+{
+    char *var;
+
+    if (!(var = getenv(name)))
+        return NULL;
+
+    /* Duplicate the string then unset the var */
+    var = strdup(var);
+    unsetenv(name);
+
+    return var;
+}
+
 
 static int
 process_envvars(void)
@@ -466,6 +541,11 @@ process_envvars(void)
         m_verbose = true;
     }
 
+    /* Hook scripts */
+    m_user_hook = getenv_str_unset(SCUBAINIT_HOOK_USER);
+    m_root_hook = getenv_str_unset(SCUBAINIT_HOOK_ROOT);
+
+
     /* Clear out other env. vars */
     unsetenv("PWD");
     unsetenv("OLDPWD");
@@ -507,7 +587,8 @@ main(int argc, char **argv)
             exit(99);
     }
 
-    /* FUTURE: Call pre-su hook */
+    /* Call pre-su hook */
+    call_hook(m_root_hook);
 
     /* Handle the scuba user */
     if (use_scuba_user()) {
@@ -520,7 +601,10 @@ main(int argc, char **argv)
         umask(m_umask);
     }
 
-    /* FUTURE: Call post-su hook */
+    /* Call post-su hook, only if we switch users */
+    if (use_scuba_user()) {
+        call_hook(m_user_hook);
+    }
 
 
     /* Prepare for execution of user command */

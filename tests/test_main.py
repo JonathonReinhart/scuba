@@ -342,3 +342,32 @@ class TestMain(TestCase):
             out, _ = self.run_scuba(args)
 
         assert_str_equalish(out, data)
+
+
+    ############################################################################
+    # Hooks
+
+    def _test_one_hook(self, hookname, exp_uid, exp_gid):
+        with open('.scuba.yml', 'w') as f:
+            f.write('image: {0}\n'.format(DOCKER_IMAGE))
+            f.write('hooks:\n')
+            f.write('  {0}: echo $(id -u) $(id -g)\n'.format(hookname))
+
+        args = ['/bin/sh', '-c', 'echo success']
+        out, _ = self.run_scuba(args)
+
+        out = out.splitlines()
+
+        uid, gid = map(int, out[0].split())
+        assert_equal(exp_uid, uid)
+        assert_equal(exp_gid, gid)
+
+        assert_str_equalish(out[1], 'success')
+
+    def test_user_hook(self):
+        '''Verify user hook executes as user'''
+        self._test_one_hook('user', os.getuid(), os.getgid())
+
+    def test_root_hook(self):
+        '''Verify root hook executes as root'''
+        self._test_one_hook('root', 0, 0)

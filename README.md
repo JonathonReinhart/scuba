@@ -56,19 +56,39 @@ Required nodes:
 Optional nodes:
 
 - `aliases` - A dictionary of bash-like aliases
+- `hooks` - "Hooks" that run as part of `scubainit` before running the user command
 
 An example `.scuba.yml` file might look like this:
 
 ```yaml
 image: gcc:5.1
+
 aliases:
   build: make -j4
+
+
+# These hooks run during scubainit
+hooks:
+
+  # The "root" hook runs just before we switch users
+  root:
+    # This uses the complex form, with a 'script' subkey,
+    # which is a list of command strings making up the script.
+    script:
+      - 'echo "HOOK: This runs before we switch users"'
+      - id
+
+  # The "user" hook runs just before we execute the user command.
+  # This uses the simple form, which is just a single command string.
+  user: 'echo "HOOK: After switching users, uid=$(id -u) gid=$(id -g)"'
 ```
 
 This tells SCUBA:
 - Use the `gcc:5.1` Docker image
 - `build` is an alias for `make -j4`.
+
 In this example, `scuba build foo` would execute `make -j4 foo` in a `gcc:5.1` container.
+Prior to running `make`, the hooks would execute, echoing messages about the user ID.
 
 ### Extended syntax
 In addition to normal YAML syntax, an additional constructor, `!from_yaml`, is available for `.scuba.yml` which allows a key to be retrieved from an external YAML file. Is has the following syntax:

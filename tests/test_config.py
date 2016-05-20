@@ -225,3 +225,67 @@ class TestConfig(TestCase):
                 )
         result = cfg.process_command(['apple', 'arg1', 'arg2'])
         assert_equal(result, ['banana', 'cherry', 'pie is good', 'arg1', 'arg2'])
+
+    ############################################################################
+    # Hooks
+
+    def test_hooks_mixed(self):
+        '''hooks of mixed forms are valid'''
+        with open('.scuba.yml', 'w') as f:
+            f.write('''
+                image: na
+                hooks:
+                  root:
+                    script:
+                      - echo "This runs before we switch users"
+                      - id
+                  user: id
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+
+        assert_seq_equal(
+            config.hooks.get('root'),
+            ['echo "This runs before we switch users"', 'id'])
+
+        assert_seq_equal(
+            config.hooks.get('user'),
+            ['id'])
+
+    def test_hooks_invalid_list(self):
+        '''hooks with list not under "script" key are invalid'''
+        with open('.scuba.yml', 'w') as f:
+            f.write('''
+                image: na
+                hooks:
+                  user:
+                    - this list should be under
+                    - a 'script'
+                ''')
+
+        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
+
+    # TODO: Any reason this shouldn't be valid?
+    def test_hooks_invalid_script_type(self):
+        '''hooks with string "script" are invalid'''
+        with open('.scuba.yml', 'w') as f:
+            f.write('''
+                image: na
+                hooks:
+                  user:
+                    script: this should be in a list under script
+                ''')
+
+        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
+
+    def test_hooks_missing_script(self):
+        '''hooks with dict, but missing "script" are invalid'''
+        with open('.scuba.yml', 'w') as f:
+            f.write('''
+                image: na
+                hooks:
+                  user:
+                    not_script: missing "script" key
+                ''')
+
+        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
