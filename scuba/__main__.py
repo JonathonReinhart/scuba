@@ -257,9 +257,18 @@ class ScubaDive(object):
         path = os.path.join(self.__scubadir_hostpath, name)
         assert not os.path.exists(path)
 
-        class ScubaDirFile(file):
-            pass
-        f = ScubaDirFile(path, mode)
+        try:
+            # Python 2
+            # open() returns builtin file object which has no __dict__
+            class ScubaDirFile(file):
+                pass
+            op = ScubaDirFile
+        except NameError:
+            # Python 3
+            # 'file' type removed, but open() returns _io.TextIOWrapper which has __dict__
+            op = open
+
+        f = op(path, mode)
         f.container_path = os.path.join(self.__scubadir_contpath, name)
         return f
 
