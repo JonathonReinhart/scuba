@@ -48,7 +48,7 @@ by overriding the `CC` environment variable in step 1:
 
 Configuration is done using a [YAML](http://yaml.org/) file named `.scuba.yml` in the root
 directory of your project. It is expected that `.scuba.yml` be checked in to version control.
-Full documentation on [`.scuba.yml`] can be found in [`doc/yaml-reference.md`](doc/yaml-reference.md),
+Full documentation on `.scuba.yml` can be found in [`doc/yaml-reference.md`](doc/yaml-reference.md),
 and specific examples can be found in the [`example`](example/) directory.
 
 An example `.scuba.yml` file might look like this:
