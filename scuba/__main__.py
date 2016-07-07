@@ -10,15 +10,23 @@ import subprocess
 import shlex
 import itertools
 import argparse
-from tempfile import NamedTemporaryFile
-import atexit
+import tempfile
+import shutil
+try:
+    from StringIO import StringIO
+except ImportError:
+    # Python 3
+    from io import StringIO
 
 from .constants import *
 from .config import find_config, load_config, ConfigError
-from .filecleanup import FileCleanup
 from .utils import *
 from .version import __version__
 from .dockerutil import *
+
+# This is the path where all scuba-related things will be bind-mounted into the
+# container.
+SCUBA_DIR = '/.scuba'
 
 def appmsg(fmt, *args):
     print('scuba: ' + fmt.format(*args), file=sys.stderr)
@@ -33,71 +41,8 @@ def get_umask():
     os.umask(val)
     return val
 
-def generate_hook_script(config, opts, name):
-    script = config.hooks.get(name)
-    if not script:
-        return
-
-    def writeln(f, line):
-        f.write(line + '\n')
-
-    # Generate the hook script, mount it into the container, and tell scubainit
-    with NamedTemporaryFile(mode='wt', prefix='scuba', delete=False) as f:
-        filecleanup.register(f.name)
-
-        cpath = '/.scuba/hooks/{0}.sh'.format(name)
-        opts.append(make_vol_opt(f.name, cpath))
-        opts.append('--env=SCUBAINIT_HOOK_{0}={1}'.format(name.upper(), cpath))
-
-        writeln(f, '#!/bin/sh')
-        writeln(f, '# Auto-generated from .scuba.yml')
-        writeln(f, 'set -e')
-        for cmd in script:
-            writeln(f, cmd)
-
-
-def get_native_opts(config, scuba_args, usercmd):
-    opts = [
-        '--env=SCUBAINIT_UMASK={0:04o}'.format(get_umask()),
-    ]
-
-    if not scuba_args.root:
-        opts += [
-            '--env=SCUBAINIT_UID={0}'.format(os.getuid()),
-            '--env=SCUBAINIT_GID={0}'.format(os.getgid()),
-        ]
-
-    if g_verbose:
-        opts.append('--env=SCUBAINIT_VERBOSE=1')
-
-    # Mount scubainit in the container
-    opts.append(make_vol_opt(g_scubainit_path, '/scubainit', ['ro','z']))
-
-    # Make scubainit the entrypoint
-    # TODO: What if the image already defines an entrypoint?
-    opts.append('--entrypoint=/scubainit')
-
-
-    '''
-    Normally, if the user provides no command to "docker run", the image's
-    default CMD is run. Because we set the entrypiont, scuba must emulate the
-    default behavior itself.
-    '''
-    if len(usercmd) == 0:
-        # No user-provided command; we want to run the image's default command
-        verbose_msg('No user command; getting command from image')
-        try:
-            usercmd = get_image_command(config.image)
-        except DockerError as e:
-            appmsg(str(e))
-            sys.exit(128)
-        verbose_msg('{0} Cmd: "{1}"'.format(config.image, usercmd))
-
-    # Hooks
-    for name in ('root', 'user', ):
-        generate_hook_script(config, opts, name)
-
-    return opts, usercmd
+def writeln(f, line):
+    f.write(line + '\n')
 
 
 def parse_scuba_args(argv):
@@ -126,120 +71,307 @@ def parse_scuba_args(argv):
     return args
 
 
+class ScubaError(Exception):
+    pass
+
+class ScubaDive(object):
+    def __init__(self, user_command, docker_args=[], as_root=False, verbose=False):
+        self.user_command = user_command
+        self.as_root = as_root
+        self.verbose = verbose
+
+        # These will be added to docker run cmdline
+        self.env_vars = {}
+        self.volumes = []
+        self.options = docker_args
+        self.workdir = None
+
+        self.__locate_scubainit()
+        self.__load_config()
+        self.__make_scubadir()
+
+        if self.is_remote_docker:
+            '''
+            Docker is running remotely (e.g. boot2docker on OSX).
+            We don't need to do any user setup whatsoever.
+
+            TODO: For now, remote instances won't have any .scubainit
+
+            See:
+            https://github.com/JonathonReinhart/scuba/issues/17
+            '''
+            raise ScubaError('Remote docker not supported (DOCKER_HOST is set)')
+
+        # Docker is running natively
+        self.__setup_native_run()
+
+    def __str__(self):
+        s = StringIO()
+        writeln(s, 'ScubaDive')
+        writeln(s, '   verbose:      {0}'.format(self.verbose))
+        writeln(s, '   as_root:      {0}'.format(self.as_root))
+        writeln(s, '   workdir:      {0}'.format(self.workdir))
+
+        writeln(s, '   options:')
+        for a in self.options:
+            writeln(s, '      ' + a)
+
+        writeln(s, '   env_vars:')
+        for k,v in self.env_vars.items():
+            writeln(s, '      {0}={1}'.format(k, v))
+
+        writeln(s, '   volumes:')
+        for hostpath, contpath, options in self.__get_vol_opts():
+            writeln(s, '      {0} => {1} {2}'.format(hostpath, contpath, options))
+
+        writeln(s, '   user_command: {0}'.format(self.user_command))
+
+        return s.getvalue()
+
+
+    def cleanup_tempfiles(self):
+        shutil.rmtree(self.__scubadir_hostpath)
+
+
+    @property
+    def is_remote_docker(self):
+        return 'DOCKER_HOST' in os.environ
+
+    def add_env(self, name, val):
+        '''Add an environment variable to the docker run invocation
+        '''
+        if name in self.env_vars:
+            raise KeyError(name)
+        self.env_vars[name] = val
+
+    def add_volume(self, hostpath, contpath, options=None):
+        '''Add a volume (bind-mount) to the docker run invocation
+        '''
+        if options is None:
+            options = []
+        self.volumes.append((hostpath, contpath, options))
+
+    def add_option(self, option):
+        '''Add another option to the docker run invocation
+        '''
+        self.options.append(option)
+
+    def set_workdir(self, workdir):
+        self.workdir = workdir
+
+    def __locate_scubainit(self):
+        '''Determine path to scubainit binary
+        '''
+        pkg_path = os.path.dirname(__file__)
+
+        self.scubainit_path = os.path.join(pkg_path, 'scubainit')
+        if not os.path.isfile(self.scubainit_path):
+            raise ScubaError('scubainit not found at "{0}"'.format(self.scubainit_path))
+
+
+    def __load_config(self):
+        '''Find and load .scuba.yml
+        '''
+
+        # top_path is where .scuba.yml is found, and becomes the top of our bind mount.
+        # top_rel is the relative path from top_path to the current working directory,
+        # and is where we'll set the working directory in the container (relative to
+        # the bind mount point).
+        try:
+            top_path, top_rel = find_config()
+            self.config = load_config(os.path.join(top_path, SCUBA_YML))
+        except ConfigError as cfgerr:
+            raise ScubaError(str(cfgerr))
+
+        # Mount scuba root directory...
+        self.add_volume(top_path, SCUBA_ROOT)
+
+        # ...and set the working dir relative to it
+        self.set_workdir(os.path.join(SCUBA_ROOT, top_rel))
+
+    def __make_scubadir(self):
+        '''Make temp directory where all ancillary files are bind-mounted
+        '''
+        self.__scubadir_hostpath = tempfile.mkdtemp(prefix='scubadir')
+        self.__scubadir_contpath = '/.scuba'
+        self.add_volume(self.__scubadir_hostpath, self.__scubadir_contpath)
+
+    def __setup_native_run(self):
+        # These options are appended to mounted volume arguments
+        # NOTE: This tells Docker to re-label the directory for compatibility
+        # with SELinux. See `man docker-run` for more information.
+        self.vol_opts = ['z']
+
+
+        # Pass variables to scubainit
+        self.add_env('SCUBAINIT_UMASK', '{0:04o}'.format(get_umask()))
+
+        if not self.as_root:
+            self.add_env('SCUBAINIT_UID', os.getuid())
+            self.add_env('SCUBAINIT_GID', os.getgid())
+
+        if self.verbose:
+            self.add_env('SCUBAINIT_VERBOSE', 1)
+
+
+        # Mount scubainit in the container
+        self.add_volume(self.scubainit_path, '/scubainit', ['ro'])
+
+        # Make scubainit the entrypoint
+        # TODO: What if the image already defines an entrypoint?
+        self.add_option('--entrypoint=/scubainit')
+
+        # Hooks
+        for name in ('root', 'user', ):
+            self.__generate_hook_script(name)
+
+        # allocate TTY if scuba's output is going to a terminal
+        if sys.stdout.isatty():
+            self.add_option('--tty')
+
+        # Process any aliases
+        cmd = self.config.process_command(self.user_command)
+
+        '''
+        Normally, if the user provides no command to "docker run", the image's
+        default CMD is run. Because we set the entrypiont, scuba must emulate the
+        default behavior itself.
+        '''
+        if len(cmd) == 0:
+            # No user-provided command; we want to run the image's default command
+            verbose_msg('No user command; getting command from image')
+            try:
+                cmd = get_image_command(self.config.image)
+            except DockerError as e:
+                raise ScubaError(str(e))
+            verbose_msg('{0} Cmd: "{1}"'.format(self.config.image, cmd))
+
+        self.docker_cmd = cmd
+
+    def open_scubadir_file(self, name, mode):
+        '''Opens a file in the 'scubadir'
+
+        This file will automatically be bind-mounted into the container,
+        at a path given by the 'container_path' property on the returned file object.
+        '''
+        path = os.path.join(self.__scubadir_hostpath, name)
+        assert not os.path.exists(path)
+
+        try:
+            # Python 2
+            # open() returns builtin file object which has no __dict__
+            class ScubaDirFile(file):
+                pass
+            op = ScubaDirFile
+        except NameError:
+            # Python 3
+            # 'file' type removed, but open() returns _io.TextIOWrapper which has __dict__
+            op = open
+
+        f = op(path, mode)
+        f.container_path = os.path.join(self.__scubadir_contpath, name)
+        return f
+
+
+    def __generate_hook_script(self, name):
+        script = self.config.hooks.get(name)
+        if not script:
+            return
+
+        # Generate the hook script, mount it into the container, and tell scubainit
+        with self.open_scubadir_file('{0}.sh'.format(name), 'wt') as f:
+
+            self.add_env('SCUBAINIT_HOOK_{0}'.format(name.upper()), f.container_path)
+
+            writeln(f, '#!/bin/sh')
+            writeln(f, '# Auto-generated from .scuba.yml')
+            writeln(f, 'set -e')
+            for cmd in script:
+                writeln(f, cmd)
+
+    def __get_vol_opts(self):
+        for hostpath, contpath, options in self.volumes:
+            yield hostpath, contpath, options + self.vol_opts
+
+    def get_docker_cmdline(self):
+        args = ['docker', 'run',
+            # interactive: keep STDIN open
+            '-i',
+
+            # remove container after exit
+            '--rm',
+        ]
+
+        for name,val in self.env_vars.items():
+            args.append('--env={0}={1}'.format(name, val))
+
+        for hostpath, contpath, options in self.__get_vol_opts():
+            args.append(make_vol_opt(hostpath, contpath, options))
+
+        if self.workdir:
+            args += ['-w', self.workdir]
+
+        args += self.options
+
+        # Docker image
+        args.append(self.config.image)
+
+        # Command to run in container
+        args += self.docker_cmd
+
+        return args
+
+
+def run_scuba(scuba_args):
+    dive = ScubaDive(
+        scuba_args.command,
+        docker_args = scuba_args.docker_args,
+        as_root = scuba_args.root,
+        verbose = scuba_args.verbose
+        )
+
+    try:
+        run_args = dive.get_docker_cmdline()
+
+        if g_verbose or scuba_args.dry_run:
+            print(str(dive))
+            print()
+
+            appmsg('Docker command line:')
+            print('$ ' + format_cmdline(run_args))
+
+        if scuba_args.dry_run:
+            sys.exit(42)
+
+        try:
+            # Explicitly pass sys.stdout/stderr so they apply to the
+            # child process if overridden (by tests).
+            return subprocess.call(
+                    args = run_args,
+                    stdout = sys.stdout,
+                    stderr = sys.stderr,
+                    )
+        except OSError as e:
+            if e.errno == errno.ENOENT:
+                appmsg('Failed to execute docker. Is it installed?')
+                sys.exit(2)
+
+    finally:
+        if scuba_args.dry_run:
+            appmsg("Temp files not cleaned up")
+        else:
+            dive.cleanup_tempfiles()
+
+
 def main(argv=None):
     scuba_args = parse_scuba_args(argv)
 
-    global filecleanup
-    filecleanup = FileCleanup()
-    if not scuba_args.dry_run:
-        atexit.register(filecleanup.cleanup)
-
-    pkg_path = os.path.dirname(__file__)
-
-    # Determine path to scubainit binary
-    global g_scubainit_path
-    g_scubainit_path = os.path.join(pkg_path, 'scubainit')
-    if not os.path.isfile(g_scubainit_path):
-        appmsg('scubainit not found at "{0}"'.format(g_scubainit_path))
-        sys.exit(128)
-
-
-    # top_path is where .scuba.yml is found, and becomes the top of our bind mount.
-    # top_rel is the relative path from top_path to the current working directory,
-    # and is where we'll set the working directory in the container (relative to
-    # the bind mount point).
     try:
-        top_path, top_rel = find_config()
-        config = load_config(os.path.join(top_path, SCUBA_YML))
-    except ConfigError as cfgerr:
-        appmsg(str(cfgerr))
+        rc = run_scuba(scuba_args)
+        sys.exit(rc)
+    except ScubaError as e:
+        appmsg(str(e))
         sys.exit(128)
-
-    # Process any aliases
-    usercmd = config.process_command(scuba_args.command)
-
-    # Determine if Docker is running locally or remotely
-    if 'DOCKER_HOST' in os.environ:
-        '''
-        Docker is running remotely (e.g. boot2docker on OSX).
-        We don't need to do any user setup whatsoever.
-
-        TODO: For now, remote instances won't have any .scubainit
-
-        See:
-        https://github.com/JonathonReinhart/scuba/issues/17
-        '''
-        verbose_msg('DOCKER_HOST in environment, Docker running remotely')
-        docker_opts = []
-        docker_cmd = usercmd
-        vol_opts = None
-
-    else:
-        '''
-        Docker is running natively (e.g. on Linux).
-
-        We want files created inside the container (in scubaroot) to appear to the
-        host as if they were created there (owned by the same uid/gid, with same
-        umask, etc.)
-        '''
-        verbose_msg('Docker running natively')
-
-        docker_opts, docker_cmd = get_native_opts(config, scuba_args, usercmd)
-
-        # NOTE: This tells Docker to re-label the directory for compatibility
-        # with SELinux. See `man docker-run` for more information.
-        vol_opts = ['z']
-
-
-    # Build the docker command line
-    run_args = ['docker', 'run',
-        # interactive: keep STDIN open
-        '-i',
-
-        # remove container after exit
-        '--rm',
-
-        # Mount scuba root directory...
-        make_vol_opt(top_path, SCUBA_ROOT, vol_opts),
-
-        # ...and set the working dir relative to it
-        '-w', os.path.join(SCUBA_ROOT, top_rel),
-    ] + docker_opts + scuba_args.docker_args
-
-    # allocate TTY if scuba's output is going to a terminal
-    if sys.stdout.isatty():
-        run_args.append('--tty')
-
-    # Docker image
-    run_args.append(config.image)
-
-    # Command to run in container
-    run_args += docker_cmd
-
-    if g_verbose or scuba_args.dry_run:
-        appmsg('Docker command line:')
-        print('$ ' + format_cmdline(run_args))
-
-    if scuba_args.dry_run:
-        appmsg('Exiting for dry run. Temporary files not removed:')
-        for f in filecleanup.files:
-            print('   ' + f, file=sys.stderr)
-        sys.exit(42)
-
-    try:
-        # Explicitly pass sys.stdout/stderr so they apply to the
-        # child process if overridden (by tests).
-        rc = subprocess.call(
-                args = run_args,
-                stdout = sys.stdout,
-                stderr = sys.stderr,
-                )
-    except OSError as e:
-        if e.errno == errno.ENOENT:
-            appmsg('Failed to execute docker. Is it installed?')
-            sys.exit(2)
-
-    sys.exit(rc)
 
 if __name__ == '__main__':
     main()
