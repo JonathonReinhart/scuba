@@ -246,7 +246,14 @@ class ScubaDive(object):
                 raise ScubaError(str(e))
             verbose_msg('{0} Cmd: "{1}"'.format(self.config.image, cmd))
 
-        self.docker_cmd = cmd
+        # The user command is executed via a generated shell script
+        with self.open_scubadir_file('command.sh', 'wt') as f:
+            self.docker_cmd = ['/bin/sh', f.container_path]
+            writeln(f, '#!/bin/sh')
+            writeln(f, '# Auto-generated from scuba')
+            writeln(f, 'set -e')
+            writeln(f, shell_quote_cmd(cmd))
+
 
     def open_scubadir_file(self, name, mode):
         '''Opens a file in the 'scubadir'
