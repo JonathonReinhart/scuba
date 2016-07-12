@@ -4,6 +4,10 @@ except ImportError:
     from pipes import quote as shell_quote
 
 
+def shell_quote_cmd(cmdlist):
+    return ' '.join(map(shell_quote, cmdlist))
+
+
 def format_cmdline(args, maxwidth=80):
     '''Format args into a shell-quoted command line.
 
