@@ -257,6 +257,9 @@ class ScubaDive(object):
         path = os.path.join(self.__scubadir_hostpath, name)
         assert not os.path.exists(path)
 
+        # Make any directories required
+        mkdir_p(os.path.dirname(path))
+
         try:
             # Python 2
             # open() returns builtin file object which has no __dict__
@@ -279,7 +282,7 @@ class ScubaDive(object):
             return
 
         # Generate the hook script, mount it into the container, and tell scubainit
-        with self.open_scubadir_file('{0}.sh'.format(name), 'wt') as f:
+        with self.open_scubadir_file('hooks/{0}.sh'.format(name), 'wt') as f:
 
             self.add_env('SCUBAINIT_HOOK_{0}'.format(name.upper()), f.container_path)
 
