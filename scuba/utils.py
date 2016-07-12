@@ -1,3 +1,5 @@
+import errno
+import os
 try:
     from shlex import quote as shell_quote
 except ImportError:
@@ -37,3 +39,12 @@ def format_cmdline(args, maxwidth=80):
         yield line
 
     return ' \\\n'.join(lines())
+
+
+def mkdir_p(path):
+    # http://stackoverflow.com/a/600612/119527
+    try:
+        os.makedirs(path)
+    except OSError as exc:
+        if not (exc.errno == errno.EEXIST and os.path.isdir(path)):
+            raise
