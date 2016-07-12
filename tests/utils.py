@@ -1,6 +1,8 @@
 import os
 from nose.tools import *
 from os.path import normpath
+import tempfile
+import shutil
 
 def assert_set_equal(a, b):
     assert_equal(set(a), set(b))
@@ -53,3 +55,20 @@ class PseudoTTY(object):
         return getattr(self.__underlying, name)
     def isatty(self):
         return True
+
+
+class InTempDir(object):
+    def __init__(self, suffix='', prefix='tmp', delete=True):
+        self.delete = delete
+        self.temp_path = tempfile.mkdtemp(suffix=suffix, prefix=prefix)
+
+    def __enter__(self):
+        self.orig_path = os.getcwd()
+        os.chdir(self.temp_path)
+        return self
+
+    def __exit__(self, *exc_info):
+        # Restore the working dir and cleanup the temp one
+        os.chdir(self.orig_path)
+        if self.delete:
+            shutil.rmtree(self.temp_path)
