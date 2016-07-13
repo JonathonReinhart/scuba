@@ -122,10 +122,7 @@ class ScubaConfig(object):
 
         self._image = data['image']
 
-        self._aliases = {}
-        for alias, cmdstr in data.get('aliases', {}).items():
-            self._aliases[alias] = shlex_split(cmdstr)
-
+        self._load_aliases(data)
         self._load_hooks(data)
 
 
@@ -167,6 +164,13 @@ class ScubaConfig(object):
             return script
 
         raise ConfigError("{0}: must be string or dict".format(name))
+
+
+    def _load_aliases(self, data):
+        self._aliases = {}
+
+        for name, node in data.get('aliases', {}).items():
+            self._aliases[name] = map(shlex_split, self._process_script(node, name))
 
 
     def _load_hooks(self, data):
