@@ -246,7 +246,14 @@ class ScubaDive(object):
                 raise ScubaError(str(e))
             verbose_msg('{0} Cmd: "{1}"'.format(self.config.image, cmd))
 
-        self.docker_cmd = cmd
+        # The user command is executed via a generated shell script
+        with self.open_scubadir_file('command.sh', 'wt') as f:
+            self.docker_cmd = ['/bin/sh', f.container_path]
+            writeln(f, '#!/bin/sh')
+            writeln(f, '# Auto-generated from scuba')
+            writeln(f, 'set -e')
+            writeln(f, shell_quote_cmd(cmd))
+
 
     def open_scubadir_file(self, name, mode):
         '''Opens a file in the 'scubadir'
@@ -256,6 +263,9 @@ class ScubaDive(object):
         '''
         path = os.path.join(self.__scubadir_hostpath, name)
         assert not os.path.exists(path)
+
+        # Make any directories required
+        mkdir_p(os.path.dirname(path))
 
         try:
             # Python 2
@@ -279,7 +289,7 @@ class ScubaDive(object):
             return
 
         # Generate the hook script, mount it into the container, and tell scubainit
-        with self.open_scubadir_file('{0}.sh'.format(name), 'wt') as f:
+        with self.open_scubadir_file('hooks/{0}.sh'.format(name), 'wt') as f:
 
             self.add_env('SCUBAINIT_HOOK_{0}'.format(name.upper()), f.container_path)
 
