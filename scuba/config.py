@@ -197,13 +197,30 @@ class ScubaConfig(object):
 
 
     def process_command(self, command):
-        if command:
-            rep = self.aliases.get(command[0])
-            if rep:
-                command.pop(0)
-                command = rep + command
+        '''Processes a user command using aliases
 
-        return command
+        Arguments:
+            command     A user command list (e.g. argv)
+
+        Returns: A "script" - a list of command lists
+        '''
+        if not command:
+            return command
+
+        script = self.aliases.get(command[0])
+        if not script:
+            return [command]
+
+        if len(command) > 1:
+            # If an alias is a multiline script, then no additional
+            # arguments will be allowed in the scuba invocation.
+            if len(script) > 1:
+                raise ConfigError('Additional arguments not allowed with multi-line aliases')
+
+            command.pop(0)
+            return [script[0] + command]
+
+        return script
 
 
 def load_config(path):
