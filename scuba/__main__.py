@@ -230,7 +230,10 @@ class ScubaDive(object):
             self.add_option('--tty')
 
         # Process any aliases
-        script = self.config.process_command(self.user_command)
+        try:
+            script = self.config.process_command(self.user_command)
+        except ConfigError as cfgerr:
+            raise ScubaError(str(cfgerr))
 
         '''
         Normally, if the user provides no command to "docker run", the image's
