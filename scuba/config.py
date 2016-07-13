@@ -170,7 +170,7 @@ class ScubaConfig(object):
         self._aliases = {}
 
         for name, node in data.get('aliases', {}).items():
-            self._aliases[name] = map(shlex_split, self._process_script(node, name))
+            self._aliases[name] = [shlex_split(cmd) for cmd in self._process_script(node, name)]
 
 
     def _load_hooks(self, data):
