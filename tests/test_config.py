@@ -235,6 +235,39 @@ class TestConfig(TestCase):
         result = cfg.process_command(['apple', 'arg1', 'arg2'])
         assert_equal(result, [['banana', 'cherry', 'pie is good', 'arg1', 'arg2']])
 
+    def test_process_command_multiline_aliases_used(self):
+        '''process_command handles multiline aliases'''
+        cfg = scuba.config.ScubaConfig(
+                image = 'na',
+                aliases = dict(
+                    apple = dict(script=[
+                        'banana cherry "pie is good"',
+                        'so is peach',
+                    ]),
+                    cat = 'dog',
+                    ),
+                )
+        result = cfg.process_command(['apple'])
+        assert_equal(result, [
+            ['banana', 'cherry', 'pie is good'],
+            ['so', 'is', 'peach'],
+        ])
+
+    def test_process_command_multiline_aliases_forbid_user_args(self):
+        '''process_command raises ConfigError when args are specified with multiline aliases'''
+        cfg = scuba.config.ScubaConfig(
+                image = 'na',
+                aliases = dict(
+                    apple = dict(script=[
+                        'banana cherry "pie is good"',
+                        'so is peach',
+                    ]),
+                    cat = 'dog',
+                    ),
+                )
+        assert_raises(scuba.config.ConfigError, cfg.process_command, ['apple', 'ARGS', 'NOT ALLOWED'])
+
+
     ############################################################################
     # Hooks
 
