@@ -1,0 +1,9 @@
+image: !from_yaml ../common.yml image
+aliases:
+  simple: echo 'a simple alias'
+
+  complex:
+    script:
+      - echo 'this is a complex script'
+      - date
+      - uname -a

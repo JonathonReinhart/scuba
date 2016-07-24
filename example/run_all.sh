@@ -7,3 +7,4 @@ cd $(dirname $0)
 ./external_yaml_simple/run_example.sh
 ./external_yaml_nested/run_example.sh
 ./scubainit_hooks/run_example.sh
+./alias_multiline/run_example.sh
