@@ -231,7 +231,7 @@ class ScubaDive(object):
 
         # Process any aliases
         try:
-            script = self.config.process_command(self.user_command)
+            context = self.config.process_command(self.user_command)
         except ConfigError as cfgerr:
             raise ScubaError(str(cfgerr))
 
@@ -240,14 +240,14 @@ class ScubaDive(object):
         default CMD is run. Because we set the entrypiont, scuba must emulate the
         default behavior itself.
         '''
-        if len(script) == 0:
+        if not context.script:
             # No user-provided command; we want to run the image's default command
             verbose_msg('No user command; getting command from image')
             try:
-                script = [get_image_command(self.config.image)]
+                context.script = [get_image_command(self.config.image)]
             except DockerError as e:
                 raise ScubaError(str(e))
-            verbose_msg('{0} Cmd: "{1}"'.format(self.config.image, script[0]))
+            verbose_msg('{0} Cmd: "{1}"'.format(self.config.image, context.script[0]))
 
         # The user command is executed via a generated shell script
         with self.open_scubadir_file('command.sh', 'wt') as f:
@@ -255,7 +255,7 @@ class ScubaDive(object):
             writeln(f, '#!/bin/sh')
             writeln(f, '# Auto-generated from scuba')
             writeln(f, 'set -e')
-            for cmd in script:
+            for cmd in context.script:
                 writeln(f, shell_quote_cmd(cmd))
 
 

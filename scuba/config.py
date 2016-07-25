@@ -138,6 +138,8 @@ class ScubaAlias(object):
         script = [shlex_split(cmd) for cmd in _process_script_node(node, name)]
         return cls(name, script)
 
+class ScubaContext(object):
+    pass
 
 class ScubaConfig(object):
     def __init__(self, **data):
@@ -200,26 +202,33 @@ class ScubaConfig(object):
         Arguments:
             command     A user command list (e.g. argv)
 
-        Returns: A "script" - a list of command lists
+        Returns: A ScubaContext object with the following attributes:
+            script: a list of command lists
         '''
-        if not command:
-            return command
+        result = ScubaContext()
+        result.script = None
 
-        alias = self.aliases.get(command[0])
-        if not alias:
-            return [command]
-        script = alias.script
+        if command:
+            alias = self.aliases.get(command[0])
+            if not alias:
+                # Command is not an alias; use it as-is.
+                result.script = [command]
+            else:
+                # Using an alias
+                if len(alias.script) > 1:
+                    # Alias is a multiline script; no additional
+                    # arguments are allowed in the scuba invocation.
+                    if len(command) > 1:
+                        raise ConfigError('Additional arguments not allowed with multi-line aliases')
+                    result.script = alias.script
 
-        if len(command) > 1:
-            # If an alias is a multiline script, then no additional
-            # arguments will be allowed in the scuba invocation.
-            if len(script) > 1:
-                raise ConfigError('Additional arguments not allowed with multi-line aliases')
+                else:
+                    # Alias is a single-line script; perform substituion
+                    # and add user arguments.
+                    command.pop(0)
+                    result.script = [alias.script[0] + command]
 
-            command.pop(0)
-            return [script[0] + command]
-
-        return script
+        return result
 
 
 def load_config(path):
