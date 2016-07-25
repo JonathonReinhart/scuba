@@ -103,6 +103,31 @@ def find_config():
         rel = os.path.join(rest, rel)
 
 
+def _process_script_node(node, name):
+    '''Process a script-type node
+
+    This handles nodes that follow the *Common script schema*,
+    as outlined in doc/yaml-reference.md.
+    '''
+    if isinstance(node, basestring):
+        # The script is just the text itself
+        return [node]
+
+
+    if isinstance(node, dict):
+        # There must be a "script" key, which must be a list of strings
+        script = node.get('script')
+        if not script:
+            raise ConfigError("{0}: must have a 'script' subkey".format(name))
+
+        if not isinstance(script, list):
+            raise ConfigError("{0}.script: must be a list".format(name))
+
+        return script
+
+    raise ConfigError("{0}: must be string or dict".format(name))
+
+
 class ScubaConfig(object):
     def __init__(self, **data):
         required_nodes = ('image',)
@@ -126,51 +151,13 @@ class ScubaConfig(object):
         self._load_hooks(data)
 
 
-    def _process_script(self, node, name):
-        '''Process a script-type node
-
-        This can handle yaml of either a simple form:
-
-            node: this is my script
-
-        Or a more complex form (which allows for other sub-nodes):
-
-            node:
-              script:
-                - this is my script
-                - it has multiple parts
-
-        Other forms are disallowed:
-
-            node:
-              - this
-              - is
-              - forbidden
-        '''
-        if isinstance(node, basestring):
-            # The script is just the text itself
-            return [node]
-
-
-        if isinstance(node, dict):
-            # There must be a "script" key, which must be a list of strings
-            script = node.get('script')
-            if not script:
-                raise ConfigError("{0}: must have a 'script' subkey".format(name))
-
-            if not isinstance(script, list):
-                raise ConfigError("{0}.script: must be a list".format(name))
-
-            return script
-
-        raise ConfigError("{0}: must be string or dict".format(name))
 
 
     def _load_aliases(self, data):
         self._aliases = {}
 
         for name, node in data.get('aliases', {}).items():
-            self._aliases[name] = [shlex_split(cmd) for cmd in self._process_script(node, name)]
+            self._aliases[name] = [shlex_split(cmd) for cmd in _process_script_node(node, name)]
 
 
     def _load_hooks(self, data):
@@ -179,7 +166,7 @@ class ScubaConfig(object):
         for name in ('user', 'root',):
             node = data.get('hooks', {}).get(name)
             if node:
-                hook = self._process_script(node, name)
+                hook = _process_script_node(node, name)
                 self._hooks[name] = hook
 
 
