@@ -115,8 +115,8 @@ class TestConfig(TestCase):
         config = scuba.config.load_config('.scuba.yml')
         assert_equals(config.image, 'busybox')
         assert_equals(len(config.aliases), 2)
-        assert_seq_equal(config.aliases['foo'], [['bar']])
-        assert_seq_equal(config.aliases['snap'], [['crackle', 'pop']])
+        assert_seq_equal(config.aliases['foo'].script, [['bar']])
+        assert_seq_equal(config.aliases['snap'].script, [['crackle', 'pop']])
 
 
 

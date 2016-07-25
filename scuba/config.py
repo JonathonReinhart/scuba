@@ -128,6 +128,17 @@ def _process_script_node(node, name):
     raise ConfigError("{0}: must be string or dict".format(name))
 
 
+class ScubaAlias(object):
+    def __init__(self, name, script):
+        self.name = name
+        self.script = script
+
+    @classmethod
+    def from_dict(cls, name, node):
+        script = [shlex_split(cmd) for cmd in _process_script_node(node, name)]
+        return cls(name, script)
+
+
 class ScubaConfig(object):
     def __init__(self, **data):
         required_nodes = ('image',)
@@ -157,7 +168,7 @@ class ScubaConfig(object):
         self._aliases = {}
 
         for name, node in data.get('aliases', {}).items():
-            self._aliases[name] = [shlex_split(cmd) for cmd in _process_script_node(node, name)]
+            self._aliases[name] = ScubaAlias.from_dict(name, node)
 
 
     def _load_hooks(self, data):
@@ -194,9 +205,10 @@ class ScubaConfig(object):
         if not command:
             return command
 
-        script = self.aliases.get(command[0])
-        if not script:
+        alias = self.aliases.get(command[0])
+        if not alias:
             return [command]
+        script = alias.script
 
         if len(command) > 1:
             # If an alias is a multiline script, then no additional
