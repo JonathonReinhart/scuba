@@ -267,6 +267,23 @@ class TestConfig(TestCase):
                 )
         assert_raises(scuba.config.ConfigError, cfg.process_command, ['apple', 'ARGS', 'NOT ALLOWED'])
 
+    def test_process_command_alias_overrides_image(self):
+        '''aliases can override the image'''
+        cfg = scuba.config.ScubaConfig(
+                image = 'default',
+                aliases = dict(
+                    apple = dict(
+                        script = [
+                            'banana cherry "pie is good"',
+                            'so is peach',
+                        ],
+                        image = 'overridden',
+                    ),
+                ),
+            )
+        result = cfg.process_command(['apple'])
+        assert_equal(result.image, 'overridden')
+
 
     ############################################################################
     # Hooks

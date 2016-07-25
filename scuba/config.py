@@ -129,14 +129,16 @@ def _process_script_node(node, name):
 
 
 class ScubaAlias(object):
-    def __init__(self, name, script):
+    def __init__(self, name, script, image):
         self.name = name
         self.script = script
+        self.image = image
 
     @classmethod
     def from_dict(cls, name, node):
         script = [shlex_split(cmd) for cmd in _process_script_node(node, name)]
-        return cls(name, script)
+        image = node.get('image') if isinstance(node, dict) else None
+        return cls(name, script, image)
 
 class ScubaContext(object):
     pass
@@ -204,9 +206,11 @@ class ScubaConfig(object):
 
         Returns: A ScubaContext object with the following attributes:
             script: a list of command lists
+            image: the docker image name to use
         '''
         result = ScubaContext()
         result.script = None
+        result.image = self.image
 
         if command:
             alias = self.aliases.get(command[0])
@@ -215,6 +219,10 @@ class ScubaConfig(object):
                 result.script = [command]
             else:
                 # Using an alias
+                # Does this alias override the image?
+                if alias.image:
+                    result.image = alias.image
+
                 if len(alias.script) > 1:
                     # Alias is a multiline script; no additional
                     # arguments are allowed in the scuba invocation.

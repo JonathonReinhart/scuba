@@ -244,10 +244,10 @@ class ScubaDive(object):
             # No user-provided command; we want to run the image's default command
             verbose_msg('No user command; getting command from image')
             try:
-                context.script = [get_image_command(self.config.image)]
+                context.script = [get_image_command(context.image)]
             except DockerError as e:
                 raise ScubaError(str(e))
-            verbose_msg('{0} Cmd: "{1}"'.format(self.config.image, context.script[0]))
+            verbose_msg('{0} Cmd: "{1}"'.format(context.image, context.script[0]))
 
         # The user command is executed via a generated shell script
         with self.open_scubadir_file('command.sh', 'wt') as f:
@@ -257,6 +257,8 @@ class ScubaDive(object):
             writeln(f, 'set -e')
             for cmd in context.script:
                 writeln(f, shell_quote_cmd(cmd))
+
+        self.context = context
 
 
 
@@ -329,7 +331,7 @@ class ScubaDive(object):
         args += self.options
 
         # Docker image
-        args.append(self.config.image)
+        args.append(self.context.image)
 
         # Command to run in container
         args += self.docker_cmd
