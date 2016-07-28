@@ -160,6 +160,23 @@ class TestMain(TestCase):
         # ConfigError -> exit(128)
         self.run_scuba([], 128)
 
+    def test_multiline_alias_no_args_error(self):
+        '''Verify config errors from passing arguments to multi-line alias are caught'''
+        with open('.scuba.yml', 'w') as f:
+            f.write('''
+                image: {image}
+                aliases:
+                  multi:
+                    script:
+                      - echo multi
+                      - echo line
+                      - echo alias
+                '''.format(image=DOCKER_IMAGE))
+
+        # ConfigError -> exit(128)
+        self.run_scuba(['multi', 'with', 'args'], 128)
+
+
 
     def test_version(self):
         '''Verify scuba prints its version for -v'''

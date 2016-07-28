@@ -115,8 +115,8 @@ class TestConfig(TestCase):
         config = scuba.config.load_config('.scuba.yml')
         assert_equals(config.image, 'busybox')
         assert_equals(len(config.aliases), 2)
-        assert_seq_equal(config.aliases['foo'], ['bar'])
-        assert_seq_equal(config.aliases['snap'], ['crackle', 'pop'])
+        assert_seq_equal(config.aliases['foo'], [['bar']])
+        assert_seq_equal(config.aliases['snap'], [['crackle', 'pop']])
 
 
 
@@ -182,13 +182,22 @@ class TestConfig(TestCase):
     ######################################################################
     # process_command
 
+    def test_process_command_empty(self):
+        '''process_command handles no aliases and an empty command'''
+        cfg = scuba.config.ScubaConfig(
+                image = 'na',
+                )
+        result = cfg.process_command([])
+        assert_equal(result, [])
+
+
     def test_process_command_no_aliases(self):
         '''process_command handles no aliases'''
         cfg = scuba.config.ScubaConfig(
                 image = 'na',
                 )
         result = cfg.process_command(['cmd', 'arg1', 'arg2'])
-        assert_equal(result, ['cmd', 'arg1', 'arg2'])
+        assert_equal(result, [['cmd', 'arg1', 'arg2']])
 
     def test_process_command_aliases_unused(self):
         '''process_command handles unused aliases'''
@@ -200,7 +209,7 @@ class TestConfig(TestCase):
                     ),
                 )
         result = cfg.process_command(['cmd', 'arg1', 'arg2'])
-        assert_equal(result, ['cmd', 'arg1', 'arg2'])
+        assert_equal(result, [['cmd', 'arg1', 'arg2']])
 
     def test_process_command_aliases_used_noargs(self):
         '''process_command handles aliases with no args'''
@@ -212,7 +221,7 @@ class TestConfig(TestCase):
                     ),
                 )
         result = cfg.process_command(['apple', 'arg1', 'arg2'])
-        assert_equal(result, ['banana', 'arg1', 'arg2'])
+        assert_equal(result, [['banana', 'arg1', 'arg2']])
 
     def test_process_command_aliases_used_withargs(self):
         '''process_command handles aliases with args'''
@@ -224,7 +233,40 @@ class TestConfig(TestCase):
                     ),
                 )
         result = cfg.process_command(['apple', 'arg1', 'arg2'])
-        assert_equal(result, ['banana', 'cherry', 'pie is good', 'arg1', 'arg2'])
+        assert_equal(result, [['banana', 'cherry', 'pie is good', 'arg1', 'arg2']])
+
+    def test_process_command_multiline_aliases_used(self):
+        '''process_command handles multiline aliases'''
+        cfg = scuba.config.ScubaConfig(
+                image = 'na',
+                aliases = dict(
+                    apple = dict(script=[
+                        'banana cherry "pie is good"',
+                        'so is peach',
+                    ]),
+                    cat = 'dog',
+                    ),
+                )
+        result = cfg.process_command(['apple'])
+        assert_equal(result, [
+            ['banana', 'cherry', 'pie is good'],
+            ['so', 'is', 'peach'],
+        ])
+
+    def test_process_command_multiline_aliases_forbid_user_args(self):
+        '''process_command raises ConfigError when args are specified with multiline aliases'''
+        cfg = scuba.config.ScubaConfig(
+                image = 'na',
+                aliases = dict(
+                    apple = dict(script=[
+                        'banana cherry "pie is good"',
+                        'so is peach',
+                    ]),
+                    cat = 'dog',
+                    ),
+                )
+        assert_raises(scuba.config.ConfigError, cfg.process_command, ['apple', 'ARGS', 'NOT ALLOWED'])
+
 
     ############################################################################
     # Hooks

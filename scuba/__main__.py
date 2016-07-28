@@ -230,21 +230,24 @@ class ScubaDive(object):
             self.add_option('--tty')
 
         # Process any aliases
-        cmd = self.config.process_command(self.user_command)
+        try:
+            script = self.config.process_command(self.user_command)
+        except ConfigError as cfgerr:
+            raise ScubaError(str(cfgerr))
 
         '''
         Normally, if the user provides no command to "docker run", the image's
         default CMD is run. Because we set the entrypiont, scuba must emulate the
         default behavior itself.
         '''
-        if len(cmd) == 0:
+        if len(script) == 0:
             # No user-provided command; we want to run the image's default command
             verbose_msg('No user command; getting command from image')
             try:
-                cmd = get_image_command(self.config.image)
+                script = [get_image_command(self.config.image)]
             except DockerError as e:
                 raise ScubaError(str(e))
-            verbose_msg('{0} Cmd: "{1}"'.format(self.config.image, cmd))
+            verbose_msg('{0} Cmd: "{1}"'.format(self.config.image, script[0]))
 
         # The user command is executed via a generated shell script
         with self.open_scubadir_file('command.sh', 'wt') as f:
@@ -252,7 +255,9 @@ class ScubaDive(object):
             writeln(f, '#!/bin/sh')
             writeln(f, '# Auto-generated from scuba')
             writeln(f, 'set -e')
-            writeln(f, shell_quote_cmd(cmd))
+            for cmd in script:
+                writeln(f, shell_quote_cmd(cmd))
+
 
 
     def open_scubadir_file(self, name, mode):
