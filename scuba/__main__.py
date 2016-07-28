@@ -125,6 +125,9 @@ class ScubaDive(object):
             writeln(s, '      {0} => {1} {2}'.format(hostpath, contpath, options))
 
         writeln(s, '   user_command: {0}'.format(self.user_command))
+        writeln(s, '   context:')
+        writeln(s, '     script: ' + str(self.context.script)) 
+        writeln(s, '     image:  ' + str(self.context.image)) 
 
         return s.getvalue()
 
