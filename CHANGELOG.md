@@ -2,6 +2,16 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+### Added
+- Added support for enhanced aliases (#67)
+
+### Changed
+- All ancillary files are bind-mounted via single temp dir
+- Hook scripts are moved to hooks/ subdirectory
+- User commands always executed via shell (#66)
+
+
 ## [1.7.0] - 2016-05-19
 ### Added
 - Add support for scubainit hooks
