@@ -6,6 +6,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - Added support for enhanced aliases (#67)
 - Added support for per-alias image specification (#68)
+- Add bash completion support (#69)
 
 ### Changed
 - All ancillary files are bind-mounted via single temp dir
