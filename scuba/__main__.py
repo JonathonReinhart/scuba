@@ -14,7 +14,7 @@ import tempfile
 import shutil
 
 from .cmdlineargs import *
-from .compat import StringIO
+from .compat import File, StringIO
 from .constants import *
 from .config import find_config, load_config, ConfigError
 from .utils import *
@@ -282,18 +282,7 @@ class ScubaDive(object):
         # Make any directories required
         mkdir_p(os.path.dirname(path))
 
-        try:
-            # Python 2
-            # open() returns builtin file object which has no __dict__
-            class ScubaDirFile(file):
-                pass
-            op = ScubaDirFile
-        except NameError:
-            # Python 3
-            # 'file' type removed, but open() returns _io.TextIOWrapper which has __dict__
-            op = open
-
-        f = op(path, mode)
+        f = File(path, mode)
         f.container_path = os.path.join(self.__scubadir_contpath, name)
         return f
 
