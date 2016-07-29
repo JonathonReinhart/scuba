@@ -186,11 +186,11 @@ class ScubaDive(object):
         except ConfigError as cfgerr:
             raise ScubaError(str(cfgerr))
 
-        # Mount scuba root directory...
-        self.add_volume(top_path, SCUBA_ROOT)
+        # Mount scuba root directory at the same path in the container...
+        self.add_volume(top_path, top_path)
 
         # ...and set the working dir relative to it
-        self.set_workdir(os.path.join(SCUBA_ROOT, top_rel))
+        self.set_workdir(os.path.join(top_path, top_rel))
 
     def __make_scubadir(self):
         '''Make temp directory where all ancillary files are bind-mounted
