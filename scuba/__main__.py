@@ -18,6 +18,7 @@ except ImportError:
     # Python 3
     from io import StringIO
 
+from .cmdlineargs import *
 from .constants import *
 from .config import find_config, load_config, ConfigError
 from .utils import *
@@ -50,6 +51,8 @@ def parse_scuba_args(argv):
     ap.add_argument('-d', '--docker-arg', dest='docker_args', action='append',
             type=lambda x: shlex.split(x), default=[],
             help="Pass additional arguments to 'docker run'")
+    ap.add_argument('--list-available-options', action=ListOptsAction,
+            help=argparse.SUPPRESS)
     ap.add_argument('-n', '--dry-run', action='store_true',
             help="Don't actually invoke docker; just print the docker cmdline")
     ap.add_argument('-r', '--root', action='store_true',
