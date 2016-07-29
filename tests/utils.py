@@ -1,4 +1,5 @@
 import os
+import sys
 from nose.tools import *
 from os.path import normpath
 import tempfile
@@ -72,3 +73,30 @@ class InTempDir(object):
         os.chdir(self.orig_path)
         if self.delete:
             shutil.rmtree(self.temp_path)
+
+
+class RedirStd(object):
+    def __init__(self, stdout=None, stderr=None):
+        self.stdout = stdout
+        self.stderr = stderr
+
+        self.orig_stdout = None
+        self.orig_stderr = None
+
+    def __enter__(self):
+        if self.stdout:
+            self.orig_stdout = sys.stdout
+            sys.stdout = self.stdout
+
+        if self.stderr:
+            self.orig_stderr = sys.stderr
+            sys.stderr = self.stderr
+
+        return self
+
+    def __exit__(self, *exc_info):
+        if self.orig_stdout:
+            sys.stdout = self.orig_stdout
+
+        if self.orig_stderr:
+            sys.stderr = self.orig_stderr
