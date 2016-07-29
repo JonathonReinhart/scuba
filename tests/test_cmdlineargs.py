@@ -4,8 +4,8 @@ from unittest import TestCase
 from .utils import RedirStd
 
 import sys
-from StringIO import StringIO
 import argparse
+from scuba.compat import StringIO
 
 # UUT
 from scuba.cmdlineargs import ListOptsAction

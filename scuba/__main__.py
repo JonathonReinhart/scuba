@@ -12,13 +12,9 @@ import itertools
 import argparse
 import tempfile
 import shutil
-try:
-    from StringIO import StringIO
-except ImportError:
-    # Python 3
-    from io import StringIO
 
 from .cmdlineargs import *
+from .compat import StringIO
 from .constants import *
 from .config import find_config, load_config, ConfigError
 from .utils import *
