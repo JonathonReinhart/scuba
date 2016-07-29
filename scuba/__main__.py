@@ -387,7 +387,7 @@ def main(argv=None):
     scuba_args = parse_scuba_args(argv)
 
     try:
-        rc = run_scuba(scuba_args)
+        rc = run_scuba(scuba_args) or 0
         sys.exit(rc)
     except ScubaError as e:
         appmsg(str(e))

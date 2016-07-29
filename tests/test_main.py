@@ -76,7 +76,7 @@ class TestMain(TestCase):
                         try:
                             main.main(argv = args)
                         except SystemExit as sysexit:
-                            retcode = sysexit.args[0]
+                            retcode = sysexit.code
                         else:
                             retcode = 0
 
