@@ -1,0 +1,14 @@
+image: !from_yaml ../common.yml image
+aliases:
+
+  # This one inherits the default, top-level 'image'
+  default:
+    script:
+      - cat /etc/os-release
+
+  # This one specifies a different image to use
+  different:
+    image: alpine
+    script:
+      - cat /etc/os-release
+

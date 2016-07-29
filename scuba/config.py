@@ -103,6 +103,46 @@ def find_config():
         rel = os.path.join(rest, rel)
 
 
+def _process_script_node(node, name):
+    '''Process a script-type node
+
+    This handles nodes that follow the *Common script schema*,
+    as outlined in doc/yaml-reference.md.
+    '''
+    if isinstance(node, basestring):
+        # The script is just the text itself
+        return [node]
+
+
+    if isinstance(node, dict):
+        # There must be a "script" key, which must be a list of strings
+        script = node.get('script')
+        if not script:
+            raise ConfigError("{0}: must have a 'script' subkey".format(name))
+
+        if not isinstance(script, list):
+            raise ConfigError("{0}.script: must be a list".format(name))
+
+        return script
+
+    raise ConfigError("{0}: must be string or dict".format(name))
+
+
+class ScubaAlias(object):
+    def __init__(self, name, script, image):
+        self.name = name
+        self.script = script
+        self.image = image
+
+    @classmethod
+    def from_dict(cls, name, node):
+        script = [shlex_split(cmd) for cmd in _process_script_node(node, name)]
+        image = node.get('image') if isinstance(node, dict) else None
+        return cls(name, script, image)
+
+class ScubaContext(object):
+    pass
+
 class ScubaConfig(object):
     def __init__(self, **data):
         required_nodes = ('image',)
@@ -126,51 +166,13 @@ class ScubaConfig(object):
         self._load_hooks(data)
 
 
-    def _process_script(self, node, name):
-        '''Process a script-type node
-
-        This can handle yaml of either a simple form:
-
-            node: this is my script
-
-        Or a more complex form (which allows for other sub-nodes):
-
-            node:
-              script:
-                - this is my script
-                - it has multiple parts
-
-        Other forms are disallowed:
-
-            node:
-              - this
-              - is
-              - forbidden
-        '''
-        if isinstance(node, basestring):
-            # The script is just the text itself
-            return [node]
-
-
-        if isinstance(node, dict):
-            # There must be a "script" key, which must be a list of strings
-            script = node.get('script')
-            if not script:
-                raise ConfigError("{0}: must have a 'script' subkey".format(name))
-
-            if not isinstance(script, list):
-                raise ConfigError("{0}.script: must be a list".format(name))
-
-            return script
-
-        raise ConfigError("{0}: must be string or dict".format(name))
 
 
     def _load_aliases(self, data):
         self._aliases = {}
 
         for name, node in data.get('aliases', {}).items():
-            self._aliases[name] = [shlex_split(cmd) for cmd in self._process_script(node, name)]
+            self._aliases[name] = ScubaAlias.from_dict(name, node)
 
 
     def _load_hooks(self, data):
@@ -179,7 +181,7 @@ class ScubaConfig(object):
         for name in ('user', 'root',):
             node = data.get('hooks', {}).get(name)
             if node:
-                hook = self._process_script(node, name)
+                hook = _process_script_node(node, name)
                 self._hooks[name] = hook
 
 
@@ -202,25 +204,39 @@ class ScubaConfig(object):
         Arguments:
             command     A user command list (e.g. argv)
 
-        Returns: A "script" - a list of command lists
+        Returns: A ScubaContext object with the following attributes:
+            script: a list of command lists
+            image: the docker image name to use
         '''
-        if not command:
-            return command
+        result = ScubaContext()
+        result.script = None
+        result.image = self.image
 
-        script = self.aliases.get(command[0])
-        if not script:
-            return [command]
+        if command:
+            alias = self.aliases.get(command[0])
+            if not alias:
+                # Command is not an alias; use it as-is.
+                result.script = [command]
+            else:
+                # Using an alias
+                # Does this alias override the image?
+                if alias.image:
+                    result.image = alias.image
 
-        if len(command) > 1:
-            # If an alias is a multiline script, then no additional
-            # arguments will be allowed in the scuba invocation.
-            if len(script) > 1:
-                raise ConfigError('Additional arguments not allowed with multi-line aliases')
+                if len(alias.script) > 1:
+                    # Alias is a multiline script; no additional
+                    # arguments are allowed in the scuba invocation.
+                    if len(command) > 1:
+                        raise ConfigError('Additional arguments not allowed with multi-line aliases')
+                    result.script = alias.script
 
-            command.pop(0)
-            return [script[0] + command]
+                else:
+                    # Alias is a single-line script; perform substituion
+                    # and add user arguments.
+                    command.pop(0)
+                    result.script = [alias.script[0] + command]
 
-        return script
+        return result
 
 
 def load_config(path):

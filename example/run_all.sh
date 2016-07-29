@@ -8,3 +8,4 @@ cd $(dirname $0)
 ./external_yaml_nested/run_example.sh
 ./scubainit_hooks/run_example.sh
 ./alias_multiline/run_example.sh
+./per_alias_image/run_example.sh
