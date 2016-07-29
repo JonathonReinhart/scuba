@@ -12,6 +12,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Hook scripts are moved to hooks/ subdirectory
 - User commands always executed via shell (#66)
 - Top-level directory mounted at same path in container (#70)
+- Alias names cannot contain spaces
 
 
 ## [1.7.0] - 2016-05-19

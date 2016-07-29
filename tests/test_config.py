@@ -118,7 +118,14 @@ class TestConfig(TestCase):
         assert_seq_equal(config.aliases['foo'].script, [['bar']])
         assert_seq_equal(config.aliases['snap'].script, [['crackle', 'pop']])
 
+    def test_load_config__no_spaces_in_aliases(self):
+        '''load_config refuses spaces in aliases'''
+        with open('.scuba.yml', 'w') as f:
+            f.write('image: busybox\n')
+            f.write('aliases:\n')
+            f.write('  this has spaces: whatever\n')
 
+        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
 
     def test_load_config_image_from_yaml(self):
         '''load_config loads a config using !from_yaml'''
