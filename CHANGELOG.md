@@ -11,6 +11,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - All ancillary files are bind-mounted via single temp dir
 - Hook scripts are moved to hooks/ subdirectory
 - User commands always executed via shell (#66)
+- Top-level directory mounted at same path in container (#70)
 
 
 ## [1.7.0] - 2016-05-19
