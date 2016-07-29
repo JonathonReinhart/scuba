@@ -51,6 +51,8 @@ def parse_scuba_args(argv):
     ap.add_argument('-d', '--docker-arg', dest='docker_args', action='append',
             type=lambda x: shlex.split(x), default=[],
             help="Pass additional arguments to 'docker run'")
+    ap.add_argument('--list-aliases', action='store_true',
+            help=argparse.SUPPRESS)
     ap.add_argument('--list-available-options', action=ListOptsAction,
             help=argparse.SUPPRESS)
     ap.add_argument('-n', '--dry-run', action='store_true',
@@ -91,6 +93,10 @@ class ScubaDive(object):
 
         self.__locate_scubainit()
         self.__load_config()
+
+
+    def prepare(self):
+        '''Prepare to run the docker command'''
         self.__make_scubadir()
 
         if self.is_remote_docker:
@@ -353,7 +359,15 @@ def run_scuba(scuba_args):
         verbose = scuba_args.verbose
         )
 
+    if scuba_args.list_aliases:
+        print('ALIAS\tIMAGE')
+        for name in sorted(dive.config.aliases):
+            alias = dive.config.aliases[name]
+            print('{0}\t{1}'.format(alias.name, alias.image or dive.config.image))
+        return
+
     try:
+        dive.prepare()
         run_args = dive.get_docker_cmdline()
 
         if g_verbose or scuba_args.dry_run:
