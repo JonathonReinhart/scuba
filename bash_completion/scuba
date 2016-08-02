@@ -11,10 +11,10 @@ _scuba()
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD - 1]}"
-    opts=$(scuba --list-available-options)
 
     # Is the user typing an option?
     if [[ ${cur} == -* ]] ; then
+        opts=$(scuba --list-available-options)
         COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
         return 0
     fi
