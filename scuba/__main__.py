@@ -12,12 +12,9 @@ import itertools
 import argparse
 import tempfile
 import shutil
-try:
-    from StringIO import StringIO
-except ImportError:
-    # Python 3
-    from io import StringIO
 
+from .cmdlineargs import *
+from .compat import File, StringIO
 from .constants import *
 from .config import find_config, load_config, ConfigError
 from .utils import *
@@ -50,6 +47,10 @@ def parse_scuba_args(argv):
     ap.add_argument('-d', '--docker-arg', dest='docker_args', action='append',
             type=lambda x: shlex.split(x), default=[],
             help="Pass additional arguments to 'docker run'")
+    ap.add_argument('--list-aliases', action='store_true',
+            help=argparse.SUPPRESS)
+    ap.add_argument('--list-available-options', action=ListOptsAction,
+            help=argparse.SUPPRESS)
     ap.add_argument('-n', '--dry-run', action='store_true',
             help="Don't actually invoke docker; just print the docker cmdline")
     ap.add_argument('-r', '--root', action='store_true',
@@ -88,6 +89,10 @@ class ScubaDive(object):
 
         self.__locate_scubainit()
         self.__load_config()
+
+
+    def prepare(self):
+        '''Prepare to run the docker command'''
         self.__make_scubadir()
 
         if self.is_remote_docker:
@@ -277,18 +282,7 @@ class ScubaDive(object):
         # Make any directories required
         mkdir_p(os.path.dirname(path))
 
-        try:
-            # Python 2
-            # open() returns builtin file object which has no __dict__
-            class ScubaDirFile(file):
-                pass
-            op = ScubaDirFile
-        except NameError:
-            # Python 3
-            # 'file' type removed, but open() returns _io.TextIOWrapper which has __dict__
-            op = open
-
-        f = op(path, mode)
+        f = File(path, mode)
         f.container_path = os.path.join(self.__scubadir_contpath, name)
         return f
 
@@ -350,7 +344,15 @@ def run_scuba(scuba_args):
         verbose = scuba_args.verbose
         )
 
+    if scuba_args.list_aliases:
+        print('ALIAS\tIMAGE')
+        for name in sorted(dive.config.aliases):
+            alias = dive.config.aliases[name]
+            print('{0}\t{1}'.format(alias.name, alias.image or dive.config.image))
+        return
+
     try:
+        dive.prepare()
         run_args = dive.get_docker_cmdline()
 
         if g_verbose or scuba_args.dry_run:
@@ -387,7 +389,7 @@ def main(argv=None):
     scuba_args = parse_scuba_args(argv)
 
     try:
-        rc = run_scuba(scuba_args)
+        rc = run_scuba(scuba_args) or 0
         sys.exit(rc)
     except ScubaError as e:
         appmsg(str(e))

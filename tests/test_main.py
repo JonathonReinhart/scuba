@@ -76,7 +76,7 @@ class TestMain(TestCase):
                         try:
                             main.main(argv = args)
                         except SystemExit as sysexit:
-                            retcode = sysexit.args[0]
+                            retcode = sysexit.code
                         else:
                             retcode = 0
 
@@ -388,3 +388,34 @@ class TestMain(TestCase):
     def test_root_hook(self):
         '''Verify root hook executes as root'''
         self._test_one_hook('root', 0, 0)
+
+
+    ############################################################################
+    # Misc
+    def test_list_aliases(self):
+        '''Verify --list-aliases works'''
+        with open('.scuba.yml', 'w') as f:
+            f.write('image: default\n')
+            f.write('aliases:\n')
+            f.write('  aaa:\n')
+            f.write('    image: aaa_image\n')
+            f.write('    script:\n')
+            f.write('      - foo\n')
+            f.write('  bbb:\n')
+            f.write('    script:\n')
+            f.write('      - foo\n')
+            f.write('  ccc: foo\n')
+
+        expected = (
+            ('ALIAS',   'IMAGE'),
+            ('aaa',     'aaa_image'),
+            ('bbb',     'default'),
+            ('ccc',     'default'),
+        )
+
+        out, err = self.run_scuba(['--list-aliases'])
+        lines = out.splitlines()
+
+        assert_equal(len(expected), len(lines))
+        for i in range(len(expected)):
+            assert_seq_equal(expected[i], lines[i].split('\t'))

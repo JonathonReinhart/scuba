@@ -1,0 +1,37 @@
+#!bash
+#
+# bash completion for scuba
+# https://github.com/JonathonReinhart/scuba
+#
+# Copy this file to /etc/bash_completion.d 
+
+_scuba()
+{ 
+    COMPREPLY=()
+
+    # Look at all previous words, skipping command itself
+    local i
+	for ((i = 1; i < ${COMP_CWORD}; i++)); do
+		word="${COMP_WORDS[i]}"
+        if [[ $word != -* ]] ; then
+            # User has already entered a non-option;
+            # there's nothing we can suggest
+            return 0
+        fi
+	done
+
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+
+    # Is the user typing an option?
+    if [[ ${cur} == -* ]] ; then
+        local opts=$(scuba --list-available-options)
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+        return 0
+    fi
+
+    # The only thing we can suggest here is an alias
+    local aliases="$(scuba --list-aliases | tail -n+2 | awk -F'\t' '{print $1 }')"
+    COMPREPLY=( $(compgen -W "${aliases}" -- ${cur}) )
+}
+
+complete -F _scuba scuba

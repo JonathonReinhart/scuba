@@ -28,6 +28,9 @@ setup(
             'scubainit',
         ],
     },
+    data_files = [
+        ('/etc/bash_completion.d', ['bash_completion/scuba']),
+    ],
     zip_safe = False,   # http://stackoverflow.com/q/24642788/119527
     entry_points = {
         'console_scripts': [

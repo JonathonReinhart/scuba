@@ -172,6 +172,8 @@ class ScubaConfig(object):
         self._aliases = {}
 
         for name, node in data.get('aliases', {}).items():
+            if ' ' in name:
+                raise ConfigError('Alias names cannot contain spaces')
             self._aliases[name] = ScubaAlias.from_dict(name, node)
 
 
