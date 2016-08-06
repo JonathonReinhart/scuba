@@ -1,7 +1,17 @@
 #!/usr/bin/env python
+from __future__ import print_function
 import scuba.version
 from setuptools import setup
+from setuptools.command.build_py import build_py
 import os.path
+from subprocess import check_call
+
+class BuildHook(build_py):
+    def run(self):
+        print('Building scubainit...')
+        check_call(['make'])
+        build_py.run(self)
+
 
 setup(
     name = 'scuba',
@@ -40,4 +50,10 @@ setup(
     install_requires = [
         'PyYAML',
     ],
+
+    # http://stackoverflow.com/questions/17806485
+    # http://stackoverflow.com/questions/21915469
+    cmdclass = {
+        'build_py': BuildHook,
+    },
 )
