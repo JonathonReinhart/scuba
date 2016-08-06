@@ -21,6 +21,7 @@ matrix:
 env:
   global:
     - MUSL_PATH=$HOME/musl
+    - CC=$MUSL_PATH/bin/musl-gcc
 
 cache:
   directories:
@@ -32,7 +33,7 @@ before_script:
   - ci/test_setup.sh
 
 script:
-  - CC=$MUSL_PATH/bin/musl-gcc make
+  - make
   - ./run_nosetests.sh
   - sudo pip install .
   - ./run_full_tests.py
