@@ -14,6 +14,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - User commands always executed via shell (#66)
 - Top-level directory mounted at same path in container (#70)
 - Alias names cannot contain spaces
+- Improve distributions (#74, #75, #76, #78)
+
+### Removed
+- Remove support for remote Docker instances (#64)
+  Support for this was limited/broken as of 1.7.0 anyway; this officially
+  removes support for it.
 
 
 ## [1.7.0] - 2016-05-19
