@@ -34,7 +34,7 @@ Scuba can be built from source on Linux only (due to the fact that `scubainit`
 must be compiled):
 
 1. Run `make` to build `scubainit`
-2. Run `./run_nosetests.sh` to run the unit tests
+2. Run `./run_nosetests.py` to run the unit tests
 3. Run `sudo python setup.py install` to install scuba
 4. Run `./run_full_tests.py` to test the installed version of scuba
 

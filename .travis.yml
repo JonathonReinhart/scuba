@@ -38,7 +38,9 @@ script:
   # This is the preferred installation mechanism (see #71)
   - python setup.py bdist_wheel
   - pip install dist/scuba-*-py2.py3-none-any.whl
-  - ./run_nosetests.sh
+
+  # Run the unit tests in isolation
+  - ./run_nosetests.py --no-local-import
   - ./run_full_tests.py
 
 after_success:
