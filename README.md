@@ -43,6 +43,16 @@ by overriding the `CC` environment variable in step 1:
 
 `CC=/usr/local/musl/bin/musl-gcc make`
 
+Note that installing from source in this manner can lead to an installation
+with increased startup times for Scbua. See [#71] for more details. This can be
+remedied by forcing a [wheel] to be installed, as such:
+
+```
+$ export CC=/usr/local/musl/bin/musl-gcc    # (optional)
+$ sudo pip install wheel
+$ python setup.py bdist_wheel
+$ sudo pip install dist/scuba-<version>-py2.py3-none-any.whl
+```
 
 ## Configuration
 
@@ -70,3 +80,5 @@ This software is released under the [MIT License](https://opensource.org/license
 
 
 [musl-libc]: https://www.musl-libc.org/
+[#71]: https://github.com/JonathonReinhart/scuba/issues/71
+[wheel]: http://pythonwheels.com/
