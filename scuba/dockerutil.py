@@ -20,7 +20,10 @@ def get_image_command(image):
         raise DockerError('Failed to inspect image: {0}'.format(stderr.strip()))
 
     info = json.loads(stdout.decode('utf-8'))[0]
-    return info['Config']['Cmd']
+    try:
+        return info['Config']['Cmd']
+    except KeyError as ke:
+        raise DockerError('Failed to inspect image: JSON result missing key {0}'.format(ke))
 
 
 def make_vol_opt(hostdir, contdir, options=None):
