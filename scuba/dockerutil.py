@@ -5,6 +5,14 @@ import json
 class DockerError(Exception):
     pass
 
+class NoSuchImageError(DockerError):
+    def __init__(self, image):
+        self.image = image
+
+    def __str__(self):
+        return 'No such image: {0}'.format(self.image)
+
+
 def get_image_command(image):
     '''Gets the default command for an image'''
     args = ['docker', 'inspect', '--type', 'image', image]
@@ -17,6 +25,8 @@ def get_image_command(image):
 
     stdout, stderr = p.communicate()
     if not p.returncode == 0:
+        if 'no such image' in stderr.lower():
+            raise NoSuchImageError(image)
         raise DockerError('Failed to inspect image: {0}'.format(stderr.strip()))
 
     info = json.loads(stdout.decode('utf-8'))[0]
