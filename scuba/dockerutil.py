@@ -13,8 +13,11 @@ class NoSuchImageError(DockerError):
         return 'No such image: {0}'.format(self.image)
 
 
-def get_image_command(image):
-    '''Gets the default command for an image'''
+def docker_inspect(image):
+    '''Inspects a docker image
+
+    Returns: Parsed JSON data
+    '''
     args = ['docker', 'inspect', '--type', 'image', image]
     try:
         p = subprocess.Popen(args, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
@@ -29,7 +32,27 @@ def get_image_command(image):
             raise NoSuchImageError(image)
         raise DockerError('Failed to inspect image: {0}'.format(stderr.strip()))
 
-    info = json.loads(stdout.decode('utf-8'))[0]
+    return json.loads(stdout.decode('utf-8'))[0]
+
+def docker_pull(image):
+    '''Pulls an image'''
+    args = ['docker', 'pull', image]
+
+    # If this fails, the default docker stdout/stderr looks good to the user.
+    ret = subprocess.call(args)
+    if ret != 0:
+        raise DockerError('Failed to pull image "{0}"'.format(image))
+
+
+def get_image_command(image):
+    '''Gets the default command for an image'''
+    try:
+        info = docker_inspect(image)
+    except NoSuchImageError:
+        # If it doesn't exist yet, try to pull it now (#79)
+        docker_pull(image)
+        info = docker_inspect(image)
+
     try:
         return info['Config']['Cmd']
     except KeyError as ke:
