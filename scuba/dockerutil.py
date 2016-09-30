@@ -7,7 +7,7 @@ class DockerError(Exception):
 
 def get_image_command(image):
     '''Gets the default command for an image'''
-    args = ['docker', 'inspect', image]
+    args = ['docker', 'inspect', '--type', 'image', image]
     try:
         p = subprocess.Popen(args, stdout = subprocess.PIPE)
     except OSError as e:
