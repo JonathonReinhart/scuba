@@ -27,12 +27,15 @@ def docker_inspect(image):
         raise
 
     stdout, stderr = p.communicate()
+    stdout = stdout.decode('utf-8')
+    stderr = stderr.decode('utf-8')
+
     if not p.returncode == 0:
         if 'no such image' in stderr.lower():
             raise NoSuchImageError(image)
         raise DockerError('Failed to inspect image: {0}'.format(stderr.strip()))
 
-    return json.loads(stdout.decode('utf-8'))[0]
+    return json.loads(stdout)[0]
 
 def docker_pull(image):
     '''Pulls an image'''
