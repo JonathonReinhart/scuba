@@ -40,7 +40,6 @@ def main():
             '--with-coverage',
             '--cover-inclusive',
             '--cover-package=scuba',
-            '--processes=-1',
             '--detailed-errors',
             '--process-timeout=60',
         ] + otherargs,
