@@ -21,6 +21,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
   Support for this was limited/broken as of 1.7.0 anyway; this officially
   removes support for it.
 
+### Fixed
+- Fixed inability to run an image that doesn't yet exist locally, broken in
+  1.7.0 ([#79])
 
 ## [1.7.0] - 2016-05-19
 ### Added
@@ -138,3 +141,4 @@ First versioned release
 
 [issue 11]: https://github.com/JonathonReinhart/scuba/issues/11
 [#24]: https://github.com/JonathonReinhart/scuba/pull/24
+[#79]: https://github.com/JonathonReinhart/scuba/issues/79

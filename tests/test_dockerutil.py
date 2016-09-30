@@ -34,6 +34,18 @@ class TestDockerutil(TestCase):
         with mock.patch('subprocess.Popen', side_effect=mocked_popen) as popen_mock:
             assert_raises(uut.DockerError, uut.get_image_command, 'n/a')
 
+    def test__get_image_command__pulls_image_if_missing(self):
+        '''get_image_command pulls an image if missing'''
+        image = 'busybox:latest'
+
+        # First remove the image
+        subprocess.call(['docker', 'rmi', image])
+
+        # Now try to get the image's Command
+        result = uut.get_image_command(image)
+
+        # Should return a non-empty string
+        self.assertTrue(result)
 
 
     def test_make_vol_opt_no_opts(self):
