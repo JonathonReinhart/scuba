@@ -9,15 +9,15 @@ def get_image_command(image):
     '''Gets the default command for an image'''
     args = ['docker', 'inspect', '--type', 'image', image]
     try:
-        p = subprocess.Popen(args, stdout = subprocess.PIPE)
+        p = subprocess.Popen(args, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
     except OSError as e:
         if e.errno == errno.ENOENT:
             raise DockerError('Failed to execute docker. Is it installed?')
         raise
 
-    stdout, _ = p.communicate()
+    stdout, stderr = p.communicate()
     if not p.returncode == 0:
-        raise DockerError('Failed to inspect image')
+        raise DockerError('Failed to inspect image: {0}'.format(stderr.strip()))
 
     info = json.loads(stdout.decode('utf-8'))[0]
     return info['Config']['Cmd']
