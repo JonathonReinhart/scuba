@@ -346,6 +346,19 @@ class TestMain(TestCase):
 
         assert_str_equalish(out, data)
 
+    def test_image_entrypoint(self):
+        '''Verify scuba doesn't interfere with the configured image ENTRYPOINT'''
+
+        with open('.scuba.yml', 'w') as f:
+            # This image was built with ENTRYPOINT ["echo"]
+            f.write('image: jreinhart/echo')
+
+        test_string = 'Hello world'
+        out, _ = self.run_scuba([test_string])
+        assert_str_equalish(test_string, out)
+
+
+
 
     ############################################################################
     # Hooks
