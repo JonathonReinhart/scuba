@@ -47,6 +47,17 @@ class TestDockerutil(TestCase):
         # Should return a non-empty string
         self.assertTrue(result)
 
+    def test_get_image_entrypoint(self):
+        '''get_image_entrypoint works'''
+        result = uut.get_image_entrypoint('jreinhart/echo')
+        self.assertEqual(1, len(result))
+        assert_str_equalish('echo', result[0])
+
+    def test_get_image_entrypoint__none(self):
+        '''get_image_entrypoint works for image with no entrypoint'''
+        result = uut.get_image_entrypoint('debian')
+        self.assertEqual(None, result)
+
 
     def test_make_vol_opt_no_opts(self):
         assert_equal(
