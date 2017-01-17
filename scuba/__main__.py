@@ -18,7 +18,7 @@ from .constants import *
 from .config import find_config, load_config, ConfigError
 from .utils import *
 from .version import __version__
-from .dockerutil import get_image_command, make_vol_opt, \
+from .dockerutil import get_image_command, get_image_entrypoint, make_vol_opt, \
         DockerError, DockerExecuteError
 from . import dockerutil
 
@@ -226,10 +226,6 @@ class ScubaDive(object):
         # Mount scubainit in the container
         self.add_volume(self.scubainit_path, '/scubainit', ['ro'])
 
-        # Make scubainit the entrypoint
-        # TODO: What if the image already defines an entrypoint?
-        self.add_option('--entrypoint=/scubainit')
-
         # Hooks
         for name in ('root', 'user', ):
             self.__generate_hook_script(name)
@@ -255,6 +251,11 @@ class ScubaDive(object):
             context.script = [get_image_command(context.image)]
             verbose_msg('{0} Cmd: "{1}"'.format(context.image, context.script[0]))
 
+        # Make scubainit the entrypoint, and manually insert an existing
+        # entrypoint before each user command
+        entrypoint = get_image_entrypoint(context.image) or []
+        self.add_option('--entrypoint=/scubainit')
+
         # The user command is executed via a generated shell script
         with self.open_scubadir_file('command.sh', 'wt') as f:
             self.docker_cmd = ['/bin/sh', f.container_path]
@@ -262,6 +263,7 @@ class ScubaDive(object):
             writeln(f, '# Auto-generated from scuba')
             writeln(f, 'set -e')
             for cmd in context.script:
+                cmd = entrypoint + cmd
                 writeln(f, shell_quote_cmd(cmd))
 
         self.context = context
