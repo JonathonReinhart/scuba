@@ -59,18 +59,28 @@ def docker_pull(image):
     if ret != 0:
         raise DockerError('Failed to pull image "{0}"'.format(image))
 
-
-def get_image_command(image):
-    '''Gets the default command for an image'''
+def docker_inspect_or_pull(image):
+    '''Inspects a docker image, pulling it if it doesn't exist'''
     try:
-        info = docker_inspect(image)
+        return docker_inspect(image)
     except NoSuchImageError:
         # If it doesn't exist yet, try to pull it now (#79)
         docker_pull(image)
-        info = docker_inspect(image)
+        return docker_inspect(image)
 
+def get_image_command(image):
+    '''Gets the default command for an image'''
+    info = docker_inspect_or_pull(image)
     try:
         return info['Config']['Cmd']
+    except KeyError as ke:
+        raise DockerError('Failed to inspect image: JSON result missing key {0}'.format(ke))
+
+def get_image_entrypoint(image):
+    '''Gets the image entrypoint'''
+    info = docker_inspect_or_pull(image)
+    try:
+        return info['Config']['Entrypoint']
     except KeyError as ke:
         raise DockerError('Failed to inspect image: JSON result missing key {0}'.format(ke))
 
