@@ -116,24 +116,10 @@ class TestMain(TestCase):
         '''Verify scuba works with no given command'''
 
         with open('.scuba.yml', 'w') as f:
-            f.write('image: {0}\n'.format(DOCKER_IMAGE))
+            f.write('image: {0}\n'.format('jreinhart/hello'))
 
-        with TemporaryFile(prefix='scubatest-stdin', mode='w+t') as stdin:
-            stdin.write('echo okay')
-            stdin.seek(0)
-
-            # This mock exists to pass an extra stdin= arg
-            real_subprocess_call = subprocess.call
-            def mocked_subprocess_call(*args, **kw):
-                assert_false('stdin' in kw)
-                kw['stdin'] = stdin
-                return real_subprocess_call(*args, **kw)
-
-            with mock.patch('subprocess.call', side_effect=mocked_subprocess_call):
-                args = []
-                out, _ = self.run_scuba(args)
-
-        assert_str_equalish('okay', out)
+        out, _ = self.run_scuba([])
+        self.assertTrue('Hello from alpine-hello' in out)
 
     def test_handle_get_image_command_error(self):
         '''Verify scuba handles a get_image_command error'''
