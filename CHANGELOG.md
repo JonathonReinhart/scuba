@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.0.1] - 2017-01-17
+### Fixed
+- Fixed image entrypoint being ignored (#83)
+
+
 ## [2.0.0] - 2016-11-21
 ### Added
 - Added support for enhanced aliases (#67)
@@ -127,7 +132,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 First versioned release
 
 
-[Unreleased]: https://github.com/JonathonReinhart/scuba/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/JonathonReinhart/scuba/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/JonathonReinhart/scuba/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/JonathonReinhart/scuba/compare/v1.7.0...v2.0.0
 [1.7.0]: https://github.com/JonathonReinhart/scuba/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/JonathonReinhart/scuba/compare/v1.5.0...v1.6.0
