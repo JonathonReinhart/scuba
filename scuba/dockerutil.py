@@ -5,6 +5,9 @@ import json
 class DockerError(Exception):
     pass
 
+class DockerExecuteError(DockerError):
+    pass
+
 class NoSuchImageError(DockerError):
     def __init__(self, image):
         self.image = image
@@ -13,18 +16,28 @@ class NoSuchImageError(DockerError):
         return 'No such image: {0}'.format(self.image)
 
 
+def __wrap_docker_exec(func):
+    '''Wrap a function to raise DockerExecuteError on ENOENT'''
+    def call(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except OSError as e:
+            if e.errno == errno.ENOENT:
+                raise DockerExecuteError('Failed to execute docker. Is it installed?')
+            raise
+    return call
+
+Popen = __wrap_docker_exec(subprocess.Popen)
+call  = __wrap_docker_exec(subprocess.call)
+
+
 def docker_inspect(image):
     '''Inspects a docker image
 
     Returns: Parsed JSON data
     '''
     args = ['docker', 'inspect', '--type', 'image', image]
-    try:
-        p = subprocess.Popen(args, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
-    except OSError as e:
-        if e.errno == errno.ENOENT:
-            raise DockerError('Failed to execute docker. Is it installed?')
-        raise
+    p = Popen(args, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
 
     stdout, stderr = p.communicate()
     stdout = stdout.decode('utf-8')
@@ -42,7 +55,7 @@ def docker_pull(image):
     args = ['docker', 'pull', image]
 
     # If this fails, the default docker stdout/stderr looks good to the user.
-    ret = subprocess.call(args)
+    ret = call(args)
     if ret != 0:
         raise DockerError('Failed to pull image "{0}"'.format(image))
 

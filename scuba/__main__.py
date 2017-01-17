@@ -6,7 +6,6 @@ from __future__ import print_function
 import os, os.path
 import errno
 import sys
-import subprocess
 import shlex
 import itertools
 import argparse
@@ -19,7 +18,9 @@ from .constants import *
 from .config import find_config, load_config, ConfigError
 from .utils import *
 from .version import __version__
-from .dockerutil import *
+from .dockerutil import get_image_command, make_vol_opt, \
+        DockerError, DockerExecuteError
+from . import dockerutil
 
 # This is the path where all scuba-related things will be bind-mounted into the
 # container.
@@ -251,10 +252,7 @@ class ScubaDive(object):
         if not context.script:
             # No user-provided command; we want to run the image's default command
             verbose_msg('No user command; getting command from image')
-            try:
-                context.script = [get_image_command(context.image)]
-            except DockerError as e:
-                raise ScubaError(str(e))
+            context.script = [get_image_command(context.image)]
             verbose_msg('{0} Cmd: "{1}"'.format(context.image, context.script[0]))
 
         # The user command is executed via a generated shell script
@@ -365,18 +363,13 @@ def run_scuba(scuba_args):
         if scuba_args.dry_run:
             sys.exit(42)
 
-        try:
-            # Explicitly pass sys.stdout/stderr so they apply to the
-            # child process if overridden (by tests).
-            return subprocess.call(
-                    args = run_args,
-                    stdout = sys.stdout,
-                    stderr = sys.stderr,
-                    )
-        except OSError as e:
-            if e.errno == errno.ENOENT:
-                appmsg('Failed to execute docker. Is it installed?')
-                sys.exit(2)
+        # Explicitly pass sys.stdout/stderr so they apply to the
+        # child process if overridden (by tests).
+        return dockerutil.call(
+                args = run_args,
+                stdout = sys.stdout,
+                stderr = sys.stderr,
+                )
 
     finally:
         if scuba_args.dry_run:
@@ -391,7 +384,10 @@ def main(argv=None):
     try:
         rc = run_scuba(scuba_args) or 0
         sys.exit(rc)
-    except ScubaError as e:
+    except DockerExecuteError as e:
+        appmsg(str(e))
+        sys.exit(2)
+    except (ScubaError, DockerError) as e:
         appmsg(str(e))
         sys.exit(128)
 
