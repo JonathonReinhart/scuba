@@ -357,7 +357,44 @@ class TestMain(TestCase):
         out, _ = self.run_scuba([test_string])
         assert_str_equalish(test_string, out)
 
+    def test_image_override(self):
+        '''Verify --image works'''
 
+        with open('.scuba.yml', 'w') as f:
+            # This image does not exist
+            f.write('image: jreinhart/notheredoesnotexistbb7e344f9722\n')
+
+        test_string = 'Hello world'
+        args = [
+            # This image was built with ENTRYPOINT ["echo"]
+            '--image', 'jreinhart/echo',
+            test_string,
+        ]
+        out, _ = self.run_scuba(args)
+        assert_str_equalish(test_string, out)
+
+    def test_image_override_with_alias(self):
+        '''Verify --image works with aliases'''
+
+        with open('.scuba.yml', 'w') as f:
+            # These images do not exist
+            f.write('''
+                image: jreinhart/notheredoesnotexistbb7e344f9722
+                aliases:
+                  testalias:
+                    image: jreinhart/notheredoesnotexist765205d09dea
+                    script:
+                      - echo multi
+                      - echo line
+                      - echo alias
+                ''')
+
+        args = [
+            '--image', DOCKER_IMAGE,
+            'testalias',
+        ]
+        out, _ = self.run_scuba(args)
+        assert_str_equalish('multi\nline\nalias', out)
 
 
     ############################################################################
