@@ -52,6 +52,7 @@ def parse_scuba_args(argv):
             help=argparse.SUPPRESS)
     ap.add_argument('--list-available-options', action=ListOptsAction,
             help=argparse.SUPPRESS)
+    ap.add_argument('--image', help='Override Docker image')
     ap.add_argument('-n', '--dry-run', action='store_true',
             help="Don't actually invoke docker; just print the docker cmdline")
     ap.add_argument('-r', '--root', action='store_true',
@@ -77,10 +78,12 @@ class ScubaError(Exception):
     pass
 
 class ScubaDive(object):
-    def __init__(self, user_command, docker_args=[], as_root=False, verbose=False):
+    def __init__(self, user_command, docker_args=[], as_root=False, verbose=False,
+            image_override=None):
         self.user_command = user_command
         self.as_root = as_root
         self.verbose = verbose
+        self.image_override = image_override
 
         # These will be added to docker run cmdline
         self.env_vars = {}
@@ -240,6 +243,9 @@ class ScubaDive(object):
         except ConfigError as cfgerr:
             raise ScubaError(str(cfgerr))
 
+        if self.image_override:
+            context.image = self.image_override
+
         '''
         Normally, if the user provides no command to "docker run", the image's
         default CMD is run. Because we set the entrypiont, scuba must emulate the
@@ -341,7 +347,8 @@ def run_scuba(scuba_args):
         scuba_args.command,
         docker_args = scuba_args.docker_args,
         as_root = scuba_args.root,
-        verbose = scuba_args.verbose
+        verbose = scuba_args.verbose,
+        image_override = scuba_args.image,
         )
 
     if scuba_args.list_aliases:
