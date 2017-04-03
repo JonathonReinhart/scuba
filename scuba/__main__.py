@@ -15,7 +15,8 @@ import shutil
 from .cmdlineargs import *
 from .compat import File, StringIO
 from .constants import *
-from .config import find_config, load_config, ConfigError
+from .config import find_config, load_config, ScubaConfig, \
+        ConfigError, ConfigNotFoundError
 from .utils import *
 from .version import __version__
 from .dockerutil import get_image_command, get_image_entrypoint, make_vol_opt, \
@@ -192,6 +193,13 @@ class ScubaDive(object):
         try:
             top_path, top_rel = find_config()
             self.config = load_config(os.path.join(top_path, SCUBA_YML))
+        except ConfigNotFoundError as cfgerr:
+            # SCUBA_YML can be missing if --image was given.
+            # In this case, we assume a default config
+            if not self.image_override:
+                raise ScubaError(str(cfgerr))
+            top_path, top_rel = os.getcwd(), ''
+            self.config = ScubaConfig(image=None)
         except ConfigError as cfgerr:
             raise ScubaError(str(cfgerr))
 
