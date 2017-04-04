@@ -11,6 +11,9 @@ from .constants import *
 class ConfigError(Exception):
     pass
 
+class ConfigNotFoundError(ConfigError):
+    pass
+
 def shlex_split(s):
     # shlex.split doesn't properly handle unicode input in Python 2.6.
     # First try to encode it as an ASCII string. which
@@ -92,12 +95,12 @@ def find_config():
         if not cross_fs and os.path.ismount(path):
             msg = '{0} not found here or any parent up to mount point {1}'.format(SCUBA_YML, path) \
                    + '\nStopping at filesystem boundary (SCUBA_DISCOVERY_ACROSS_FILESYSTEM not set).'
-            raise ConfigError(msg)
+            raise ConfigNotFoundError(msg)
 
         # Traverse up directory hierarchy
         path, rest = os.path.split(path)
         if not rest:
-            raise ConfigError('{0} not found here or any parent directories'.format(SCUBA_YML))
+            raise ConfigNotFoundError('{0} not found here or any parent directories'.format(SCUBA_YML))
 
         # Accumulate the relative path back to where we started
         rel = os.path.join(rest, rel)

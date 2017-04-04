@@ -396,6 +396,20 @@ class TestMain(TestCase):
         out, _ = self.run_scuba(args)
         assert_str_equalish('multi\nline\nalias', out)
 
+    def test_yml_not_needed_with_image_override(self):
+        '''Verify .scuba.yml can be missing if --image is used'''
+
+        # no .scuba.yml
+
+        test_string = 'Hello world'
+        args = [
+            # This image was built with ENTRYPOINT ["echo"]
+            '--image', 'jreinhart/echo',
+            test_string,
+        ]
+        out, _ = self.run_scuba(args)
+        assert_str_equalish(test_string, out)
+
 
     ############################################################################
     # Hooks
