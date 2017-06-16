@@ -8,6 +8,10 @@ MUSL_RELEASE="musl-${MUSL_VERSION}"
 : ${MUSL_PATH:=/usr/local/musl}
 echo "\$MUSL_PATH = $MUSL_PATH"
 
+# CC might be set to musl-gcc, which is obviously
+# a problem if we haven't installed it yet! (#97)
+unset CC
+
 
 # Is it already installed?
 ver=$(${MUSL_PATH}/lib/libc.so 2>&1 | grep Version | awk '{ print $2 }')
