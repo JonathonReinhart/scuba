@@ -8,26 +8,13 @@ from unittest import TestCase
 import logging
 import os
 from os.path import join
-from tempfile import mkdtemp
 from shutil import rmtree
 
 from scuba.utils import shlex_split
 import scuba.config
 
-class TestConfig(TestCase):
-    def setUp(self):
-        self.orig_path = os.getcwd()
 
-        self.path = mkdtemp('scubatest')
-        os.chdir(self.path)
-        logging.info('Temp path: ' + self.path)
-
-    def tearDown(self):
-        rmtree(self.path)
-        self.path = None
-
-        os.chdir(self.orig_path)
-        self.orig_path = None
+class TestConfig(TmpDirTestCase):
 
     ######################################################################
     # Find config

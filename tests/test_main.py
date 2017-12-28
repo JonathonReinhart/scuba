@@ -11,8 +11,7 @@ except ImportError:
 import logging
 import os
 import sys
-from tempfile import mkdtemp, TemporaryFile, NamedTemporaryFile
-from shutil import rmtree
+from tempfile import TemporaryFile, NamedTemporaryFile
 import subprocess
 
 import scuba.__main__ as main
@@ -22,22 +21,7 @@ import scuba
 
 DOCKER_IMAGE = 'debian:8.2'
 
-class TestMain(TestCase):
-    def setUp(self):
-        # Run each test in its own temp directory
-        self.orig_path = os.getcwd()
-        self.path = mkdtemp('scubatest')
-        os.chdir(self.path)
-        logging.info('Temp path: ' + self.path)
-
-
-    def tearDown(self):
-        # Restore the working dir and cleanup the temp one
-        rmtree(self.path)
-        self.path = None
-        os.chdir(self.orig_path)
-        self.orig_path = None
-
+class TestMain(TmpDirTestCase):
 
     def run_scuba(self, args, exp_retval=0, mock_isatty=False, stdin=None):
         '''Run scuba, checking its return value
