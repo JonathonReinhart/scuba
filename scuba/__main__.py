@@ -385,10 +385,11 @@ def run_scuba(scuba_args):
         if scuba_args.dry_run:
             sys.exit(42)
 
-        # Explicitly pass sys.stdout/stderr so they apply to the
+        # Explicitly pass sys.stdin/stdout/stderr so they apply to the
         # child process if overridden (by tests).
         return dockerutil.call(
                 args = run_args,
+                stdin = sys.stdin,
                 stdout = sys.stdout,
                 stderr = sys.stderr,
                 )
