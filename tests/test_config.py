@@ -14,6 +14,45 @@ from scuba.utils import shlex_split
 import scuba.config
 
 
+class TestCommonScriptSchema(TmpDirTestCase):
+    def test_simple(self):
+        '''Simple form: value is a string'''
+        node = 'foo'
+        result = scuba.config._process_script_node(node, 'dontcare')
+        assert_equals(result, ['foo'])
+
+    def test_script_key_string(self):
+        '''Value is a mapping: script is a string'''
+        node = dict(
+            script = 'foo',
+            otherkey = 'other',
+        )
+        result = scuba.config._process_script_node(node, 'dontcare')
+        assert_equals(result, ['foo'])
+
+    def test_script_key_list(self):
+        '''Value is a mapping: script is a list'''
+        node = dict(
+            script = [
+                'foo',
+                'bar',
+            ],
+            otherkey = 'other',
+        )
+        result = scuba.config._process_script_node(node, 'dontcare')
+        assert_equals(result, ['foo', 'bar'])
+
+    def test_script_key_mapping_invalid(self):
+        '''Value is a mapping: script is a mapping (invalid)'''
+        node = dict(
+            script = dict(
+                whatisthis = 'idontknow',
+            ),
+        )
+        assert_raises(scuba.config.ConfigError,
+                scuba.config._process_script_node, node, 'dontcare')
+
+
 class TestConfig(TmpDirTestCase):
 
     ######################################################################
@@ -318,19 +357,6 @@ class TestConfig(TmpDirTestCase):
                   user:
                     - this list should be under
                     - a 'script'
-                ''')
-
-        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
-
-    # TODO: Any reason this shouldn't be valid?
-    def test_hooks_invalid_script_type(self):
-        '''hooks with string "script" are invalid'''
-        with open('.scuba.yml', 'w') as f:
-            f.write('''
-                image: na
-                hooks:
-                  user:
-                    script: this should be in a list under script
                 ''')
 
         assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')

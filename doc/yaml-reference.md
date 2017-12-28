@@ -54,7 +54,7 @@ hooks:
 
 ## Common script schema
 Several parts of `.scuba.yml` which define "scripts" use a common schema.
-The *common script schema* can define a "script" in one of two forms:
+The *common script schema* can define a "script" in one of several forms:
 
 The *simple* form is simply a single string value:
 ```yaml
@@ -63,7 +63,14 @@ hooks:
 ```
 
 The *complex* form is a mapping, which must contain a `script` subkey, whose
-value is a list of strings making up the script:
+value is either single string value
+```yaml
+hooks:
+  root:
+    script: echo hello
+```
+
+... or a list of strings making up the script:
 ```yaml
 hooks:
   root:
