@@ -242,7 +242,8 @@ class ScubaDive(object):
             self.__generate_hook_script(name)
 
         # allocate TTY if scuba's output is going to a terminal
-        if sys.stdout.isatty():
+        # and stdin is not redirected
+        if sys.stdout.isatty() and sys.stdin.isatty():
             self.add_option('--tty')
 
         # Process any aliases
@@ -384,10 +385,11 @@ def run_scuba(scuba_args):
         if scuba_args.dry_run:
             sys.exit(42)
 
-        # Explicitly pass sys.stdout/stderr so they apply to the
+        # Explicitly pass sys.stdin/stdout/stderr so they apply to the
         # child process if overridden (by tests).
         return dockerutil.call(
                 args = run_args,
+                stdin = sys.stdin,
                 stdout = sys.stdout,
                 stderr = sys.stderr,
                 )

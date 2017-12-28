@@ -39,7 +39,7 @@ class TestMain(TestCase):
         self.orig_path = None
 
 
-    def run_scuba(self, args, exp_retval=0, mock_isatty=False):
+    def run_scuba(self, args, exp_retval=0, mock_isatty=False, stdin=None):
         '''Run scuba, checking its return value
 
         Returns scuba/docker stdout data.
@@ -61,9 +61,12 @@ class TestMain(TestCase):
                         stdout = PseudoTTY(stdout)
                         stderr = PseudoTTY(stderr)
 
+                    old_stdin  = sys.stdin
                     old_stdout = sys.stdout
                     old_stderr = sys.stderr
 
+                    if stdin is not None:
+                        sys.stdin = stdin
                     sys.stdout = stdout
                     sys.stderr = stderr
 
@@ -95,6 +98,7 @@ class TestMain(TestCase):
                         return stdout_data, stderr_data
 
                     finally:
+                        sys.stdin  = old_stdin
                         sys.stdout = old_stdout
                         sys.stderr = old_stderr
                         for f, args, kw in atexit_funcs:
@@ -279,6 +283,19 @@ class TestMain(TestCase):
         out, _ = self.run_scuba(['./check_tty.sh'])
 
         assert_str_equalish(out, 'notatty')
+
+    def test_redirect_stdin(self):
+        '''Verify stdin redirection works'''
+        with open('.scuba.yml', 'w') as f:
+            f.write('image: {0}\n'.format(DOCKER_IMAGE))
+
+        test_str = 'hello world'
+        with TemporaryFile(prefix='scubatest-stdin', mode='w+t') as stdin:
+            stdin.write(test_str)
+            stdin.seek(0)
+            out, _ = self.run_scuba(['cat'], stdin=stdin)
+
+        assert_str_equalish(out, test_str)
 
 
     def _test_user(self, scuba_args=[]):
