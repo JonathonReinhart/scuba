@@ -7,19 +7,13 @@ except NameError:
     basestring = str    # Python 3
 
 from .constants import *
+from .utils import *
 
 class ConfigError(Exception):
     pass
 
 class ConfigNotFoundError(ConfigError):
     pass
-
-def shlex_split(s):
-    # shlex.split doesn't properly handle unicode input in Python 2.6.
-    # First try to encode it as an ASCII string. which
-    # may raise a UnicodeEncodeError.
-    s = str(s)
-    return shlex.split(s)
 
 # http://stackoverflow.com/a/9577670
 class Loader(yaml.Loader):
