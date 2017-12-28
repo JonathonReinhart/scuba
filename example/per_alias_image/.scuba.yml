@@ -2,11 +2,12 @@ image: !from_yaml ../common.yml image
 aliases:
 
   # This one inherits the default, top-level 'image'
+  # and specifies "script" as a string
   default:
-    script:
-      - cat /etc/os-release
+    script: cat /etc/os-release
 
   # This one specifies a different image to use
+  # and specifies "script" as a list
   different:
     image: alpine
     script:

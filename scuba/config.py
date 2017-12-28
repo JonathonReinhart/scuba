@@ -118,10 +118,13 @@ def _process_script_node(node, name):
         if not script:
             raise ConfigError("{0}: must have a 'script' subkey".format(name))
 
-        if not isinstance(script, list):
-            raise ConfigError("{0}.script: must be a list".format(name))
+        if isinstance(script, list):
+            return script
 
-        return script
+        if isinstance(script, basestring):
+            return [script]
+
+        raise ConfigError("{0}.script: must be a string or list".format(name))
 
     raise ConfigError("{0}: must be string or dict".format(name))
 

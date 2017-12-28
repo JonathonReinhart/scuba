@@ -4,6 +4,8 @@ from nose.tools import *
 from os.path import normpath
 import tempfile
 import shutil
+import unittest
+import logging
 
 def assert_set_equal(a, b):
     assert_equal(set(a), set(b))
@@ -100,3 +102,20 @@ class RedirStd(object):
 
         if self.orig_stderr:
             sys.stderr = self.orig_stderr
+
+
+class TmpDirTestCase(unittest.TestCase):
+    def setUp(self):
+        # Run each test in its own temp directory
+        self.orig_path = os.getcwd()
+        self.path = tempfile.mkdtemp('scubatest')
+        os.chdir(self.path)
+        logging.info('Temp path: ' + self.path)
+
+
+    def tearDown(self):
+        # Restore the working dir and cleanup the temp one
+        shutil.rmtree(self.path)
+        self.path = None
+        os.chdir(self.orig_path)
+        self.orig_path = None
