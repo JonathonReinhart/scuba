@@ -419,6 +419,22 @@ class TestMain(TestCase):
         out, _ = self.run_scuba(args)
         assert_str_equalish(test_string, out)
 
+    def test_complex_commands_in_alias(self):
+        '''Verify complex commands can be used in alias scripts'''
+        test_string = 'Hello world'
+        os.mkdir('foo')
+        with open('foo/bar.txt', 'w') as f:
+            f.write(test_string)
+        with open('.scuba.yml', 'w') as f:
+            f.write('image: {0}\n'.format(DOCKER_IMAGE))
+            f.write('aliases:\n')
+            f.write('  alias1:\n')
+            f.write('    script:\n')
+            f.write('      - cd foo && cat bar.txt\n')
+
+        out, _ = self.run_scuba(['alias1'])
+        assert_str_equalish(test_string, out)
+
 
     ############################################################################
     # Hooks

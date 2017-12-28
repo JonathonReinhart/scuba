@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 import yaml
 import shlex
@@ -7,19 +8,13 @@ except NameError:
     basestring = str    # Python 3
 
 from .constants import *
+from .utils import *
 
 class ConfigError(Exception):
     pass
 
 class ConfigNotFoundError(ConfigError):
     pass
-
-def shlex_split(s):
-    # shlex.split doesn't properly handle unicode input in Python 2.6.
-    # First try to encode it as an ASCII string. which
-    # may raise a UnicodeEncodeError.
-    s = str(s)
-    return shlex.split(s)
 
 # http://stackoverflow.com/a/9577670
 class Loader(yaml.Loader):
@@ -139,7 +134,7 @@ class ScubaAlias(object):
 
     @classmethod
     def from_dict(cls, name, node):
-        script = [shlex_split(cmd) for cmd in _process_script_node(node, name)]
+        script = _process_script_node(node, name)
         image = node.get('image') if isinstance(node, dict) else None
         return cls(name, script, image)
 
@@ -210,7 +205,7 @@ class ScubaConfig(object):
             command     A user command list (e.g. argv)
 
         Returns: A ScubaContext object with the following attributes:
-            script: a list of command lists
+            script: a list of command line strings
             image: the docker image name to use
         '''
         result = ScubaContext()
@@ -221,7 +216,7 @@ class ScubaConfig(object):
             alias = self.aliases.get(command[0])
             if not alias:
                 # Command is not an alias; use it as-is.
-                result.script = [command]
+                result.script = [shell_quote_cmd(command)]
             else:
                 # Using an alias
                 # Does this alias override the image?
@@ -239,7 +234,7 @@ class ScubaConfig(object):
                     # Alias is a single-line script; perform substituion
                     # and add user arguments.
                     command.pop(0)
-                    result.script = [alias.script[0] + command]
+                    result.script = [alias.script[0] + ' ' + shell_quote_cmd(command)]
 
         return result
 

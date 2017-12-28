@@ -5,6 +5,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 ### Fixed
 - Display nicer error message if no command is given and image doesn't specify a `Cmd` (#104)
+- Don't mangle && in scripts (#100)
 
 ## [2.1.0] - 2017-04-03
 ### Added
