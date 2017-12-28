@@ -266,7 +266,7 @@ class ScubaDive(object):
             if not default_cmd:
                 raise ScubaError('No command given and no image-specified command')
             verbose_msg('{0} Cmd: "{1}"'.format(context.image, default_cmd))
-            context.script = [default_cmd]
+            context.script = [shell_quote_cmd(default_cmd)]
 
         # Make scubainit the entrypoint, and manually insert an existing
         # entrypoint before each user command
@@ -280,8 +280,9 @@ class ScubaDive(object):
             writeln(f, '# Auto-generated from scuba')
             writeln(f, 'set -e')
             for cmd in context.script:
-                cmd = entrypoint + cmd
-                writeln(f, shell_quote_cmd(cmd))
+                if entrypoint:
+                    cmd = shell_quote_cmd(entrypoint) + ' ' + cmd
+                writeln(f, cmd)
 
         self.context = context
 

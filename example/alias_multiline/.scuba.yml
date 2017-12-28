@@ -5,5 +5,4 @@ aliases:
   complex:
     script:
       - echo 'this is a complex script'
-      - date
-      - uname -a
+      - date && uname -a
