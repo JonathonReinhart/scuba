@@ -121,6 +121,15 @@ class TestMain(TestCase):
         out, _ = self.run_scuba([])
         self.assertTrue('Hello from alpine-hello' in out)
 
+    def test_no_image_cmd(self):
+        '''Verify scuba gracefully handles an image with no Cmd and no user command'''
+
+        with open('.scuba.yml', 'w') as f:
+            f.write('image: {0}\n'.format('jreinhart/scratch'))
+
+        # ScubaError -> exit(128)
+        out, _ = self.run_scuba([], 128)
+
     def test_handle_get_image_command_error(self):
         '''Verify scuba handles a get_image_command error'''
 
