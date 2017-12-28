@@ -6,6 +6,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 - Display nicer error message if no command is given and image doesn't specify a `Cmd` (#104)
 - Don't mangle && in scripts (#100)
+- Don't allocate tty if stdin is redirected (#95)
 
 ## [2.1.0] - 2017-04-03
 ### Added
