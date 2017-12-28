@@ -262,8 +262,11 @@ class ScubaDive(object):
         if not context.script:
             # No user-provided command; we want to run the image's default command
             verbose_msg('No user command; getting command from image')
-            context.script = [get_image_command(context.image)]
-            verbose_msg('{0} Cmd: "{1}"'.format(context.image, context.script[0]))
+            default_cmd = get_image_command(context.image)
+            if not default_cmd:
+                raise ScubaError('No command given and no image-specified command')
+            verbose_msg('{0} Cmd: "{1}"'.format(context.image, default_cmd))
+            context.script = [default_cmd]
 
         # Make scubainit the entrypoint, and manually insert an existing
         # entrypoint before each user command
