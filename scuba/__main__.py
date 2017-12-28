@@ -242,7 +242,8 @@ class ScubaDive(object):
             self.__generate_hook_script(name)
 
         # allocate TTY if scuba's output is going to a terminal
-        if sys.stdout.isatty():
+        # and stdin is not redirected
+        if sys.stdout.isatty() and sys.stdin.isatty():
             self.add_option('--tty')
 
         # Process any aliases
