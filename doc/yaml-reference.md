@@ -24,7 +24,8 @@ The optional `aliases` node is a mapping (dictionary) of bash-like aliases,
 where each key is an alias, and each value is the command that will be run when
 that alias is specified as the *user command* during scuba invocation. The
 command is parsed like a shell command-line, and additional user arguments from
-the command line are appended to the alias arguments.
+the command line are appended to the alias arguments. Aliases follow the
+[*common script schema*](#common-script-schema).
 
 Example:
 ```yaml
@@ -33,6 +34,24 @@ aliases:
 ```
 In this example, `$ scuba build foo` would execute `make -j4 foo` in the
 container.
+
+Aliases can also override the global `image`, allowing aliases to use different
+images. Example:
+
+```yaml
+image: default_image
+aliases:
+
+  # This one inherits the default, top-level 'image' and specifies "script" as a string
+  default:
+    script: cat /etc/os-release
+
+  # This one specifies a different image to use and specifies "script" as a list
+  different:
+    image: alpine
+    script:
+      - cat /etc/os-release
+```
 
 ### `hooks`
 
