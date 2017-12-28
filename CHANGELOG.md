@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Changed
+- Allow `script` to be a single string value in the "common script schema"
+  which applies to hooks and aliases (#102)
+
 ### Fixed
 - Display nicer error message if no command is given and image doesn't specify a `Cmd` (#104)
 - Don't mangle && in scripts (#100)
