@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+### Fixed
+- Display nicer error message if no command is given and image doesn't specify a `Cmd` (#104)
+
 ## [2.1.0] - 2017-04-03
 ### Added
 - Added `--image` option (#87)
