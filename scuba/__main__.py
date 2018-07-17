@@ -11,6 +11,8 @@ import itertools
 import argparse
 import tempfile
 import shutil
+import platform
+import re
 
 from .cmdlineargs import *
 from .compat import File, StringIO
@@ -94,13 +96,14 @@ class ScubaDive(object):
 
         self.__locate_scubainit()
         self.__load_config()
+        self.__prepare_os_config()
 
 
     def prepare(self):
         '''Prepare to run the docker command'''
         self.__make_scubadir()
 
-        if self.is_remote_docker:
+        if self.is_remote_docker and self.__os_type != 'WSL':
             '''
             Docker is running remotely (e.g. boot2docker on OSX).
             We don't need to do any user setup whatsoever.
@@ -112,7 +115,7 @@ class ScubaDive(object):
             '''
             raise ScubaError('Remote docker not supported (DOCKER_HOST is set)')
 
-        # Docker is running natively
+        # Docker is running natively or as WSL
         self.__setup_native_run()
 
     def __str__(self):
@@ -185,7 +188,6 @@ class ScubaDive(object):
     def __load_config(self):
         '''Find and load .scuba.yml
         '''
-
         # top_path is where .scuba.yml is found, and becomes the top of our bind mount.
         # top_rel is the relative path from top_path to the current working directory,
         # and is where we'll set the working directory in the container (relative to
@@ -212,9 +214,61 @@ class ScubaDive(object):
     def __make_scubadir(self):
         '''Make temp directory where all ancillary files are bind-mounted
         '''
-        self.__scubadir_hostpath = tempfile.mkdtemp(prefix='scubadir')
+        if self.__os_type == 'WSL':
+            scuba_dir_path = os.path.join(self.__wsl_path, 'tmp/scubadir/')
+            if not os.path.exists(scuba_dir_path):
+                os.makedirs(scuba_dir_path)
+        else:
+            scuba_dir_path = tempfile.mkdtemp(prefix='scubadir')
+
+        verbose_msg('Making scubadir at "{0}"'.format(scuba_dir_path))
+
+        self.__scubadir_hostpath = scuba_dir_path
         self.__scubadir_contpath = '/.scuba'
         self.add_volume(self.__scubadir_hostpath, self.__scubadir_contpath)
+
+    def __prepare_os_config(self):
+        '''Determine if scuba is running in WSL and initialize settings properly
+        '''
+        # Determine general os information
+        self.__os_type = platform.system()
+
+        # Determine if running WSL
+        if self.__os_type == 'Linux' and 'Microsoft' in platform.platform():
+            self.__os_type = 'WSL'
+        verbose_msg('Detected os: {0}\n\t{1}'.format(self.__os_type, platform.platform()))
+
+        if self.__os_type == 'WSL':
+            # The current working directory must be located in a directory that
+            # both windows and wsl can find
+            if not re.match('^/[a-z]/', str(self.workdir)):
+                raise ScubaError('To use Scuba in WSL you must have your '
+                                 'windows file system mounted in the system '
+                                 'root directory "/" and have your scuba '
+                                 'project in that directory. For example, if '
+                                 'your main windows drive is located at C:\ it '
+                                 'must be mounted at /c/ for Scuba and Docker '
+                                 'to work correctly')
+            # Create scuba directory in /[a-z]/ProgramData/Scuba or /[a-z]/Scuba
+            root_drive_path = os.path.join(self.workdir[:3], 'ProgramData')
+            if not os.path.exists(root_drive_path):
+                root_drive_path = self.workdir[:3]
+            root_drive_path = os.path.join(root_drive_path, 'Scuba')
+            if not os.path.exists(root_drive_path):
+                os.mkdir(root_drive_path)
+            self.__wsl_path = root_drive_path
+            verbose_msg('Created WSL Scuba path at "{0}"'.format(root_drive_path))
+
+            # Move scuba init
+            new_scubainit_path = os.path.join(self.__wsl_path, 'scubainit')
+            if not os.path.isfile(new_scubainit_path):
+                shutil.copy(self.scubainit_path, new_scubainit_path)
+            if not os.path.isfile(new_scubainit_path):
+                raise ScubaError('scubainit could not be moved to '
+                                 '"{0}"'.format(new_scubainit_path))
+            verbose_msg('Moved scubainit from "{0}" to "{1}" '
+                        'for WSL'.format(self.scubainit_path, new_scubainit_path))
+            self.scubainit_path = new_scubainit_path
 
     def __setup_native_run(self):
         # These options are appended to mounted volume arguments
