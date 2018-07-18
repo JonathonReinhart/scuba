@@ -13,6 +13,7 @@ import tempfile
 import shutil
 import platform
 import re
+import random
 
 from .cmdlineargs import *
 from .compat import File, StringIO
@@ -215,7 +216,8 @@ class ScubaDive(object):
         '''Make temp directory where all ancillary files are bind-mounted
         '''
         if self.__os_type == 'WSL':
-            scuba_dir_path = os.path.join(self.__wsl_path, 'tmp/scubadir/')
+            rand = random.randint(10000, 99999)
+            scuba_dir_path = os.path.join(self.__wsl_path, 'tmp/scubadir' + str(rand))
             if not os.path.exists(scuba_dir_path):
                 os.makedirs(scuba_dir_path)
         else:
