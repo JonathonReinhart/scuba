@@ -56,3 +56,22 @@ def mkdir_p(path):
     except OSError as exc:
         if not (exc.errno == errno.EEXIST and os.path.isdir(path)):
             raise
+
+
+def parse_env_var(s):
+    """Parse an environment variable string
+
+    Returns a key-value tuple
+
+    Apply the same logic as `docker run -e`:
+    "If the operator names an environment variable without specifying a value,
+    then the current value of the named variable is propagated into the
+    container's environment
+    """
+    parts = s.split('=', 1)
+    if len(parts) == 2:
+        k, v = parts
+        return (k, v)
+
+    k = parts[0]
+    return (k, os.getenv(k))
