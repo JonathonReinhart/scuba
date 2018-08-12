@@ -5,6 +5,7 @@ from setuptools import setup, Command
 from distutils.command.build import build
 from setuptools.command.sdist import sdist 
 from subprocess import check_call
+import os
 
 
 class build_scubainit(Command):
@@ -25,11 +26,17 @@ class build_hook(build):
         self.run_command('build_scubainit')
         build.run(self)
 
+def read_project_file(path):
+    proj_dir = os.path.dirname(__file__)
+    path = os.path.join(proj_dir, 'README.md')
+    with open(path, 'r') as f:
+        return f.read()
 
 setup(
     name = 'scuba',
     version = scuba.version.__version__,
     description = 'Simplify use of Docker containers for building software',
+    long_description = read_project_file('README.md'),
     classifiers = [
         'Development Status :: 5 - Production/Stable',
         'Environment :: Console',
