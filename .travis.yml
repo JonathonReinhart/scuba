@@ -53,7 +53,7 @@ deploy:
 
   # Test PyPI (on any push to master)
   - provider: pypi
-    server: https://testpypi.python.org/pypi
+    server: https://test.pypi.org/legacy
     user: jreinhart
     password:
       secure: "BYbUHbV3G2lsvDDR9LrYCRFz/g+LAI/pmfa+d+KMlXbY+s7v+pYsENRmwVbhpc1oDSn0UnKgJyc3ZyGAEkmlV0Cog9YxWnoVQgmsT321jIuQur1SjeQ70mgkwS3fRh1hdzrfKkJ3SghFfFyrXzK1kyn8TzDBg7sSyymep2MgO+kRsYxIKP2e8GCTPLmXhifxAPDQZ6rDtRCl4fDgSoakLNsaHQPeaEgEN7E4699edce0lWN2g+2w3NGAmO6jdx3Ly64XX6MoM47/Pjdmi/xncqAqVQ37CCTIM2HRNClujy35KVnTOpjN0ZSsPuCYfx0aIOBzR3cCo7II2VBziQhQ09o1gJOEnd/q2/4rUoaa9Plu1SeO0yQxvjtBS+7iSDnZEDzqQvah/XidZzv6efmvNrme5ueTGnFUt+v4bq03Nu661Jat9FbaDb8NCi1qhnUG+ebJ4t3EIXqd4vIdu6M+1RdNqU5Wmf4j6IUutrjnF8qOexG0hh/MkdiSO6o+cEbltiMhr+Z+F6Y7j9snsqqYvnZ42mjf7KNKfX56/hfi8do2Z9Lb3V9xTHqiL9reRPQdq5s+iXmC75/Ca9rZv6UtNRPt56FdBtEEWGuFcbenZRk/av2baX/MFbqGZbToQ0KbiDcDQNKZGNeaH6+6YfSvjhmFUtM/duhmQaCfcXjhoZA="      
