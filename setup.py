@@ -37,6 +37,7 @@ setup(
     version = scuba.version.__version__,
     description = 'Simplify use of Docker containers for building software',
     long_description = read_project_file('README.md'),
+    long_description_content_type = 'text/markdown',
     classifiers = [
         'Development Status :: 5 - Production/Stable',
         'Environment :: Console',
