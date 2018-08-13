@@ -28,7 +28,7 @@ class build_hook(build):
 
 def read_project_file(path):
     proj_dir = os.path.dirname(__file__)
-    path = os.path.join(proj_dir, 'README.md')
+    path = os.path.join(proj_dir, path)
     with open(path, 'r') as f:
         return f.read()
 
