@@ -1,6 +1,5 @@
 from __future__ import print_function
 from os.path import abspath, dirname, exists, join, normpath
-import subprocess
 import sys
 
 # This logic has been adapted from that of PyInstaller
@@ -19,10 +18,13 @@ BASE_VERSION = '2.2.0'
 git_archive_rev = "$Format:%h$"
 
 def git_describe():
-    # Get the version from the local Git repository
-    subprocess.check_call(['git', 'update-index', '-q', '--refresh'], cwd=PROJPATH)
+    from subprocess import check_call
+    from .compat import check_output    # Py2.6
 
-    desc = subprocess.check_output(['git', 'describe', '--long', '--dirty', '--tag'], cwd=PROJPATH)
+    # Get the version from the local Git repository
+    check_call(['git', 'update-index', '-q', '--refresh'], cwd=PROJPATH)
+
+    desc = check_output(['git', 'describe', '--long', '--dirty', '--tag'], cwd=PROJPATH)
     desc = desc.decode('utf-8').strip()
 
     tag, commits, rev = desc.split('-', 2)
