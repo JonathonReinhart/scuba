@@ -28,13 +28,28 @@ class build_hook(build):
 
 def read_project_file(path):
     proj_dir = os.path.dirname(__file__)
-    path = os.path.join(proj_dir, 'README.md')
+    path = os.path.join(proj_dir, path)
     with open(path, 'r') as f:
         return f.read()
 
+################################################################################
+# Dynamic versioning
+
+def get_version():
+    # Travis builds
+    # If we're not building for a tag, then append the build number
+    build_num = os.getenv('TRAVIS_BUILD_NUMBER')
+    build_tag = os.getenv('TRAVIS_TAG')
+    if (not build_tag) and (build_num != None):
+        return '{0}.{1}'.format(scuba.version.BASE_VERSION, build_num)
+
+    return scuba.version.__version__
+
+################################################################################
+
 setup(
     name = 'scuba',
-    version = scuba.version.__version__,
+    version = get_version(),
     description = 'Simplify use of Docker containers for building software',
     long_description = read_project_file('README.md'),
     long_description_content_type = 'text/markdown',
