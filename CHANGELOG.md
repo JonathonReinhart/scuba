@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+### Added
+- Add -e/--env command-line option (#111)
+
+### Changed
+- Implemented auto-versioning using Git and Travis (#112)
+
+
 ## [2.2.0] - 2018-03-07
 ### Changed
 - Allow `script` to be a single string value in the "common script schema"
