@@ -2,6 +2,10 @@ from __future__ import print_function
 
 from nose.tools import *
 from unittest import TestCase
+try:
+    from unittest import mock
+except ImportError:
+    import mock
 
 import logging
 import shlex
@@ -71,3 +75,24 @@ class TestUtils(TestCase):
     def test_mkdir_p_fail_exist(self):
         '''mkdir_p fails when expected'''
         assert_raises(OSError, scuba.utils.mkdir_p, '/dev/null')
+
+
+    def test_parse_env_var(self):
+        '''parse_env_var returns a key, value pair'''
+        result = scuba.utils.parse_env_var('KEY=value')
+        self.assertEqual(result, ('KEY', 'value'))
+
+    def test_parse_env_var_more_equals(self):
+        '''parse_env_var handles multiple equals signs'''
+        result = scuba.utils.parse_env_var('KEY=anotherkey=value')
+        self.assertEqual(result, ('KEY', 'anotherkey=value'))
+
+    def test_parse_env_var_no_equals(self):
+        '''parse_env_var handles no equals and gets value from environment'''
+        def mocked_getenv(key):
+            self.assertEqual(key, 'KEY')
+            return 'mockedvalue'
+
+        with mock.patch('os.getenv', side_effect=mocked_getenv):
+            result = scuba.utils.parse_env_var('KEY')
+        self.assertEqual(result, ('KEY', 'mockedvalue'))

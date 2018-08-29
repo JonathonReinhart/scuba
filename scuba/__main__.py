@@ -11,6 +11,7 @@ import itertools
 import argparse
 import tempfile
 import shutil
+import collections
 
 from .cmdlineargs import *
 from .compat import File, StringIO
@@ -49,6 +50,9 @@ def parse_scuba_args(argv):
     ap.add_argument('-d', '--docker-arg', dest='docker_args', action='append',
             type=lambda x: shlex.split(x), default=[],
             help="Pass additional arguments to 'docker run'")
+    ap.add_argument('-e', '--env', dest='env_vars', action='append',
+            type=parse_env_var, default=[],
+            help='Environment variables to pass to docker')
     ap.add_argument('--list-aliases', action='store_true',
             help=argparse.SUPPRESS)
     ap.add_argument('--list-available-options', action=ListOptsAction,
@@ -69,6 +73,14 @@ def parse_scuba_args(argv):
     # Flatten docker arguments into single list
     args.docker_args = list(itertools.chain.from_iterable(args.docker_args))
 
+    # Convert env var tuples into a dict, forbidding duplicates
+    env = dict()
+    for k,v in args.env_vars:
+        if k in env:
+            ap.error("Duplicate env var {}".format(k))
+        env[k] = v
+    args.env_vars = env
+
     global g_verbose
     g_verbose = args.verbose
 
@@ -79,17 +91,22 @@ class ScubaError(Exception):
     pass
 
 class ScubaDive(object):
-    def __init__(self, user_command, docker_args=[], as_root=False, verbose=False,
+    def __init__(self, user_command, docker_args=None, env=None, as_root=False, verbose=False,
             image_override=None):
+
+        env = env or {}
+        if not isinstance(env, collections.Mapping):
+            raise ValueError('Argument env must be dict-like')
+
         self.user_command = user_command
         self.as_root = as_root
         self.verbose = verbose
         self.image_override = image_override
 
         # These will be added to docker run cmdline
-        self.env_vars = {}
+        self.env_vars = env
         self.volumes = []
-        self.options = docker_args
+        self.options = docker_args or []
         self.workdir = None
 
         self.__locate_scubainit()
@@ -359,6 +376,7 @@ def run_scuba(scuba_args):
     dive = ScubaDive(
         scuba_args.command,
         docker_args = scuba_args.docker_args,
+        env = scuba_args.env_vars,
         as_root = scuba_args.root,
         verbose = scuba_args.verbose,
         image_override = scuba_args.image,
