@@ -9,6 +9,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 - Implemented auto-versioning using Git and Travis (#112)
 
+### Fixed
+- Copy scubainit to allow SELinux relabeling (#117)
+
 
 ## [2.2.0] - 2018-03-07
 ### Changed

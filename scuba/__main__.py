@@ -251,8 +251,10 @@ class ScubaDive(object):
             self.add_env('SCUBAINIT_VERBOSE', 1)
 
 
-        # Mount scubainit in the container
-        self.add_volume(self.scubainit_path, '/scubainit', ['ro'])
+        # Copy scubainit into the container
+        # We make a copy because Docker 1.13 gets pissed if we try to re-label
+        # /usr, and Fedora 28 gives an AVC denial.
+        scubainit_cpath = self.copy_scubadir_file('scubainit', self.scubainit_path)
 
         # Hooks
         for name in ('root', 'user', ):
@@ -289,7 +291,7 @@ class ScubaDive(object):
         # Make scubainit the entrypoint, and manually insert an existing
         # entrypoint before each user command
         entrypoint = get_image_entrypoint(context.image) or []
-        self.add_option('--entrypoint=/scubainit')
+        self.add_option('--entrypoint={0}'.format(scubainit_cpath))
 
         # The user command is executed via a generated shell script
         with self.open_scubadir_file('command.sh', 'wt') as f:
@@ -321,6 +323,18 @@ class ScubaDive(object):
         f = File(path, mode)
         f.container_path = os.path.join(self.__scubadir_contpath, name)
         return f
+
+
+    def copy_scubadir_file(self, name, source):
+        '''Copies source into the scubadir
+
+        Returns the container-path of the copied file
+        '''
+        dest = os.path.join(self.__scubadir_hostpath, name)
+        assert not os.path.exists(dest)
+        shutil.copy2(source, dest)
+
+        return os.path.join(self.__scubadir_contpath, name)
 
 
     def __generate_hook_script(self, name):
