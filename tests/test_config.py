@@ -9,8 +9,8 @@ import logging
 import os
 from os.path import join
 from shutil import rmtree
+import shlex
 
-from scuba.utils import shlex_split
 import scuba.config
 
 
@@ -232,7 +232,7 @@ class TestConfig(TmpDirTestCase):
                 )
         result = cfg.process_command(['cmd', 'arg1', 'arg2'])
         assert_equal(len(result.script), 1)
-        assert_equal(shlex_split(result.script[0]), ['cmd', 'arg1', 'arg2'])
+        assert_equal(shlex.split(result.script[0]), ['cmd', 'arg1', 'arg2'])
 
     def test_process_command_aliases_unused(self):
         '''process_command handles unused aliases'''
@@ -245,7 +245,7 @@ class TestConfig(TmpDirTestCase):
                 )
         result = cfg.process_command(['cmd', 'arg1', 'arg2'])
         assert_equal(len(result.script), 1)
-        assert_equal(shlex_split(result.script[0]), ['cmd', 'arg1', 'arg2'])
+        assert_equal(shlex.split(result.script[0]), ['cmd', 'arg1', 'arg2'])
 
     def test_process_command_aliases_used_noargs(self):
         '''process_command handles aliases with no args'''
@@ -258,7 +258,7 @@ class TestConfig(TmpDirTestCase):
                 )
         result = cfg.process_command(['apple', 'arg1', 'arg2'])
         assert_equal(len(result.script), 1)
-        assert_equal(shlex_split(result.script[0]), ['banana', 'arg1', 'arg2'])
+        assert_equal(shlex.split(result.script[0]), ['banana', 'arg1', 'arg2'])
 
     def test_process_command_aliases_used_withargs(self):
         '''process_command handles aliases with args'''
@@ -271,7 +271,7 @@ class TestConfig(TmpDirTestCase):
                 )
         result = cfg.process_command(['apple', 'arg1', 'arg2 with spaces'])
         assert_equal(len(result.script), 1)
-        assert_equal(shlex_split(result.script[0]), ['banana', 'cherry', 'pie is good', 'arg1', 'arg2 with spaces'])
+        assert_equal(shlex.split(result.script[0]), ['banana', 'cherry', 'pie is good', 'arg1', 'arg2 with spaces'])
 
     def test_process_command_multiline_aliases_used(self):
         '''process_command handles multiline aliases'''
@@ -287,8 +287,8 @@ class TestConfig(TmpDirTestCase):
                 )
         result = cfg.process_command(['apple'])
         assert_equal(len(result.script), 2)
-        assert_equal(shlex_split(result.script[0]), ['banana', 'cherry', 'pie is good'])
-        assert_equal(shlex_split(result.script[1]), ['so', 'is', 'peach'])
+        assert_equal(shlex.split(result.script[0]), ['banana', 'cherry', 'pie is good'])
+        assert_equal(shlex.split(result.script[1]), ['so', 'is', 'peach'])
 
     def test_process_command_multiline_aliases_forbid_user_args(self):
         '''process_command raises ConfigError when args are specified with multiline aliases'''

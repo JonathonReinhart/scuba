@@ -44,7 +44,7 @@ class Loader(yaml.Loader):
 
         # Split on unquoted spaces
         try:
-            parts = shlex_split(content)
+            parts = shlex.split(content)
         except UnicodeEncodeError:
             raise yaml.YAMLError('Non-ASCII arguments to !from_yaml are unsupported')
 
