@@ -368,6 +368,22 @@ class TestMain(TmpDirTestCase):
         assert_str_equalish('success', out)
 
 
+    def test_image_entrypoint_multiline(self):
+        '''Verify entrypoints are handled correctly with multi-line scripts'''
+        with open('.scuba.yml', 'w') as f:
+            f.write('''
+                image: scuba/entrypoint-test
+                aliases:
+                  testalias:
+                    script:
+                      - cat entrypoint_works.txt
+                      - echo $ENTRYPOINT_WORKS
+                ''')
+
+        out, _ = self.run_scuba(['testalias'])
+        assert_str_equalish('\n'.join(['success']*2), out)
+
+
     def test_image_override(self):
         '''Verify --image works'''
 
