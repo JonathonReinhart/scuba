@@ -48,13 +48,13 @@ def get_version():
         if commits == 0 and not rev.endswith('dirty'):
             return BASE_VERSION
 
-        return '{0}+{1}-{2}'.format(BASE_VERSION, commits, rev)
+        return '{}+{}-{}'.format(BASE_VERSION, commits, rev)
 
 
     # Git archive
     # If this was produced via `git archive`, we'll use the version it provides
     if not git_archive_rev.startswith('$'):
-        return '{0}+g{1}'.format(BASE_VERSION, git_archive_rev)
+        return '{}+g{}'.format(BASE_VERSION, git_archive_rev)
 
 
     # Package resource

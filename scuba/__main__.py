@@ -138,9 +138,9 @@ class ScubaDive(object):
     def __str__(self):
         s = StringIO()
         writeln(s, 'ScubaDive')
-        writeln(s, '   verbose:      {0}'.format(self.verbose))
-        writeln(s, '   as_root:      {0}'.format(self.as_root))
-        writeln(s, '   workdir:      {0}'.format(self.workdir))
+        writeln(s, '   verbose:      {}'.format(self.verbose))
+        writeln(s, '   as_root:      {}'.format(self.as_root))
+        writeln(s, '   workdir:      {}'.format(self.workdir))
 
         writeln(s, '   options:')
         for a in self.options:
@@ -148,13 +148,13 @@ class ScubaDive(object):
 
         writeln(s, '   env_vars:')
         for k,v in self.env_vars.items():
-            writeln(s, '      {0}={1}'.format(k, v))
+            writeln(s, '      {}={}'.format(k, v))
 
         writeln(s, '   volumes:')
         for hostpath, contpath, options in self.__get_vol_opts():
-            writeln(s, '      {0} => {1} {2}'.format(hostpath, contpath, options))
+            writeln(s, '      {} => {} {}'.format(hostpath, contpath, options))
 
-        writeln(s, '   user_command: {0}'.format(self.user_command))
+        writeln(s, '   user_command: {}'.format(self.user_command))
         writeln(s, '   context:')
         writeln(s, '     script: ' + str(self.context.script)) 
         writeln(s, '     image:  ' + str(self.context.image)) 
@@ -199,7 +199,7 @@ class ScubaDive(object):
 
         self.scubainit_path = os.path.join(pkg_path, 'scubainit')
         if not os.path.isfile(self.scubainit_path):
-            raise ScubaError('scubainit not found at "{0}"'.format(self.scubainit_path))
+            raise ScubaError('scubainit not found at "{}"'.format(self.scubainit_path))
 
 
     def __load_config(self):
@@ -244,7 +244,7 @@ class ScubaDive(object):
 
 
         # Pass variables to scubainit
-        self.add_env('SCUBAINIT_UMASK', '{0:04o}'.format(get_umask()))
+        self.add_env('SCUBAINIT_UMASK', '{:04o}'.format(get_umask()))
 
         if not self.as_root:
             self.add_env('SCUBAINIT_UID', os.getuid())
@@ -288,13 +288,13 @@ class ScubaDive(object):
             default_cmd = get_image_command(context.image)
             if not default_cmd:
                 raise ScubaError('No command given and no image-specified command')
-            verbose_msg('{0} Cmd: "{1}"'.format(context.image, default_cmd))
+            verbose_msg('{} Cmd: "{}"'.format(context.image, default_cmd))
             context.script = [shell_quote_cmd(default_cmd)]
 
         # Make scubainit the entrypoint, and manually insert an existing
         # entrypoint before each user command
         entrypoint = get_image_entrypoint(context.image) or []
-        self.add_option('--entrypoint={0}'.format(scubainit_cpath))
+        self.add_option('--entrypoint={}'.format(scubainit_cpath))
 
         # The user command is executed via a generated shell script
         with self.open_scubadir_file('command.sh', 'wt') as f:
@@ -346,9 +346,9 @@ class ScubaDive(object):
             return
 
         # Generate the hook script, mount it into the container, and tell scubainit
-        with self.open_scubadir_file('hooks/{0}.sh'.format(name), 'wt') as f:
+        with self.open_scubadir_file('hooks/{}.sh'.format(name), 'wt') as f:
 
-            self.add_env('SCUBAINIT_HOOK_{0}'.format(name.upper()), f.container_path)
+            self.add_env('SCUBAINIT_HOOK_{}'.format(name.upper()), f.container_path)
 
             writeln(f, '#!/bin/sh')
             writeln(f, '# Auto-generated from .scuba.yml')
@@ -370,7 +370,7 @@ class ScubaDive(object):
         ]
 
         for name,val in self.env_vars.items():
-            args.append('--env={0}={1}'.format(name, val))
+            args.append('--env={}={}'.format(name, val))
 
         for hostpath, contpath, options in self.__get_vol_opts():
             args.append(make_vol_opt(hostpath, contpath, options))
@@ -403,7 +403,7 @@ def run_scuba(scuba_args):
         print('ALIAS\tIMAGE')
         for name in sorted(dive.config.aliases):
             alias = dive.config.aliases[name]
-            print('{0}\t{1}'.format(alias.name, alias.image or dive.config.image))
+            print('{}\t{}'.format(alias.name, alias.image or dive.config.image))
         return
 
     try:

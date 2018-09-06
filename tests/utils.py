@@ -30,7 +30,7 @@ def assert_startswith(s, prefix):
     s = str(s)
     prefix = str(prefix)
     if not s.startswith(prefix):
-        raise AssertionError('"{0}" does not start with "{1}"'
+        raise AssertionError('"{}" does not start with "{}"'
                 .format(escape_str(s), prefix))
 
 def escape_str(s):

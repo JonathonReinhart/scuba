@@ -13,7 +13,7 @@ class NoSuchImageError(DockerError):
         self.image = image
 
     def __str__(self):
-        return 'No such image: {0}'.format(self.image)
+        return 'No such image: {}'.format(self.image)
 
 
 def __wrap_docker_exec(func):
@@ -46,7 +46,7 @@ def docker_inspect(image):
     if not p.returncode == 0:
         if 'no such image' in stderr.lower():
             raise NoSuchImageError(image)
-        raise DockerError('Failed to inspect image: {0}'.format(stderr.strip()))
+        raise DockerError('Failed to inspect image: {}'.format(stderr.strip()))
 
     return json.loads(stdout)[0]
 
@@ -57,7 +57,7 @@ def docker_pull(image):
     # If this fails, the default docker stdout/stderr looks good to the user.
     ret = call(args)
     if ret != 0:
-        raise DockerError('Failed to pull image "{0}"'.format(image))
+        raise DockerError('Failed to pull image "{}"'.format(image))
 
 def docker_inspect_or_pull(image):
     '''Inspects a docker image, pulling it if it doesn't exist'''
@@ -74,7 +74,7 @@ def get_image_command(image):
     try:
         return info['Config']['Cmd']
     except KeyError as ke:
-        raise DockerError('Failed to inspect image: JSON result missing key {0}'.format(ke))
+        raise DockerError('Failed to inspect image: JSON result missing key {}'.format(ke))
 
 def get_image_entrypoint(image):
     '''Gets the image entrypoint'''
@@ -82,12 +82,12 @@ def get_image_entrypoint(image):
     try:
         return info['Config']['Entrypoint']
     except KeyError as ke:
-        raise DockerError('Failed to inspect image: JSON result missing key {0}'.format(ke))
+        raise DockerError('Failed to inspect image: JSON result missing key {}'.format(ke))
 
 
 def make_vol_opt(hostdir, contdir, options=None):
     '''Generate a docker volume option'''
-    vol = '--volume={0}:{1}'.format(hostdir, contdir)
+    vol = '--volume={}:{}'.format(hostdir, contdir)
     if options != None:
         if isinstance(options, str):
             options = (options,)

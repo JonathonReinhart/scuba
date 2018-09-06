@@ -94,7 +94,7 @@ class TestMain(TmpDirTestCase):
         '''Verify basic scuba functionality'''
 
         with open('.scuba.yml', 'w') as f:
-            f.write('image: {0}\n'.format(DOCKER_IMAGE))
+            f.write('image: {}\n'.format(DOCKER_IMAGE))
 
         args = ['/bin/echo', '-n', 'my output']
         out, _ = self.run_scuba(args)
@@ -105,7 +105,7 @@ class TestMain(TmpDirTestCase):
         '''Verify scuba works with no given command'''
 
         with open('.scuba.yml', 'w') as f:
-            f.write('image: {0}\n'.format('jreinhart/hello'))
+            f.write('image: {}\n'.format('jreinhart/hello'))
 
         out, _ = self.run_scuba([])
         self.assertTrue('Hello from alpine-hello' in out)
@@ -114,7 +114,7 @@ class TestMain(TmpDirTestCase):
         '''Verify scuba gracefully handles an image with no Cmd and no user command'''
 
         with open('.scuba.yml', 'w') as f:
-            f.write('image: {0}\n'.format('jreinhart/scratch'))
+            f.write('image: {}\n'.format('jreinhart/scratch'))
 
         # ScubaError -> exit(128)
         out, _ = self.run_scuba([], 128)
@@ -123,7 +123,7 @@ class TestMain(TmpDirTestCase):
         '''Verify scuba handles a get_image_command error'''
 
         with open('.scuba.yml', 'w') as f:
-            f.write('image: {0}\n'.format(DOCKER_IMAGE))
+            f.write('image: {}\n'.format(DOCKER_IMAGE))
 
         def mocked_gic(*args, **kw):
             raise scuba.dockerutil.DockerError('mock error')
@@ -183,7 +183,7 @@ class TestMain(TmpDirTestCase):
         '''Verify scuba gracefully handles docker not being installed'''
 
         with open('.scuba.yml', 'w') as f:
-            f.write('image: {0}\n'.format(DOCKER_IMAGE))
+            f.write('image: {}\n'.format(DOCKER_IMAGE))
 
         args = ['/bin/echo', '-n', 'my output']
 
@@ -200,7 +200,7 @@ class TestMain(TmpDirTestCase):
         '''Verify scuba handles --dry-run and --verbose'''
 
         with open('.scuba.yml', 'w') as f:
-            f.write('image: {0}\n'.format(DOCKER_IMAGE))
+            f.write('image: {}\n'.format(DOCKER_IMAGE))
 
         args = ['--dry-run', '--verbose', '/bin/false']
 
@@ -215,7 +215,7 @@ class TestMain(TmpDirTestCase):
         '''Verify scuba handles cmdline args'''
 
         with open('.scuba.yml', 'w') as f:
-            f.write('image: {0}\n'.format(DOCKER_IMAGE))
+            f.write('image: {}\n'.format(DOCKER_IMAGE))
 
         with open('test.sh', 'w') as f:
             f.write('#!/bin/sh\n')
@@ -233,7 +233,7 @@ class TestMain(TmpDirTestCase):
         '''Verify files created under scuba have correct ownership'''
 
         with open('.scuba.yml', 'w') as f:
-            f.write('image: {0}\n'.format(DOCKER_IMAGE))
+            f.write('image: {}\n'.format(DOCKER_IMAGE))
 
         filename = 'newfile.txt'
 
@@ -246,7 +246,7 @@ class TestMain(TmpDirTestCase):
 
     def _setup_test_tty(self):
         with open('.scuba.yml', 'w') as f:
-            f.write('image: {0}\n'.format(DOCKER_IMAGE))
+            f.write('image: {}\n'.format(DOCKER_IMAGE))
 
         with open('check_tty.sh', 'w') as f:
             f.write('#!/bin/sh\n')
@@ -272,7 +272,7 @@ class TestMain(TmpDirTestCase):
     def test_redirect_stdin(self):
         '''Verify stdin redirection works'''
         with open('.scuba.yml', 'w') as f:
-            f.write('image: {0}\n'.format(DOCKER_IMAGE))
+            f.write('image: {}\n'.format(DOCKER_IMAGE))
 
         test_str = 'hello world'
         with TemporaryFile(prefix='scubatest-stdin', mode='w+t') as stdin:
@@ -285,7 +285,7 @@ class TestMain(TmpDirTestCase):
 
     def _test_user(self, scuba_args=[]):
         with open('.scuba.yml', 'w') as f:
-            f.write('image: {0}\n'.format(DOCKER_IMAGE))
+            f.write('image: {}\n'.format(DOCKER_IMAGE))
 
         args = scuba_args + ['/bin/sh', '-c', 'echo $(id -u) $(id -un) $(id -g) $(id -gn)']
         out, _ = self.run_scuba(args)
@@ -318,7 +318,7 @@ class TestMain(TmpDirTestCase):
 
     def _test_home_writable(self, scuba_args=[]):
         with open('.scuba.yml', 'w') as f:
-            f.write('image: {0}\n'.format(DOCKER_IMAGE))
+            f.write('image: {}\n'.format(DOCKER_IMAGE))
 
         args = scuba_args + ['/bin/sh', '-c', 'echo success >> ~/testfile; cat ~/testfile']
         out, _ = self.run_scuba(args)
@@ -340,7 +340,7 @@ class TestMain(TmpDirTestCase):
         '''Verify -d successfully passes arbitrary docker arguments'''
 
         with open('.scuba.yml', 'w') as f:
-            f.write('image: {0}\n'.format(DOCKER_IMAGE))
+            f.write('image: {}\n'.format(DOCKER_IMAGE))
 
         data = 'Lorem ipsum dolor sit amet'
         data_path = '/lorem/ipsum'
@@ -350,7 +350,7 @@ class TestMain(TmpDirTestCase):
             tempf.flush()
 
             args = [
-                '-d=-v {0}:{1}:ro,z'.format(tempf.name, data_path),
+                '-d=-v {}:{}:ro,z'.format(tempf.name, data_path),
                 'cat', data_path,
             ]
             out, _ = self.run_scuba(args)
@@ -429,7 +429,7 @@ class TestMain(TmpDirTestCase):
         with open('foo/bar.txt', 'w') as f:
             f.write(test_string)
         with open('.scuba.yml', 'w') as f:
-            f.write('image: {0}\n'.format(DOCKER_IMAGE))
+            f.write('image: {}\n'.format(DOCKER_IMAGE))
             f.write('aliases:\n')
             f.write('  alias1:\n')
             f.write('    script:\n')
@@ -444,9 +444,9 @@ class TestMain(TmpDirTestCase):
 
     def _test_one_hook(self, hookname, exp_uid, exp_gid):
         with open('.scuba.yml', 'w') as f:
-            f.write('image: {0}\n'.format(DOCKER_IMAGE))
+            f.write('image: {}\n'.format(DOCKER_IMAGE))
             f.write('hooks:\n')
-            f.write('  {0}: echo $(id -u) $(id -g)\n'.format(hookname))
+            f.write('  {}: echo $(id -u) $(id -g)\n'.format(hookname))
 
         args = ['/bin/sh', '-c', 'echo success']
         out, _ = self.run_scuba(args)
@@ -474,7 +474,7 @@ class TestMain(TmpDirTestCase):
     def test_env_var_keyval(self):
         '''Verify -e KEY=VAL works'''
         with open('.scuba.yml', 'w') as f:
-            f.write('image: {0}\n'.format(DOCKER_IMAGE))
+            f.write('image: {}\n'.format(DOCKER_IMAGE))
         args = [
             '-e', 'KEY=VAL',
             '/bin/sh', '-c', 'echo $KEY',
@@ -485,7 +485,7 @@ class TestMain(TmpDirTestCase):
     def test_env_var_key_only(self):
         '''Verify -e KEY works'''
         with open('.scuba.yml', 'w') as f:
-            f.write('image: {0}\n'.format(DOCKER_IMAGE))
+            f.write('image: {}\n'.format(DOCKER_IMAGE))
         args = [
             '-e', 'KEY',
             '/bin/sh', '-c', 'echo $KEY',
