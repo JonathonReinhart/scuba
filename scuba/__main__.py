@@ -177,8 +177,6 @@ class ScubaDive(object):
     def add_volume(self, hostpath, contpath, options=None):
         '''Add a volume (bind-mount) to the docker run invocation
         '''
-        if options is None:
-            options = []
         self.volumes.append((hostpath, contpath, options))
 
     def add_option(self, option):
@@ -237,7 +235,7 @@ class ScubaDive(object):
         # These options are appended to mounted volume arguments
         # NOTE: This tells Docker to re-label the directory for compatibility
         # with SELinux. See `man docker-run` for more information.
-        self.vol_opts = ['z']
+        self.default_vol_opts = ['z']
 
 
         # Pass variables to scubainit
@@ -252,6 +250,8 @@ class ScubaDive(object):
 
 
         # Mount scubainit in the container
+        # Note: We don't use the 'z' option here because we don't want to
+        # re-label files in the installation directory (under /usr)
         self.add_volume(self.scubainit_path, '/scubainit', ['ro'])
 
         # Hooks
@@ -341,7 +341,9 @@ class ScubaDive(object):
 
     def __get_vol_opts(self):
         for hostpath, contpath, options in self.volumes:
-            yield hostpath, contpath, options + self.vol_opts
+            if options is None:
+                options = self.default_vol_opts
+            yield hostpath, contpath, options
 
     def get_docker_cmdline(self):
         args = ['docker', 'run',
