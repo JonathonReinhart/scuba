@@ -372,3 +372,68 @@ class TestConfig(TmpDirTestCase):
                 ''')
 
         assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
+
+
+    ############################################################################
+    # Env
+
+    def test_env_top_dict(self):
+        '''Top-level environment can be loaded (dict)'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                environment:
+                  FOO: This is foo
+                  FOO_WITH_QUOTES: "\"Quoted foo\""    # Quotes included in value
+                  BAR: "This is bar"
+                  MAGIC: 42
+                  SWITCH_1: true        # YAML boolean
+                  SWITCH_2: "true"      # YAML string
+                  EMPTY: ""
+                  EXTERNAL:             # Comes from os env
+                ''')
+
+        with mocked_os_env(EXTERNAL='Outside world'):
+            config = scuba.config.load_config('.scuba.yml')
+
+        expect = dict(
+            FOO = "This is foo",
+            FOO_WITH_QUOTES = "\"Quoted foo\"",
+            BAR = "This is bar",
+            MAGIC = "42",           # N.B. string
+            SWITCH_1 = "True",      # Unfortunately this is due to str(bool(1))
+            SWITCH_2 = "true",
+            EMPTY = "",
+            EXTERNAL = "Outside world",
+        )
+        self.assertEqual(expect, config.environment)
+
+
+    def test_env_top_list(self):
+        '''Top-level environment can be loaded (list)'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                environment:
+                  - FOO=This is foo                 # No quotes
+                  - FOO_WITH_QUOTES="Quoted foo"    # Quotes included in value
+                  - BAR=This is bar
+                  - MAGIC=42
+                  - SWITCH_2=true
+                  - EMPTY=
+                  - EXTERNAL                        # Comes from os env
+                ''')
+
+        with mocked_os_env(EXTERNAL='Outside world'):
+            config = scuba.config.load_config('.scuba.yml')
+
+        expect = dict(
+            FOO = "This is foo",
+            FOO_WITH_QUOTES = "\"Quoted foo\"",
+            BAR = "This is bar",
+            MAGIC = "42",           # N.B. string
+            SWITCH_2 = "true",
+            EMPTY = "",
+            EXTERNAL = "Outside world",
+        )
+        self.assertEqual(expect, config.environment)

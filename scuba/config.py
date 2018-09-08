@@ -129,6 +129,30 @@ def _process_script_node(node, name):
     raise ConfigError("{0}: must be string or dict".format(name))
 
 
+def _process_environment(node, name):
+    # Environment can be either a list of strings ("KEY=VALUE") or a mapping
+    # Environment keys and values are always strings
+    result = {}
+
+    if not node:
+        pass
+    elif isinstance(node, dict):
+        for k, v in node.items():
+            if v is None:
+                v = os.getenv(k)
+            result[k] = str(v)
+    elif isinstance(node, list):
+        for e in node:
+            k, v = parse_env_var(e)
+            result[k] = v
+    else:
+        raise ConfigError("'{0}' must be list or mapping, not {1}".format(
+                name, type(node)))
+
+    return result
+
+
+
 class ScubaAlias(object):
     def __init__(self, name, script, image):
         self.name = name
@@ -147,7 +171,7 @@ class ScubaContext(object):
 class ScubaConfig(object):
     def __init__(self, **data):
         required_nodes = ('image',)
-        optional_nodes = ('aliases','hooks',)
+        optional_nodes = ('aliases','hooks','environment')
 
         # Check for missing required nodes
         missing = [n for n in required_nodes if not n in data]
@@ -165,6 +189,7 @@ class ScubaConfig(object):
 
         self._load_aliases(data)
         self._load_hooks(data)
+        self._environment = self._load_environment(data)
 
 
 
@@ -187,6 +212,9 @@ class ScubaConfig(object):
                 hook = _process_script_node(node, name)
                 self._hooks[name] = hook
 
+    def _load_environment(self, data):
+         return _process_environment(data.get('environment'), 'environment')
+
 
     @property
     def image(self):
@@ -199,6 +227,10 @@ class ScubaConfig(object):
     @property
     def hooks(self):
         return self._hooks
+
+    @property
+    def environment(self):
+        return self._environment
 
 
     def process_command(self, command):
