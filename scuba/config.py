@@ -147,7 +147,7 @@ def _process_environment(node, name):
             result[k] = v
     else:
         raise ConfigError("'{0}' must be list or mapping, not {1}".format(
-                name, type(node)))
+                name, type(node).__name__))
 
     return result
 
