@@ -154,16 +154,25 @@ def _process_environment(node, name):
 
 
 class ScubaAlias(object):
-    def __init__(self, name, script, image):
+    def __init__(self, name, script, image, environment):
         self.name = name
         self.script = script
         self.image = image
+        self.environment = environment
 
     @classmethod
     def from_dict(cls, name, node):
         script = _process_script_node(node, name)
-        image = node.get('image') if isinstance(node, dict) else None
-        return cls(name, script, image)
+        image = None
+        environment = None
+
+        if isinstance(node, dict):  # Rich alias
+            image = node.get('image')
+            environment = _process_environment(
+                    node.get('environment'),
+                    '{0}.{1}'.format(name, 'environment'))
+
+        return cls(name, script, image, environment)
 
 class ScubaContext(object):
     pass
@@ -246,6 +255,7 @@ class ScubaConfig(object):
         result = ScubaContext()
         result.script = None
         result.image = self.image
+        result.environment = self.environment.copy()
 
         if command:
             alias = self.aliases.get(command[0])
@@ -257,6 +267,10 @@ class ScubaConfig(object):
                 # Does this alias override the image?
                 if alias.image:
                     result.image = alias.image
+
+                # Merge/override the environment
+                if alias.environment:
+                    result.environment.update(alias.environment)
 
                 if len(alias.script) > 1:
                     # Alias is a multiline script; no additional

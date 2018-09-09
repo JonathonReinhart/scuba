@@ -437,3 +437,41 @@ class TestConfig(TmpDirTestCase):
             EXTERNAL = "Outside world",
         )
         self.assertEqual(expect, config.environment)
+
+
+    def test_env_alias(self):
+        '''Alias can have environment which overrides top-level'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                environment:
+                  FOO: Top-level
+                  BAR: 42
+                aliases:
+                  al:
+                    script: Don't care
+                    environment:
+                      FOO: Overridden
+                      MORE: Hello world
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+
+        self.assertEqual(config.environment, dict(
+                FOO = "Top-level",
+                BAR = "42",
+            ))
+
+        self.assertEqual(config.aliases['al'].environment, dict(
+                FOO = "Overridden",
+                MORE = "Hello world",
+            ))
+
+        # Does the environment get overridden / merged?
+        ctx = config.process_command(['al'])
+
+        self.assertEqual(ctx.environment, dict(
+                FOO = "Overridden",
+                BAR = "42",
+                MORE = "Hello world",
+            ))
