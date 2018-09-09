@@ -356,32 +356,6 @@ class TestMain(TmpDirTestCase):
 
         assert_str_equalish(out, data)
 
-    def test_env_var_keyval(self):
-        '''Verify -e KEY=VAL works'''
-        with open('.scuba.yml', 'w') as f:
-            f.write('image: {0}\n'.format(DOCKER_IMAGE))
-        args = [
-            '-e', 'KEY=VAL',
-            '/bin/sh', '-c', 'echo $KEY',
-        ]
-        out, _ = self.run_scuba(args)
-        assert_str_equalish(out, 'VAL')
-
-    def test_env_var_key_only(self):
-        '''Verify -e KEY works'''
-        with open('.scuba.yml', 'w') as f:
-            f.write('image: {0}\n'.format(DOCKER_IMAGE))
-        args = [
-            '-e', 'KEY',
-            '/bin/sh', '-c', 'echo $KEY',
-        ]
-        def mocked_getenv(key):
-            self.assertEqual(key, 'KEY')
-            return 'mockedvalue'
-        with mock.patch('os.getenv', side_effect=mocked_getenv):
-            out, _ = self.run_scuba(args)
-        assert_str_equalish(out, 'mockedvalue')
-
 
     def test_image_entrypoint(self):
         '''Verify scuba doesn't interfere with the configured image ENTRYPOINT'''
@@ -491,6 +465,36 @@ class TestMain(TmpDirTestCase):
     def test_root_hook(self):
         '''Verify root hook executes as root'''
         self._test_one_hook('root', 0, 0)
+
+
+    ############################################################################
+    # Environment
+
+    def test_env_var_keyval(self):
+        '''Verify -e KEY=VAL works'''
+        with open('.scuba.yml', 'w') as f:
+            f.write('image: {0}\n'.format(DOCKER_IMAGE))
+        args = [
+            '-e', 'KEY=VAL',
+            '/bin/sh', '-c', 'echo $KEY',
+        ]
+        out, _ = self.run_scuba(args)
+        assert_str_equalish(out, 'VAL')
+
+    def test_env_var_key_only(self):
+        '''Verify -e KEY works'''
+        with open('.scuba.yml', 'w') as f:
+            f.write('image: {0}\n'.format(DOCKER_IMAGE))
+        args = [
+            '-e', 'KEY',
+            '/bin/sh', '-c', 'echo $KEY',
+        ]
+        def mocked_getenv(key):
+            self.assertEqual(key, 'KEY')
+            return 'mockedvalue'
+        with mock.patch('os.getenv', side_effect=mocked_getenv):
+            out, _ = self.run_scuba(args)
+        assert_str_equalish(out, 'mockedvalue')
 
 
     ############################################################################
