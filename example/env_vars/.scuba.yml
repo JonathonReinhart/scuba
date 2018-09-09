@@ -1,0 +1,21 @@
+image: !from_yaml ../common.yml image
+
+environment:
+  FOO: Top-level
+  BAR: 42
+  EMPTY: ""
+  EXTERNAL_1:
+
+aliases:
+  example:
+    environment:
+      FOO: Overridden by alias
+      EXTERNAL_2:
+    script:
+      - echo "FOO=\"$FOO\""
+      - echo "BAR=\"$BAR\""
+      - echo "EMPTY=\"$EMPTY\""
+      - echo "EXTERNAL_1=\"$EXTERNAL_1\""
+      - echo "EXTERNAL_2=\"$EXTERNAL_2\""
+      - echo "CMDLINE=\"$CMDLINE\""
+
