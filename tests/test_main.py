@@ -489,10 +489,7 @@ class TestMain(TmpDirTestCase):
             '-e', 'KEY',
             '/bin/sh', '-c', 'echo $KEY',
         ]
-        def mocked_getenv(key):
-            self.assertEqual(key, 'KEY')
-            return 'mockedvalue'
-        with mock.patch('os.getenv', side_effect=mocked_getenv):
+        with mocked_os_env(KEY='mockedvalue'):
             out, _ = self.run_scuba(args)
         assert_str_equalish(out, 'mockedvalue')
 
