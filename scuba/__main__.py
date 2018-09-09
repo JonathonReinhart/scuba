@@ -132,6 +132,9 @@ class ScubaDive(object):
         # Docker is running natively
         self.__setup_native_run()
 
+        # Apply environment vars from .scuba.yml
+        self.env_vars.update(self.context.environment)
+
     def __str__(self):
         s = StringIO()
         writeln(s, 'ScubaDive')

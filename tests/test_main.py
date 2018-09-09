@@ -13,6 +13,7 @@ import os
 import sys
 from tempfile import TemporaryFile, NamedTemporaryFile
 import subprocess
+import shlex
 
 import scuba.__main__ as main
 import scuba.constants
@@ -492,6 +493,59 @@ class TestMain(TmpDirTestCase):
         with mocked_os_env(KEY='mockedvalue'):
             out, _ = self.run_scuba(args)
         assert_str_equalish(out, 'mockedvalue')
+
+
+    def test_env_var_sources(self):
+        '''Verify scuba handles all possible environment variable sources'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: {image}
+                environment:
+                  FOO: Top-level
+                  BAR: 42
+                  EXTERNAL_2:
+                aliases:
+                  al:
+                    script:
+                      - echo "FOO=\"$FOO\""
+                      - echo "BAR=\"$BAR\""
+                      - echo "MORE=\"$MORE\""
+                      - echo "EXTERNAL_1=\"$EXTERNAL_1\""
+                      - echo "EXTERNAL_2=\"$EXTERNAL_2\""
+                      - echo "EXTERNAL_3=\"$EXTERNAL_3\""
+                      - echo "BAZ=\"$BAZ\""
+                    environment:
+                      FOO: Overridden
+                      MORE: Hello world
+                      EXTERNAL_3:
+                '''.format(image=DOCKER_IMAGE))
+
+        args = [
+            '-e', 'EXTERNAL_1',
+            '-e', 'BAZ=From the command line',
+            'al',
+        ]
+
+        m = mocked_os_env(
+                EXTERNAL_1 = "External value 1",
+                EXTERNAL_2 = "External value 2",
+                EXTERNAL_3 = "External value 3",
+                )
+        with m:
+            out, _ = self.run_scuba(args)
+
+        # Convert key/pair output to dictionary
+        result = dict( pair.split('=', 1) for pair in shlex.split(out) )
+
+        self.assertEqual(result, dict(
+                FOO = "Overridden",
+                BAR = "42",
+                MORE = "Hello world",
+                EXTERNAL_1 = "External value 1",
+                EXTERNAL_2 = "External value 2",
+                EXTERNAL_3 = "External value 3",
+                BAZ = "From the command line",
+            ))
 
 
     ############################################################################
