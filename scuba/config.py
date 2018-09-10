@@ -139,7 +139,7 @@ def _process_environment(node, name):
     elif isinstance(node, dict):
         for k, v in node.items():
             if v is None:
-                v = os.getenv(k)
+                v = os.getenv(k, '')
             result[k] = str(v)
     elif isinstance(node, list):
         for e in node:

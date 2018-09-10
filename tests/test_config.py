@@ -391,6 +391,7 @@ class TestConfig(TmpDirTestCase):
                   SWITCH_2: "true"      # YAML string
                   EMPTY: ""
                   EXTERNAL:             # Comes from os env
+                  EXTERNAL_NOTSET:      # Missing in os env
                 ''')
 
         with mocked_os_env(EXTERNAL='Outside world'):
@@ -405,6 +406,7 @@ class TestConfig(TmpDirTestCase):
             SWITCH_2 = "true",
             EMPTY = "",
             EXTERNAL = "Outside world",
+            EXTERNAL_NOTSET = "",
         )
         self.assertEqual(expect, config.environment)
 
@@ -422,6 +424,7 @@ class TestConfig(TmpDirTestCase):
                   - SWITCH_2=true
                   - EMPTY=
                   - EXTERNAL                        # Comes from os env
+                  - EXTERNAL_NOTSET                 # Missing in os env
                 ''')
 
         with mocked_os_env(EXTERNAL='Outside world'):
@@ -435,6 +438,7 @@ class TestConfig(TmpDirTestCase):
             SWITCH_2 = "true",
             EMPTY = "",
             EXTERNAL = "Outside world",
+            EXTERNAL_NOTSET = "",
         )
         self.assertEqual(expect, config.environment)
 

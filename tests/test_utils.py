@@ -89,10 +89,12 @@ class TestUtils(TestCase):
 
     def test_parse_env_var_no_equals(self):
         '''parse_env_var handles no equals and gets value from environment'''
-        def mocked_getenv(key):
-            self.assertEqual(key, 'KEY')
-            return 'mockedvalue'
-
-        with mock.patch('os.getenv', side_effect=mocked_getenv):
+        with mocked_os_env(KEY='mockedvalue'):
             result = scuba.utils.parse_env_var('KEY')
         self.assertEqual(result, ('KEY', 'mockedvalue'))
+
+    def test_parse_env_var_not_set(self):
+        '''parse_env_var returns an empty string if not set'''
+        with mocked_os_env():
+            result = scuba.utils.parse_env_var('NOTSET')
+        self.assertEqual(result, ('NOTSET', ''))
