@@ -55,9 +55,7 @@ def make_executable(path):
     os.chmod(path, mode)
 
 def mocked_os_env(**env):
-    def mocked_getenv(key, default=None):
-        return env.get(key, default)
-    return mock.patch('os.getenv', side_effect=mocked_getenv)
+    return mock.patch('os.getenv', side_effect=env.get)
 
 
 # http://stackoverflow.com/a/8389373/119527
