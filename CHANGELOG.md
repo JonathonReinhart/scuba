@@ -5,6 +5,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 ### Added
 - Add -e/--env command-line option (#111)
+- Add support for setting environment in .scuba.yml (#120)
 
 ### Changed
 - Implemented auto-versioning using Git and Travis (#112)

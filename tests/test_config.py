@@ -372,3 +372,110 @@ class TestConfig(TmpDirTestCase):
                 ''')
 
         assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
+
+
+    ############################################################################
+    # Env
+
+    def test_env_top_dict(self):
+        '''Top-level environment can be loaded (dict)'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                environment:
+                  FOO: This is foo
+                  FOO_WITH_QUOTES: "\"Quoted foo\""    # Quotes included in value
+                  BAR: "This is bar"
+                  MAGIC: 42
+                  SWITCH_1: true        # YAML boolean
+                  SWITCH_2: "true"      # YAML string
+                  EMPTY: ""
+                  EXTERNAL:             # Comes from os env
+                  EXTERNAL_NOTSET:      # Missing in os env
+                ''')
+
+        with mocked_os_env(EXTERNAL='Outside world'):
+            config = scuba.config.load_config('.scuba.yml')
+
+        expect = dict(
+            FOO = "This is foo",
+            FOO_WITH_QUOTES = "\"Quoted foo\"",
+            BAR = "This is bar",
+            MAGIC = "42",           # N.B. string
+            SWITCH_1 = "True",      # Unfortunately this is due to str(bool(1))
+            SWITCH_2 = "true",
+            EMPTY = "",
+            EXTERNAL = "Outside world",
+            EXTERNAL_NOTSET = "",
+        )
+        self.assertEqual(expect, config.environment)
+
+
+    def test_env_top_list(self):
+        '''Top-level environment can be loaded (list)'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                environment:
+                  - FOO=This is foo                 # No quotes
+                  - FOO_WITH_QUOTES="Quoted foo"    # Quotes included in value
+                  - BAR=This is bar
+                  - MAGIC=42
+                  - SWITCH_2=true
+                  - EMPTY=
+                  - EXTERNAL                        # Comes from os env
+                  - EXTERNAL_NOTSET                 # Missing in os env
+                ''')
+
+        with mocked_os_env(EXTERNAL='Outside world'):
+            config = scuba.config.load_config('.scuba.yml')
+
+        expect = dict(
+            FOO = "This is foo",
+            FOO_WITH_QUOTES = "\"Quoted foo\"",
+            BAR = "This is bar",
+            MAGIC = "42",           # N.B. string
+            SWITCH_2 = "true",
+            EMPTY = "",
+            EXTERNAL = "Outside world",
+            EXTERNAL_NOTSET = "",
+        )
+        self.assertEqual(expect, config.environment)
+
+
+    def test_env_alias(self):
+        '''Alias can have environment which overrides top-level'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                environment:
+                  FOO: Top-level
+                  BAR: 42
+                aliases:
+                  al:
+                    script: Don't care
+                    environment:
+                      FOO: Overridden
+                      MORE: Hello world
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+
+        self.assertEqual(config.environment, dict(
+                FOO = "Top-level",
+                BAR = "42",
+            ))
+
+        self.assertEqual(config.aliases['al'].environment, dict(
+                FOO = "Overridden",
+                MORE = "Hello world",
+            ))
+
+        # Does the environment get overridden / merged?
+        ctx = config.process_command(['al'])
+
+        self.assertEqual(ctx.environment, dict(
+                FOO = "Overridden",
+                BAR = "42",
+                MORE = "Hello world",
+            ))

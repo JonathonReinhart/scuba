@@ -129,17 +129,50 @@ def _process_script_node(node, name):
     raise ConfigError("{0}: must be string or dict".format(name))
 
 
+def _process_environment(node, name):
+    # Environment can be either a list of strings ("KEY=VALUE") or a mapping
+    # Environment keys and values are always strings
+    result = {}
+
+    if not node:
+        pass
+    elif isinstance(node, dict):
+        for k, v in node.items():
+            if v is None:
+                v = os.getenv(k, '')
+            result[k] = str(v)
+    elif isinstance(node, list):
+        for e in node:
+            k, v = parse_env_var(e)
+            result[k] = v
+    else:
+        raise ConfigError("'{0}' must be list or mapping, not {1}".format(
+                name, type(node).__name__))
+
+    return result
+
+
+
 class ScubaAlias(object):
-    def __init__(self, name, script, image):
+    def __init__(self, name, script, image, environment):
         self.name = name
         self.script = script
         self.image = image
+        self.environment = environment
 
     @classmethod
     def from_dict(cls, name, node):
         script = _process_script_node(node, name)
-        image = node.get('image') if isinstance(node, dict) else None
-        return cls(name, script, image)
+        image = None
+        environment = None
+
+        if isinstance(node, dict):  # Rich alias
+            image = node.get('image')
+            environment = _process_environment(
+                    node.get('environment'),
+                    '{0}.{1}'.format(name, 'environment'))
+
+        return cls(name, script, image, environment)
 
 class ScubaContext(object):
     pass
@@ -147,7 +180,7 @@ class ScubaContext(object):
 class ScubaConfig(object):
     def __init__(self, **data):
         required_nodes = ('image',)
-        optional_nodes = ('aliases','hooks',)
+        optional_nodes = ('aliases','hooks','environment')
 
         # Check for missing required nodes
         missing = [n for n in required_nodes if not n in data]
@@ -165,6 +198,7 @@ class ScubaConfig(object):
 
         self._load_aliases(data)
         self._load_hooks(data)
+        self._environment = self._load_environment(data)
 
 
 
@@ -187,6 +221,9 @@ class ScubaConfig(object):
                 hook = _process_script_node(node, name)
                 self._hooks[name] = hook
 
+    def _load_environment(self, data):
+         return _process_environment(data.get('environment'), 'environment')
+
 
     @property
     def image(self):
@@ -199,6 +236,10 @@ class ScubaConfig(object):
     @property
     def hooks(self):
         return self._hooks
+
+    @property
+    def environment(self):
+        return self._environment
 
 
     def process_command(self, command):
@@ -214,6 +255,7 @@ class ScubaConfig(object):
         result = ScubaContext()
         result.script = None
         result.image = self.image
+        result.environment = self.environment.copy()
 
         if command:
             alias = self.aliases.get(command[0])
@@ -225,6 +267,10 @@ class ScubaConfig(object):
                 # Does this alias override the image?
                 if alias.image:
                     result.image = alias.image
+
+                # Merge/override the environment
+                if alias.environment:
+                    result.environment.update(alias.environment)
 
                 if len(alias.script) > 1:
                     # Alias is a multiline script; no additional

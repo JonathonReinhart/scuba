@@ -74,4 +74,4 @@ def parse_env_var(s):
         return (k, v)
 
     k = parts[0]
-    return (k, os.getenv(k))
+    return (k, os.getenv(k, ''))

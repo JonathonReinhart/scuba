@@ -18,6 +18,25 @@ Example:
 image: debian:8.2
 ```
 
+### `environment`
+
+The optional `environment` node allows environment variables to be specified.
+This can be either a mapping (dictionary), or a list of `KEY=VALUE` pairs.
+If a value is not specified, the value is taken from the external environment.
+
+Examples:
+```yaml
+environment:
+  FOO: "This is foo"
+  SECRET:
+```
+```yaml
+environment:
+  - FOO=This is foo
+  - SECRET
+```
+
+
 ### `aliases`
 
 The optional `aliases` node is a mapping (dictionary) of bash-like aliases,
@@ -52,6 +71,21 @@ aliases:
     script:
       - cat /etc/os-release
 ```
+
+Aliases can add to the top-level `environment` and override its values using
+the same syntax:
+```yaml
+environment:
+  FOO: "Top-level"
+aliases:
+  example:
+    environment:
+      FOO: "Override"
+      BAR: "New"
+    script:
+      - echo $FOO $BAR
+```
+
 
 ### `hooks`
 

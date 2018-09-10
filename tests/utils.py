@@ -6,6 +6,11 @@ import tempfile
 import shutil
 import unittest
 import logging
+try:
+    from unittest import mock
+except ImportError:
+    import mock
+
 
 def assert_set_equal(a, b):
     assert_equal(set(a), set(b))
@@ -48,6 +53,9 @@ def make_executable(path):
     mode = os.stat(path).st_mode
     mode |= (mode & 0o444) >> 2    # copy R bits to X
     os.chmod(path, mode)
+
+def mocked_os_env(**env):
+    return mock.patch('os.getenv', side_effect=env.get)
 
 
 # http://stackoverflow.com/a/8389373/119527
