@@ -53,6 +53,8 @@ def parse_scuba_args(argv):
     ap.add_argument('-e', '--env', dest='env_vars', action='append',
             type=parse_env_var, default=[],
             help='Environment variables to pass to docker')
+    ap.add_argument('--entrypoint',
+            help='Override the default ENTRYPOINT of the image')
     ap.add_argument('--list-aliases', action='store_true',
             help=argparse.SUPPRESS)
     ap.add_argument('--list-available-options', action=ListOptsAction,
@@ -92,7 +94,7 @@ class ScubaError(Exception):
 
 class ScubaDive(object):
     def __init__(self, user_command, docker_args=None, env=None, as_root=False, verbose=False,
-            image_override=None):
+            image_override=None, entrypoint=None):
 
         env = env or {}
         if not isinstance(env, collections.Mapping):
@@ -102,6 +104,7 @@ class ScubaDive(object):
         self.as_root = as_root
         self.verbose = verbose
         self.image_override = image_override
+        self.entrypoint_override = entrypoint
 
         # These will be added to docker run cmdline
         self.env_vars = env
@@ -293,8 +296,15 @@ class ScubaDive(object):
 
         # Make scubainit the real entrypoint, and use the defined entrypoint as
         # the docker command (if it exists)
-        self.docker_cmd = get_image_entrypoint(context.image) or []
         self.add_option('--entrypoint={}'.format(scubainit_cpath))
+
+        if self.entrypoint_override is not None:
+            if self.entrypoint_override != '':
+                self.docker_cmd = [self.entrypoint_override]
+            else:
+                self.docker_cmd = []
+        else:
+            self.docker_cmd = get_image_entrypoint(context.image) or []
 
         # The user command is executed via a generated shell script
         with self.open_scubadir_file('command.sh', 'wt') as f:
@@ -395,6 +405,7 @@ def run_scuba(scuba_args):
         as_root = scuba_args.root,
         verbose = scuba_args.verbose,
         image_override = scuba_args.image,
+        entrypoint = scuba_args.entrypoint,
         )
 
     if scuba_args.list_aliases:
