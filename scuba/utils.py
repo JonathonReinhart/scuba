@@ -1,6 +1,5 @@
 import errno
 import os
-import shlex
 try:
     from shlex import quote as shell_quote
 except ImportError:
@@ -9,13 +8,6 @@ except ImportError:
 
 def shell_quote_cmd(cmdlist):
     return ' '.join(map(shell_quote, cmdlist))
-
-def shlex_split(s):
-    # shlex.split doesn't properly handle unicode input in Python 2.6.
-    # First try to encode it as an ASCII string. which
-    # may raise a UnicodeEncodeError.
-    s = str(s)
-    return shlex.split(s)
 
 
 def format_cmdline(args, maxwidth=80):

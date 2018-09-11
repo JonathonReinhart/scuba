@@ -18,8 +18,7 @@ BASE_VERSION = '2.3.0'
 git_archive_rev = "$Format:%h$"
 
 def git_describe():
-    from subprocess import check_call
-    from .compat import check_output    # Py2.6
+    from subprocess import check_call, check_output
 
     # Get the version from the local Git repository
     check_call(['git', 'update-index', '-q', '--refresh'], cwd=PROJPATH)
@@ -49,13 +48,13 @@ def get_version():
         if commits == 0 and not rev.endswith('dirty'):
             return BASE_VERSION
 
-        return '{0}+{1}-{2}'.format(BASE_VERSION, commits, rev)
+        return '{}+{}-{}'.format(BASE_VERSION, commits, rev)
 
 
     # Git archive
     # If this was produced via `git archive`, we'll use the version it provides
     if not git_archive_rev.startswith('$'):
-        return '{0}+g{1}'.format(BASE_VERSION, git_archive_rev)
+        return '{}+g{}'.format(BASE_VERSION, git_archive_rev)
 
 
     # Package resource

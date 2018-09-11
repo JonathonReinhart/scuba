@@ -44,7 +44,7 @@ class Loader(yaml.Loader):
 
         # Split on unquoted spaces
         try:
-            parts = shlex_split(content)
+            parts = shlex.split(content)
         except UnicodeEncodeError:
             raise yaml.YAMLError('Non-ASCII arguments to !from_yaml are unsupported')
 
@@ -65,7 +65,7 @@ class Loader(yaml.Loader):
             for k in key.split('.'):
                 cur = cur[k]
         except KeyError:
-            raise yaml.YAMLError('Key "{0}" not found in {1}'.format(key, filename))
+            raise yaml.YAMLError('Key "{}" not found in {}'.format(key, filename))
         return cur
 
 Loader.add_constructor('!from_yaml', Loader.from_yaml)
@@ -88,14 +88,14 @@ def find_config():
             return path, rel
 
         if not cross_fs and os.path.ismount(path):
-            msg = '{0} not found here or any parent up to mount point {1}'.format(SCUBA_YML, path) \
+            msg = '{} not found here or any parent up to mount point {}'.format(SCUBA_YML, path) \
                    + '\nStopping at filesystem boundary (SCUBA_DISCOVERY_ACROSS_FILESYSTEM not set).'
             raise ConfigNotFoundError(msg)
 
         # Traverse up directory hierarchy
         path, rest = os.path.split(path)
         if not rest:
-            raise ConfigNotFoundError('{0} not found here or any parent directories'.format(SCUBA_YML))
+            raise ConfigNotFoundError('{} not found here or any parent directories'.format(SCUBA_YML))
 
         # Accumulate the relative path back to where we started
         rel = os.path.join(rest, rel)
@@ -116,7 +116,7 @@ def _process_script_node(node, name):
         # There must be a "script" key, which must be a list of strings
         script = node.get('script')
         if not script:
-            raise ConfigError("{0}: must have a 'script' subkey".format(name))
+            raise ConfigError("{}: must have a 'script' subkey".format(name))
 
         if isinstance(script, list):
             return script
@@ -124,9 +124,9 @@ def _process_script_node(node, name):
         if isinstance(script, basestring):
             return [script]
 
-        raise ConfigError("{0}.script: must be a string or list".format(name))
+        raise ConfigError("{}.script: must be a string or list".format(name))
 
-    raise ConfigError("{0}: must be string or dict".format(name))
+    raise ConfigError("{}: must be string or dict".format(name))
 
 
 def _process_environment(node, name):
@@ -146,7 +146,7 @@ def _process_environment(node, name):
             k, v = parse_env_var(e)
             result[k] = v
     else:
-        raise ConfigError("'{0}' must be list or mapping, not {1}".format(
+        raise ConfigError("'{}' must be list or mapping, not {}".format(
                 name, type(node).__name__))
 
     return result
@@ -170,7 +170,7 @@ class ScubaAlias(object):
             image = node.get('image')
             environment = _process_environment(
                     node.get('environment'),
-                    '{0}.{1}'.format(name, 'environment'))
+                    '{}.{}'.format(name, 'environment'))
 
         return cls(name, script, image, environment)
 
@@ -185,13 +185,13 @@ class ScubaConfig(object):
         # Check for missing required nodes
         missing = [n for n in required_nodes if not n in data]
         if missing:
-            raise ConfigError('{0}: Required node{1} missing: {2}'.format(SCUBA_YML,
+            raise ConfigError('{}: Required node{} missing: {}'.format(SCUBA_YML,
                     's' if len(missing) > 1 else '', ', '.join(missing)))
 
         # Check for unrecognized nodes
         extra = [n for n in data if not n in required_nodes + optional_nodes]
         if extra:
-            raise ConfigError('{0}: Unrecognized node{1}: {2}'.format(SCUBA_YML,
+            raise ConfigError('{}: Unrecognized node{}: {}'.format(SCUBA_YML,
                     's' if len(extra) > 1 else '', ', '.join(extra)))
 
         self._image = data['image']
@@ -293,8 +293,8 @@ def load_config(path):
         with open(path) as f:
             data = yaml.load(f, Loader)
     except IOError as e:
-        raise ConfigError('Error opening {0}: {1}'.format(SCUBA_YML, e))
+        raise ConfigError('Error opening {}: {}'.format(SCUBA_YML, e))
     except yaml.YAMLError as e:
-        raise ConfigError('Error loading {0}: {1}'.format(SCUBA_YML, e))
+        raise ConfigError('Error loading {}: {}'.format(SCUBA_YML, e))
 
     return ScubaConfig(**(data or {}))

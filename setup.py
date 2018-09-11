@@ -41,7 +41,7 @@ def get_version():
     build_num = os.getenv('TRAVIS_BUILD_NUMBER')
     build_tag = os.getenv('TRAVIS_TAG')
     if (not build_tag) and (build_num != None):
-        return '{0}.{1}'.format(scuba.version.BASE_VERSION, build_num)
+        return '{}.{}'.format(scuba.version.BASE_VERSION, build_num)
 
     return scuba.version.__version__
 
