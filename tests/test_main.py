@@ -362,12 +362,11 @@ class TestMain(TmpDirTestCase):
         '''Verify scuba doesn't interfere with the configured image ENTRYPOINT'''
 
         with open('.scuba.yml', 'w') as f:
-            # This image was built with ENTRYPOINT ["echo"]
-            f.write('image: jreinhart/echo')
+            f.write('image: scuba/entrypoint-test')
 
-        test_string = 'Hello world'
-        out, _ = self.run_scuba([test_string])
-        assert_str_equalish(test_string, out)
+        out, _ = self.run_scuba(['cat', 'entrypoint_works.txt'])
+        assert_str_equalish('success', out)
+
 
     def test_image_override(self):
         '''Verify --image works'''
