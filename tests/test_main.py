@@ -105,10 +105,10 @@ class TestMain(TmpDirTestCase):
         '''Verify scuba works with no given command'''
 
         with open('.scuba.yml', 'w') as f:
-            f.write('image: {}\n'.format('jreinhart/hello'))
+            f.write('image: {}\n'.format('scuba/hello'))
 
         out, _ = self.run_scuba([])
-        self.assertTrue('Hello from alpine-hello' in out)
+        self.assertTrue('Hello world' in out)
 
     def test_no_image_cmd(self):
         '''Verify scuba gracefully handles an image with no Cmd and no user command'''
