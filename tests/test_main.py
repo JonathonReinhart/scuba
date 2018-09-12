@@ -114,7 +114,7 @@ class TestMain(TmpDirTestCase):
         '''Verify scuba gracefully handles an image with no Cmd and no user command'''
 
         with open('.scuba.yml', 'w') as f:
-            f.write('image: {}\n'.format('jreinhart/scratch'))
+            f.write('image: {}\n'.format('scuba/scratch'))
 
         # ScubaError -> exit(128)
         out, _ = self.run_scuba([], 128)
