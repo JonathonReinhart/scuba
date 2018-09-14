@@ -373,16 +373,14 @@ class TestMain(TmpDirTestCase):
 
         with open('.scuba.yml', 'w') as f:
             # This image does not exist
-            f.write('image: jreinhart/notheredoesnotexistbb7e344f9722\n')
+            f.write('image: scuba/notheredoesnotexistbb7e344f9722\n')
 
-        test_string = 'Hello world'
         args = [
-            # This image was built with ENTRYPOINT ["echo"]
-            '--image', 'jreinhart/echo',
-            test_string,
+            '--image', 'scuba/entrypoint-test',
+            'cat', 'entrypoint_works.txt',
         ]
         out, _ = self.run_scuba(args)
-        assert_str_equalish(test_string, out)
+        assert_str_equalish('success', out)
 
     def test_image_override_with_alias(self):
         '''Verify --image works with aliases'''
@@ -390,10 +388,10 @@ class TestMain(TmpDirTestCase):
         with open('.scuba.yml', 'w') as f:
             # These images do not exist
             f.write('''
-                image: jreinhart/notheredoesnotexistbb7e344f9722
+                image: scuba/notheredoesnotexistbb7e344f9722
                 aliases:
                   testalias:
-                    image: jreinhart/notheredoesnotexist765205d09dea
+                    image: scuba/notheredoesnotexist765205d09dea
                     script:
                       - echo multi
                       - echo line
@@ -412,14 +410,12 @@ class TestMain(TmpDirTestCase):
 
         # no .scuba.yml
 
-        test_string = 'Hello world'
         args = [
-            # This image was built with ENTRYPOINT ["echo"]
-            '--image', 'jreinhart/echo',
-            test_string,
+            '--image', 'scuba/entrypoint-test',
+            'cat', 'entrypoint_works.txt',
         ]
         out, _ = self.run_scuba(args)
-        assert_str_equalish(test_string, out)
+        assert_str_equalish('success', out)
 
     def test_complex_commands_in_alias(self):
         '''Verify complex commands can be used in alias scripts'''
