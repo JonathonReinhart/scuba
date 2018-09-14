@@ -49,9 +49,9 @@ class TestDockerutil(TestCase):
 
     def test_get_image_entrypoint(self):
         '''get_image_entrypoint works'''
-        result = uut.get_image_entrypoint('jreinhart/echo')
+        result = uut.get_image_entrypoint('scuba/entrypoint-test')
         self.assertEqual(1, len(result))
-        assert_str_equalish('echo', result[0])
+        assert_str_equalish('/entrypoint.sh', result[0])
 
     def test_get_image_entrypoint__none(self):
         '''get_image_entrypoint works for image with no entrypoint'''
