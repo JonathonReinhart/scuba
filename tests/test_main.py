@@ -376,8 +376,8 @@ class TestMain(TmpDirTestCase):
             f.write('image: scuba/notheredoesnotexistbb7e344f9722\n')
 
         args = [
-            '--image', 'scuba/entrypoint-test',
-            'cat', 'entrypoint_works.txt',
+            '--image', DOCKER_IMAGE,
+            'echo', 'success',
         ]
         out, _ = self.run_scuba(args)
         assert_str_equalish('success', out)
@@ -411,8 +411,8 @@ class TestMain(TmpDirTestCase):
         # no .scuba.yml
 
         args = [
-            '--image', 'scuba/entrypoint-test',
-            'cat', 'entrypoint_works.txt',
+            '--image', DOCKER_IMAGE,
+            'echo', 'success',
         ]
         out, _ = self.run_scuba(args)
         assert_str_equalish('success', out)
