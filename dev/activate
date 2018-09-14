@@ -1,0 +1,4 @@
+# https://stackoverflow.com/a/246128/119527
+THISDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+PATH=$THISDIR:$PATH
+PS1="[scuba devel] $PS1"
