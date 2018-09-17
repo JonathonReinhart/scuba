@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+### Changed
+- Don't run image entrypoint for each line in a mult-line alias (#121)
+
+### Removed
+- Drop support for Python 2.6 and 3.2 (#119)
+
 ## [2.3.0] - 2018-09-10
 ### Added
 - Add -e/--env command-line option (#111)
