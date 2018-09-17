@@ -291,20 +291,18 @@ class ScubaDive(object):
             verbose_msg('{} Cmd: "{}"'.format(context.image, default_cmd))
             context.script = [shell_quote_cmd(default_cmd)]
 
-        # Make scubainit the entrypoint, and manually insert an existing
-        # entrypoint before each user command
-        entrypoint = get_image_entrypoint(context.image) or []
+        # Make scubainit the real entrypoint, and use the defined entrypoint as
+        # the docker command (if it exists)
+        self.docker_cmd = get_image_entrypoint(context.image) or []
         self.add_option('--entrypoint={}'.format(scubainit_cpath))
 
         # The user command is executed via a generated shell script
         with self.open_scubadir_file('command.sh', 'wt') as f:
-            self.docker_cmd = ['/bin/sh', f.container_path]
+            self.docker_cmd += ['/bin/sh', f.container_path]
             writeln(f, '#!/bin/sh')
             writeln(f, '# Auto-generated from scuba')
             writeln(f, 'set -e')
             for cmd in context.script:
-                if entrypoint:
-                    cmd = shell_quote_cmd(entrypoint) + ' ' + cmd
                 writeln(f, cmd)
 
         self.context = context
