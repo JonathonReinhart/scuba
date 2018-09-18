@@ -334,6 +334,46 @@ class TestConfig(TmpDirTestCase):
         result = cfg.process_command(['apple'])
         assert_equal(result.image, 'overridden')
 
+    def test_process_command_alias_overrides_image_and_entrypoint(self):
+        '''aliases can override the image and entrypoint'''
+        cfg = scuba.config.ScubaConfig(
+                image = 'default',
+                entrypoint = 'default_entrypoint',
+                aliases = dict(
+                    apple = dict(
+                        script = [
+                            'banana cherry "pie is good"',
+                            'so is peach',
+                        ],
+                        image = 'overridden',
+                        entrypoint = 'overridden_entrypoint',
+                    ),
+                ),
+            )
+        result = cfg.process_command(['apple'])
+        assert_equal(result.image, 'overridden')
+        assert_equal(result.entrypoint, 'overridden_entrypoint')
+
+    def test_process_command_alias_overrides_image_and_empty_entrypoint(self):
+        '''aliases can override the image and empty/null entrypoint'''
+        cfg = scuba.config.ScubaConfig(
+                image = 'default',
+                entrypoint = 'default_entrypoint',
+                aliases = dict(
+                    apple = dict(
+                        script = [
+                            'banana cherry "pie is good"',
+                            'so is peach',
+                        ],
+                        image = 'overridden',
+                        entrypoint = '',
+                    ),
+                ),
+            )
+        result = cfg.process_command(['apple'])
+        assert_equal(result.image, 'overridden')
+        assert_equal(result.entrypoint, '')
+
 
     ############################################################################
     # Hooks
@@ -539,3 +579,51 @@ class TestConfig(TmpDirTestCase):
 
         config = scuba.config.load_config('.scuba.yml')
         self.assertEqual(config.entrypoint, 'my_ep')
+
+    def test_alias_entrypoint_null(self):
+        '''Entrypoint can be set to null via alias'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                entrypoint: na_ep
+                aliases:
+                  testalias:
+                    entrypoint:
+                    script:
+                      - ugh
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+        self.assertEqual(config.aliases['testalias'].entrypoint, '')    # Null => empty string
+
+    def test_alias_entrypoint_empty_string(self):
+        '''Entrypoint can be set to an empty string via alias'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                entrypoint: na_ep
+                aliases:
+                  testalias:
+                    entrypoint: ""
+                    script:
+                      - ugh
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+        self.assertEqual(config.aliases['testalias'].entrypoint, '')
+
+    def test_alias_entrypoint(self):
+        '''Entrypoint can be set via alias'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                entrypoint: na_ep
+                aliases:
+                  testalias:
+                    entrypoint: use_this_ep
+                    script:
+                      - ugh
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+        self.assertEqual(config.aliases['testalias'].entrypoint, 'use_this_ep')

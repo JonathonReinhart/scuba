@@ -178,25 +178,28 @@ def _get_entrypoint(data):
 
 
 class ScubaAlias(object):
-    def __init__(self, name, script, image, environment):
+    def __init__(self, name, script, image, entrypoint, environment):
         self.name = name
         self.script = script
         self.image = image
+        self.entrypoint = entrypoint
         self.environment = environment
 
     @classmethod
     def from_dict(cls, name, node):
         script = _process_script_node(node, name)
         image = None
+        entrypoint = None
         environment = None
 
         if isinstance(node, dict):  # Rich alias
             image = node.get('image')
+            entrypoint = _get_entrypoint(node)
             environment = _process_environment(
                     node.get('environment'),
                     '{}.{}'.format(name, 'environment'))
 
-        return cls(name, script, image, environment)
+        return cls(name, script, image, entrypoint, environment)
 
 class ScubaContext(object):
     pass
@@ -293,9 +296,11 @@ class ScubaConfig(object):
                 result.script = [shell_quote_cmd(command)]
             else:
                 # Using an alias
-                # Does this alias override the image?
+                # Does this alias override the image and/or entrypoint?
                 if alias.image:
                     result.image = alias.image
+                if alias.entrypoint is not None:
+                    result.entrypoint = alias.entrypoint
 
                 # Merge/override the environment
                 if alias.environment:
