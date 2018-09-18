@@ -151,6 +151,30 @@ def _process_environment(node, name):
 
     return result
 
+def _get_entrypoint(data):
+    # N.B. We can't use data.get() here, because that might return
+    # None, leading to ambiguity between entrypoint being absent or set
+    # to a null value.
+    #
+    # "Note that a null is different from an empty string and that a
+    # mapping entry with some key and a null value is valid and
+    # different from not having that key in the mapping."
+    #   - http://yaml.org/type/null.html
+    key = 'entrypoint'
+
+    if not key in data:
+        return None
+
+    ep = data[key]
+
+    # We represent a null value as an empty string.
+    if ep is None:
+        ep = ''
+
+    if not isinstance(ep, basestring):
+        raise ConfigError("'{}' must be a string, not {}".format(
+                key, type(ep).__name__))
+    return ep
 
 
 class ScubaAlias(object):
@@ -180,7 +204,7 @@ class ScubaContext(object):
 class ScubaConfig(object):
     def __init__(self, **data):
         required_nodes = ('image',)
-        optional_nodes = ('aliases','hooks','environment')
+        optional_nodes = ('aliases','hooks','entrypoint','environment')
 
         # Check for missing required nodes
         missing = [n for n in required_nodes if not n in data]
@@ -195,7 +219,7 @@ class ScubaConfig(object):
                     's' if len(extra) > 1 else '', ', '.join(extra)))
 
         self._image = data['image']
-
+        self._entrypoint = _get_entrypoint(data)
         self._load_aliases(data)
         self._load_hooks(data)
         self._environment = self._load_environment(data)
@@ -230,6 +254,10 @@ class ScubaConfig(object):
         return self._image
 
     @property
+    def entrypoint(self):
+        return self._entrypoint
+
+    @property
     def aliases(self):
         return self._aliases
 
@@ -255,6 +283,7 @@ class ScubaConfig(object):
         result = ScubaContext()
         result.script = None
         result.image = self.image
+        result.entrypoint = self.entrypoint
         result.environment = self.environment.copy()
 
         if command:

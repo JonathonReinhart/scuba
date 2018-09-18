@@ -216,6 +216,19 @@ class TestConfig(TmpDirTestCase):
     ######################################################################
     # process_command
 
+    def test_process_command_image(self):
+        '''process_command returns the image and entrypoint'''
+        image_name = 'test_image'
+        entrypoint = 'test_entrypoint'
+
+        cfg = scuba.config.ScubaConfig(
+                image = image_name,
+                entrypoint = entrypoint,
+                )
+        result = cfg.process_command([])
+        assert_equal(result.image, image_name)
+        assert_equal(result.entrypoint, entrypoint)
+
     def test_process_command_empty(self):
         '''process_command handles no aliases and an empty command'''
         cfg = scuba.config.ScubaConfig(
@@ -479,3 +492,50 @@ class TestConfig(TmpDirTestCase):
                 BAR = "42",
                 MORE = "Hello world",
             ))
+
+
+    ############################################################################
+    # Entrypoint
+
+    def test_entrypoint_not_set(self):
+        '''Entrypoint can be missing'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+        self.assertIsNone(config.entrypoint)
+
+    def test_entrypoint_null(self):
+        '''Entrypoint can be set to null'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                entrypoint:
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+        self.assertEqual(config.entrypoint, '')     # Null => empty string
+
+    def test_entrypoint_emptry_string(self):
+        '''Entrypoint can be set to an empty string'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                entrypoint: ""
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+        self.assertEqual(config.entrypoint, '')
+
+    def test_entrypoint_set(self):
+        '''Entrypoint can be set'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                entrypoint: my_ep
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+        self.assertEqual(config.entrypoint, 'my_ep')
