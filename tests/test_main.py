@@ -435,6 +435,49 @@ class TestMain(TmpDirTestCase):
         self.assertNotIn('success', out)
 
 
+    def test_yaml_entrypoint_override(self):
+        '''Verify entrypoint in .scuba.yml works'''
+        with open('.scuba.yml', 'w') as f:
+            f.write('''
+                image: scuba/entrypoint-test
+                entrypoint: "./new.sh"
+                ''')
+
+        test_str = 'This is output from the overridden entrypoint'
+
+        with open('new.sh', 'w') as f:
+            f.write('#!/bin/sh\n')
+            f.write('echo "{}"\n'.format(test_str))
+        make_executable('new.sh')
+
+        args = [
+            'true',
+        ]
+        out, _ = self.run_scuba(args)
+        assert_str_equalish(test_str, out)
+
+
+    def test_entrypoint_override_none(self):
+        '''Verify "none" entrypoint in .scuba.yml works'''
+        with open('.scuba.yml', 'w') as f:
+            f.write('''
+                image: scuba/entrypoint-test
+                entrypoint:
+                aliases:
+                  testalias:
+                    script:
+                      - echo $ENTRYPOINT_WORKS
+                ''')
+
+        args = [
+            'testalias',
+        ]
+        out, _ = self.run_scuba(args)
+
+        # Verify that ENTRYPOINT_WORKS wasn not set by the entrypoint
+        # (because it didn't run)
+        self.assertNotIn('success', out)
+
 
     ############################################################################
     # Image override
