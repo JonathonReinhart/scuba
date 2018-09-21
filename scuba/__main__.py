@@ -298,21 +298,19 @@ class ScubaDive(object):
         # the docker command (if it exists)
         self.add_option('--entrypoint={}'.format(scubainit_cpath))
 
-        # TODO: De-deuplicate the "None vs. empty-string" logic
+        self.docker_cmd = []
         if self.entrypoint_override is not None:
             # --entrypoint takes precedence
             if self.entrypoint_override != '':
                 self.docker_cmd = [self.entrypoint_override]
-            else:
-                self.docker_cmd = []
         elif context.entrypoint is not None:
             # then .scuba.yml
             if context.entrypoint != '':
                 self.docker_cmd = [context.entrypoint]
-            else:
-                self.docker_cmd = []
         else:
-            self.docker_cmd = get_image_entrypoint(context.image) or []
+            ep = get_image_entrypoint(context.image)
+            if ep:
+                self.docker_cmd = ep
 
         # The user command is executed via a generated shell script
         with self.open_scubadir_file('command.sh', 'wt') as f:
