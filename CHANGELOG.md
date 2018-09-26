@@ -3,6 +3,9 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Added
+- Enable scuba to override entrypoint via `--entrypoint` or `.scuba.yml` (#125)
+
 ### Changed
 - Don't run image entrypoint for each line in a mult-line alias (#121)
 

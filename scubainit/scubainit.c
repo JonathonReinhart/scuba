@@ -619,6 +619,6 @@ main(int argc, char **argv)
     verbose("execvp(\"%s\", ...)\n", new_argv[0]);
     execvp(new_argv[0], new_argv);
 
-    errmsg("execv() failed: %m\n");
+    errmsg("execvp(\"%s\", ...) failed: %m\n", new_argv[0]);
     exit(99);
 }
