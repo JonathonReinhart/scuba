@@ -660,6 +660,22 @@ main(int argc, char **argv)
             goto fail;
         if (add_shadow(ETC_SHADOW, m_user) != 0)
             goto fail;
+
+        /**
+         * Change ownership of /dev/std*
+         * See issue #126
+         */
+        for (int fd = 0; fd <= 2; fd++) {
+            if (!isatty(fd)) {
+                verbose("fd %d: is not a TTY; not changing ownership\n", fd);
+                continue;
+            }
+            verbose("fd %d: is a TTY; changing owner to %d:%d\n", fd, m_uid, m_gid);
+            if (fchown(fd, m_uid, m_gid) != 0) {
+                errmsg("Failed to fchown(%d, %d, %d): %m\n", fd, m_uid, m_gid);
+                goto fail;
+            }
+        }
     }
 
     /* Call pre-su hook */

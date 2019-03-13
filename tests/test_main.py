@@ -265,6 +265,24 @@ class TestMain:
 
         assert_str_equalish(out, test_str)
 
+    def test_dev_stdout(self):
+        """Verify processes can write to /dev/stdout"""
+        with open(".scuba.yml", "w") as f:
+            f.write("image: {}\n".format(DOCKER_IMAGE))
+
+        test_str = "Writing to /dev/stdout works"
+        args = [
+            #'--verbose',
+            "/bin/sh",
+            "-c",
+            'echo "{}" > /dev/stdout'.format(test_str),
+        ]
+
+        # We have to mock tty, otherwise the container will get a pipe and scubainit can't chown that
+        out, _ = self.run_scuba(args, mock_isatty=True)
+
+        assert_str_equalish(out, test_str)
+
     def _test_user(
         self,
         expected_uid,
