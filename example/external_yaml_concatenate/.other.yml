@@ -1,0 +1,15 @@
+image: busybox 
+
+part1:
+  script:
+    - echo "Hello"
+    - echo "darkness"
+
+part2:
+  script:
+    - echo "my"
+    - echo "old"
+
+part3:
+  script:
+    - echo "friend"

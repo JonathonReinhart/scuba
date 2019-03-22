@@ -1,0 +1,8 @@
+image: !from_yaml .other.yml image
+
+aliases:
+  allparts:
+    script:
+      - !from_yaml .other.yml part1.script
+      - !from_yaml .other.yml part2.script
+      - !from_yaml .other.yml part3.script
