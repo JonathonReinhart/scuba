@@ -98,3 +98,32 @@ class TestUtils(TestCase):
         with mocked_os_env():
             result = scuba.utils.parse_env_var('NOTSET')
         self.assertEqual(result, ('NOTSET', ''))
+
+
+    def test_flatten_list__not_nested(self):
+        sample = [1, 2, 3, 4]
+        result = scuba.utils.flatten_list(sample)
+        self.assertEqual(result, sample)
+
+    def test_flatten_list__nested_1(self):
+        sample = [
+            1,
+            [2, 3],
+            4,
+            [5, 6, 7],
+        ]
+        exp = range(1, 7+1)
+        result = scuba.utils.flatten_list(sample)
+        assert_seq_equal(result, exp)
+
+    def test_flatten_list__nested_many(self):
+        sample = [
+            1,
+            [2, 3],
+            [4, 5, [6, 7, 8]],
+            9, 10,
+            [11, [12, [13, [14, [15, [16, 17, 18]]]]]],
+        ]
+        exp = range(1, 18+1)
+        result = scuba.utils.flatten_list(sample)
+        assert_seq_equal(result, exp)

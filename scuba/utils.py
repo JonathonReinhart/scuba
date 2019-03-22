@@ -67,3 +67,16 @@ def parse_env_var(s):
 
     k = parts[0]
     return (k, os.getenv(k, ''))
+
+
+def flatten_list(x):
+    if not isinstance(x, list):
+        raise ValueError("argument is not a list")
+    result = []
+    for i in x:
+        if isinstance(i, list):
+            for j in flatten_list(i):
+                result.append(j)
+        else:
+            result.append(i)
+    return result
