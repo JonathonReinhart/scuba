@@ -165,8 +165,92 @@ image: gcc:5.1
 image: !from_yaml .gitlab-ci.yml image
 ```
 
+Here's a more elaborate example which defines multiple aliases which correspond
+to jobs defined by `.gitlab-ci.yml`:
+
+**`.gitlab-ci.yml`**
+```yaml
+
+build_c:
+  image: gcc:5.1
+  script:
+    - make something
+    - make something-else
+
+build_py:
+  image: python:3.7
+  script:
+    - setup.py bdist_wheel
+```
+
+**`.scuba.yml`**
+```yaml
+image: not-specified (see issue #124)
+
+aliases
+  build_c:
+    image: !from_yaml .gitlab-ci.yml build_c.image
+    script: !from_yaml .gitlab-ci.yml build_c.script
+  build_py:
+    image: !from_yaml .gitlab-ci.yml build_py.image
+    script: !from_yaml .gitlab-ci.yml build_py.script
+```
+
+An easier but less-flexible method is to simply import the entire job's
+definition. This works becaue Scuba ignores unrecognized keys in an `alias`:
+
+**`.gitlab-ci.yml`**
+```yaml
+
+build_c:
+  image: gcc:5.1
+  script:
+    - make something
+    - make something-else
+
+build_py:
+  image: python:3.7
+  script:
+    - setup.py bdist_wheel
+```
+
+**`.scuba.yml`**
+```yaml
+image: not-specified (see issue #124)
+
+aliases
+  build_c: !from_yaml .gitlab-ci.yml build_c
+  build_py: !from_yaml .gitlab-ci.yml build_py
+```
+
+This example which concatenates two jobs from `.gitlab-ci.yml` into a
+single alias. This works by flattening the effective `script` node that results
+by including two elements that are lists.
+
+**`.gitlab-ci.yml`**
+```yaml
+image: gcc:5.1
+
+part1:
+  script:
+    - make something
+part2:
+  script:
+    - make something-else
+```
+
+**`.scuba.yml`**
+```yaml
+image: !from_yaml .gitlab-ci.yml image
+
+aliases
+  all_parts:
+    script:
+      - !from_yaml .gitlab-ci.yml part1.script
+      - !from_yaml .gitlab-ci.yml part2.script
+```
+
+
 
 [YAML]: http://yaml.org/
 [`.gitlab-ci.yml`]: http://doc.gitlab.com/ce/ci/yaml/README.html
-
-
