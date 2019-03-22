@@ -358,6 +358,27 @@ class TestMain(TmpDirTestCase):
         assert_str_equalish(out, data)
 
 
+    def test_nested_sript(self):
+        '''Verify nested scripts works'''
+        with open('.scuba.yml', 'w') as f:
+            f.write('image: {}\n'.format(DOCKER_IMAGE))
+            f.write('aliases:\n')
+            f.write('  foo:\n')
+            f.write('    script:\n')
+            f.write('      - echo "This"\n')
+            f.write('      - - echo "list"\n')
+            f.write('        - echo "is"\n')
+            f.write('        - echo "nested"\n')
+            f.write('        - - echo "kinda"\n')
+            f.write('          - echo "crazy"\n')
+
+        test_str = 'This list is nested kinda crazy'
+        out, _ = self.run_scuba(['foo'])
+
+        out = out.replace('\n', ' ')
+        assert_str_equalish(out, test_str)
+
+
     ############################################################################
     # Entrypoint
 

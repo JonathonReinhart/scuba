@@ -319,6 +319,8 @@ class ScubaConfig(object):
                     command.pop(0)
                     result.script = [alias.script[0] + ' ' + shell_quote_cmd(command)]
 
+            result.script = flatten_list(result.script)
+
         return result
 
 
