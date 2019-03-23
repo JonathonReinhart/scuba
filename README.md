@@ -72,6 +72,14 @@ aliases:
 
 In this example, `scuba build foo` would execute `make -j4 foo` in a `gcc:5.1` container.
 
+
+## Environment
+Scuba defines the following environment variables in the container:
+
+- `SCUBA_ROOT` the root of the scuba working directory mount; the directory
+  where `.scuba.yml` was found.
+
+
 ## License
 
 This software is released under the [MIT License](https://opensource.org/licenses/MIT).
