@@ -1,7 +1,6 @@
-# We need sudo, in order to install and run Docker.
-sudo: required
 services:
   - docker
+dist: xenial
 
 language: python
 python:
