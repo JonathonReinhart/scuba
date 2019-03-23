@@ -677,6 +677,17 @@ class TestMain(TmpDirTestCase):
                 BAZ = "From the command line",
             ))
 
+    def test_builtin_env__SCUBA_DIR(self):
+        '''Verify SCUBA_DIR is set in container'''
+        with open('.scuba.yml', 'w') as f:
+            f.write('image: {}\n'.format(DOCKER_IMAGE))
+
+        args = ['/bin/sh', '-c', 'echo $SCUBA_ROOT']
+        out, _ = self.run_scuba(args)
+
+        assert_str_equalish(self.path, out)
+
+
 
     ############################################################################
     # Misc

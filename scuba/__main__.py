@@ -232,6 +232,8 @@ class ScubaDive(object):
         # ...and set the working dir relative to it
         self.set_workdir(os.path.join(top_path, top_rel))
 
+        self.add_env('SCUBA_ROOT', top_path)
+
     def __make_scubadir(self):
         '''Make temp directory where all ancillary files are bind-mounted
         '''
