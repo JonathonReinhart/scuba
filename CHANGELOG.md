@@ -10,6 +10,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 - Don't run image entrypoint for each line in a mult-line alias (#121)
+- Use `yaml.SafeLoader` for loading config (#133)
 
 ### Removed
 - Drop support for Python 2.6, 3.2, and 3.3 (#119, #130)
