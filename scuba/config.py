@@ -17,7 +17,7 @@ class ConfigNotFoundError(ConfigError):
     pass
 
 # http://stackoverflow.com/a/9577670
-class Loader(yaml.Loader):
+class Loader(yaml.SafeLoader):
     def __init__(self, stream):
         self._root = os.path.split(stream.name)[0]
         super(Loader, self).__init__(stream)
