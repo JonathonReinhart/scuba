@@ -213,6 +213,28 @@ class TestConfig(TmpDirTestCase):
 
         assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
 
+
+    def __test_load_config_safe(self, bad_yaml_path):
+        with open(bad_yaml_path, 'w') as f:
+            f.write('danger:\n')
+            f.write('  - !!python/object/apply:print [Danger]\n')
+            f.write('  - !!python/object/apply:sys.exit [66]\n')
+
+        pat = "could not determine a constructor for the tag.*python/object/apply"
+        with self.assertRaisesRegexp(scuba.config.ConfigError, pat) as ctx:
+            scuba.config.load_config('.scuba.yml')
+
+    def test_load_config_safe(self):
+        '''load_config safely loads yaml'''
+        self.__test_load_config_safe('.scuba.yml')
+
+    def test_load_config_safe_external(self):
+        '''load_config safely loads yaml from external files'''
+        with open('.scuba.yml', 'w') as f:
+            f.write('image: !from_yaml .external.yml danger\n')
+
+        self.__test_load_config_safe('.external.yml')
+
     ######################################################################
     # process_command
 
