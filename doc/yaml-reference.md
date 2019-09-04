@@ -250,6 +250,28 @@ aliases
       - !from_yaml .gitlab-ci.yml part2.script
 ```
 
+This example shows how to reference job names containing a `.` character.
+
+**`.gitlab-ci.yml`**
+```yaml
+image: gcc:5.1
+
+.part1:
+  script:
+    - make something
+.part2:
+  script:
+    - make something-else
+```
+
+**`scuba.yml`**
+```yaml
+image: !from_yaml .gitlab-ci.yml image
+
+aliases
+  build_part1: !from_yaml .gitlab-ci.yml "\\.part1.script"
+  build_part2: !from_yaml .gitlab-ci.yml "\\.part2.script"
+```
 
 
 [YAML]: http://yaml.org/

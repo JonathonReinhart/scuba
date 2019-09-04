@@ -1,6 +1,7 @@
 from __future__ import print_function
 import os
 import yaml
+import re
 import shlex
 try:
     basestring
@@ -62,8 +63,9 @@ class Loader(yaml.SafeLoader):
         # Retrieve the key
         try:
             cur = doc
-            for k in key.split('.'):
-                cur = cur[k]
+            # Use a negative look-behind to split the key on non-escaped '.' characters
+            for k in re.split(r'(?<!\\)\.', key):
+                cur = cur[k.replace('\\.', '.')]  # Be sure to replace any escaped '.' characters with *just* the '.'
         except KeyError:
             raise yaml.YAMLError('Key "{}" not found in {}'.format(key, filename))
         return cur

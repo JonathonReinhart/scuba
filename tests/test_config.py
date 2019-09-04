@@ -178,6 +178,19 @@ class TestConfig(TmpDirTestCase):
         config = scuba.config.load_config('.scuba.yml')
         assert_equals(config.image, 'debian:8.2')
 
+    def test_load_config_image_from_yaml_nested_keys_with_escaped_characters(self):
+        '''load_config loads a config using !from_yaml with nested keys containing escaped '.' characters'''
+        with open('.gitlab.yml', 'w') as f:
+            f.write('.its:\n')
+            f.write('  somewhere.down:\n')
+            f.write('    here: debian:8.2\n')
+
+        with open('.scuba.yml', 'w') as f:
+            f.write('image: !from_yaml .gitlab.yml "\\.its.somewhere\\.down.here"\n')
+
+        config = scuba.config.load_config('.scuba.yml')
+        assert_equals(config.image, 'debian:8.2')
+
     def test_load_config_image_from_yaml_nested_key_missing(self):
         '''load_config raises ConfigError when !from_yaml references nonexistant key'''
         with open('.gitlab.yml', 'w') as f:
