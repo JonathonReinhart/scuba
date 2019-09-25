@@ -27,14 +27,17 @@
 #define ETC_SHADOW          "/etc/shadow"
 #define INVALID_PASSWORD    "x"
 
+#define USER_HOME          "/home/"
+
 #define SCUBA_USER          "scubauser"
 #define SCUBA_GROUP         "scubauser"
-#define SCUBA_HOME          "/home/scubauser"
 #define SCUBA_USER_FULLNAME "Scuba User"
 
 #define SCUBAINIT_UID       "SCUBAINIT_UID"
 #define SCUBAINIT_GID       "SCUBAINIT_GID"
 #define SCUBAINIT_UMASK     "SCUBAINIT_UMASK"
+#define SCUBAINIT_USER      "SCUBAINIT_USER"
+#define SCUBAINIT_GROUP     "SCUBAINIT_GROUP"
 #define SCUBAINIT_HOOK_USER "SCUBAINIT_HOOK_USER"
 #define SCUBAINIT_HOOK_ROOT "SCUBAINIT_HOOK_ROOT"
 #define SCUBAINIT_VERBOSE   "SCUBAINIT_VERBOSE"
@@ -44,20 +47,24 @@ static int m_uid = -1;
 static int m_gid = -1;
 static int m_umask = -1;
 
+static const char *m_user;
+static const char *m_group;
+static const char *m_full_name;
+
 static const char *m_user_hook;
 static const char *m_root_hook;
 
 
-/* Returns true if the scuba user should be used */
+/* Returns true if root should be used */
 static bool
-use_scuba_user(void)
+use_root(void)
 {
-    if (m_uid >= 0) {
-        assert(m_gid >= 0);
+    if (m_uid == -1) {
+        assert(m_gid == -1);
         return true;
     }
 
-    assert(m_gid == -1);
+    assert(m_gid >= 0);
     return false;
 }
 
@@ -277,7 +284,7 @@ out:
 }
 
 static int
-change_user(void)
+change_user(const char *home)
 {
     /* TODO: Would we ever want to get this list from scuba, too? */
     if (setgroups(0, NULL) != 0) {
@@ -297,9 +304,9 @@ change_user(void)
     }
 
     /* Set expected environment variables */
-    setenv("USER", SCUBA_USER, 1);
-    setenv("LOGNAME", SCUBA_USER, 1);
-    setenv("HOME", SCUBA_HOME, 1);
+    setenv("USER", m_user, 1);
+    setenv("LOGNAME", m_user, 1);
+    setenv("HOME", home, 1);
 
     verbose("Changed to uid=%u euid=%u  gid=%u egid=%u\n",
             getuid(), geteuid(), getgid(), getegid());
@@ -541,6 +548,19 @@ process_envvars(void)
         m_verbose = true;
     }
 
+    /* Optional user/group */
+    m_user = getenv_str_unset(SCUBAINIT_USER);
+    if (!m_user) {
+        m_user = SCUBA_USER;
+        m_full_name = SCUBA_USER_FULLNAME;
+    }
+    else
+        m_full_name = m_user;
+
+    m_group = getenv_str_unset(SCUBAINIT_GROUP);
+    if (!m_group)
+        m_group = SCUBA_GROUP;
+
     /* Hook scripts */
     m_user_hook = getenv_str_unset(SCUBAINIT_HOOK_USER);
     m_root_hook = getenv_str_unset(SCUBAINIT_HOOK_ROOT);
@@ -559,6 +579,7 @@ main(int argc, char **argv)
 {
     char **new_argv;
     int new_argc;
+    char *home = NULL;
 
     /**
      * This is the assumption that execv() makes.
@@ -572,28 +593,39 @@ main(int argc, char **argv)
     if (process_envvars() < 0)
         exit(99);
 
-    if (use_scuba_user()) {
-        /* Create scuba user home directory */
-        if (make_homedir(SCUBA_HOME, m_uid, m_gid) != 0)
+    if (!use_root()) {
+        size_t home_len = sizeof(USER_HOME) + strlen(m_user) + 1;
+        home = malloc(home_len);
+        if (!home)
             exit(99);
 
+        sprintf(home, "%s%s", USER_HOME, m_user);
+        home[home_len-1] = '\0';
+
+        /* Create scuba user home directory */
+        if (make_homedir(home, m_uid, m_gid) != 0)
+            goto fail;
+
         /* Add scuba user and group */
-        if (add_group(ETC_GROUP, SCUBA_GROUP, m_gid) != 0)
-            exit(99);
-        if (add_user(ETC_PASSWD, SCUBA_USER, m_uid, m_gid,
-                    SCUBA_USER_FULLNAME, SCUBA_HOME) != 0)
-            exit(99);
-        if (add_shadow(ETC_SHADOW, SCUBA_USER) != 0)
-            exit(99);
+        if (add_group(ETC_GROUP, m_group, m_gid) != 0)
+            goto fail;
+        if (add_user(ETC_PASSWD, m_user, m_uid, m_gid,
+                    m_full_name, home) != 0)
+            goto fail;
+        if (add_shadow(ETC_SHADOW, m_user) != 0)
+            goto fail;
     }
 
     /* Call pre-su hook */
     call_hook(m_root_hook);
 
     /* Handle the scuba user */
-    if (use_scuba_user()) {
-        if (change_user() < 0)
-            exit(99);
+    if (!use_root()) {
+        if (change_user(home) < 0)
+            goto fail;
+
+        free(home);
+        home = NULL;
     }
 
     if (m_umask >= 0) {
@@ -602,7 +634,7 @@ main(int argc, char **argv)
     }
 
     /* Call post-su hook, only if we switch users */
-    if (use_scuba_user()) {
+    if (!use_root()) {
         call_hook(m_user_hook);
     }
 
@@ -620,5 +652,9 @@ main(int argc, char **argv)
     execvp(new_argv[0], new_argv);
 
     errmsg("execvp(\"%s\", ...) failed: %m\n", new_argv[0]);
+
+fail:
+    if (home)
+        free(home);
     exit(99);
 }
