@@ -103,8 +103,7 @@ add_group(const char *path, const char *name, unsigned int gid)
         }
 
         if (gr->gr_gid == gid) {
-            errmsg("GID %u already exists in %s\n", gid, path);
-            goto out;
+            errmsg("Warning: GID %u already exists in %s\n", gid, path);
         }
     }
 
@@ -175,8 +174,7 @@ add_user(const char *path, const char *name, unsigned int uid, unsigned int gid,
         }
 
         if (pw->pw_uid == uid) {
-            errmsg("UID %u already exists in %s\n", uid, path);
-            goto out;
+            errmsg("Warning: UID %u already exists in %s\n", uid, path);
         }
     }
 
