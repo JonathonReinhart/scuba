@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-from __future__ import print_function
 import scuba.version
 from setuptools import setup, Command
 from distutils.command.build import build

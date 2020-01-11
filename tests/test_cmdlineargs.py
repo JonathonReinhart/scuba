@@ -1,5 +1,4 @@
  # coding=utf-8
-from __future__ import print_function
 from unittest import TestCase
 from .utils import RedirStd
 

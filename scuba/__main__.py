@@ -2,7 +2,6 @@
 # (C) 2015 Jonathon Reinhart
 # https://github.com/JonathonReinhart/scuba
 
-from __future__ import print_function
 import os, os.path
 from pwd import getpwuid
 from grp import getgrgid
