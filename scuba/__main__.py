@@ -342,7 +342,7 @@ class ScubaDive(object):
         assert not os.path.exists(path)
 
         # Make any directories required
-        mkdir_p(os.path.dirname(path))
+        os.makedirs(os.path.dirname(path), exist_ok=True)
 
         f = open(path, mode)
         f.container_path = os.path.join(self.__scubadir_contpath, name)

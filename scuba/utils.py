@@ -38,15 +38,6 @@ def format_cmdline(args, maxwidth=80):
     return ' \\\n'.join(lines())
 
 
-def mkdir_p(path):
-    # http://stackoverflow.com/a/600612/119527
-    try:
-        os.makedirs(path)
-    except OSError as exc:
-        if not (exc.errno == errno.EEXIST and os.path.isdir(path)):
-            raise
-
-
 def parse_env_var(s):
     """Parse an environment variable string
 
