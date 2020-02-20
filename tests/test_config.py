@@ -191,6 +191,27 @@ class TestConfig(TmpDirTestCase):
         config = scuba.config.load_config('.scuba.yml')
         assert_equals(config.image, 'debian:8.2')
 
+    def test_load_config_from_yaml_cached_file(self):
+        '''load_config loads a config using !from_yaml from cached version'''
+        with open('.gitlab.yml', 'w') as f:
+            f.write('somewhere:\n')
+            f.write('  down:\n')
+            f.write('    here: debian:8.2\n')
+            f.write('    there: debian:9.3\n')
+
+        with open('.scuba.yml', 'w') as f:
+            f.write('image: !from_yaml .gitlab.yml somewhere.down.here\n')
+            f.write('aliases:\n')
+            f.write('  build:\n')
+            f.write('    image:  !from_yaml .gitlab.yml somewhere.down.there\n')
+            f.write('    script:\n')
+            f.write('    - ugh\n')
+
+        config = scuba.config.load_config('.scuba.yml')
+        assert_equals(config.image, 'debian:8.2')
+        assert_equals(len(config.aliases), 1)
+        assert_equals(config.aliases['build'].image, 'debian:9.3')
+
     def test_load_config_image_from_yaml_nested_key_missing(self):
         '''load_config raises ConfigError when !from_yaml references nonexistant key'''
         with open('.gitlab.yml', 'w') as f:

@@ -21,6 +21,7 @@ class ConfigNotFoundError(ConfigError):
 class Loader(yaml.SafeLoader):
     def __init__(self, stream):
         self._root = os.path.split(stream.name)[0]
+        self._cache = dict()
         super(Loader, self).__init__(stream)
 
     def from_yaml(self, node):
@@ -57,8 +58,11 @@ class Loader(yaml.SafeLoader):
         path = os.path.join(self._root, filename)
 
         # Load the other YAML document
-        with open(path, 'r') as f:
-            doc = yaml.load(f, self.__class__)
+        doc = self._cache.get(path)
+        if not doc:
+            with open(path, 'r') as f:
+                doc = yaml.load(f, self.__class__)
+                self._cache[path] = doc
 
         # Retrieve the key
         try:
