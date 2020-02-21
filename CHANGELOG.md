@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+### Removed
+- Drop support for Python 3.4
+
+
 ## [2.4.0] - 2020-01-06
 ### Added
 - Enable scuba to override entrypoint via `--entrypoint` or `.scuba.yml` (#125)
@@ -15,6 +20,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Removed
 - Drop support for Python 2.6, 3.2, and 3.3 (#119, #130)
+
 
 ## [2.3.0] - 2018-09-10
 ### Added
