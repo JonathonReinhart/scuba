@@ -1,7 +1,9 @@
 # Python 2/3 compatibility
 import subprocess
+import sys
 
 __all__ = [
+    'builtins_module_name',
     'File',
     'StringIO',
 ]
@@ -28,3 +30,10 @@ except NameError:
     # 'file' type removed, but open() returns _io.TextIOWrapper
     # which has a __dict__
     File = open
+
+
+# https://stackoverflow.com/a/9047762
+if sys.version_info >= (3,):
+    builtins_module_name = 'builtins'
+else:
+    builtins_module_name = '__builtin__'

@@ -332,7 +332,7 @@ class ScubaConfig(object):
 
 def load_config(path):
     try:
-        with open(path) as f:
+        with open(path, 'r') as f:
             data = yaml.load(f, Loader)
     except IOError as e:
         raise ConfigError('Error opening {}: {}'.format(SCUBA_YML, e))
