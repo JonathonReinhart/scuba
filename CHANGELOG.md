@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [2.4.1] - 2020-02-21
 ### Added
 - Cache yaml files loaded by `!from_yaml`
 ### Removed
@@ -181,7 +181,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 First versioned release
 
 
-[Unreleased]: https://github.com/JonathonReinhart/scuba/compare/v2.4.0...HEAD
+[Unreleased]: https://github.com/JonathonReinhart/scuba/compare/v2.4.1...HEAD
+[2.4.1]: https://github.com/JonathonReinhart/scuba/compare/v2.4.0...v2.4.1
 [2.4.0]: https://github.com/JonathonReinhart/scuba/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/JonathonReinhart/scuba/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/JonathonReinhart/scuba/compare/v2.1.0...v2.2.0
