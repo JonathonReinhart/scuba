@@ -191,6 +191,33 @@ class TestConfig(TmpDirTestCase):
         config = scuba.config.load_config('.scuba.yml')
         assert_equals(config.image, 'debian:8.2')
 
+    def test_load_config_from_yaml_cached_file(self):
+        '''load_config loads a config using !from_yaml from cached version'''
+        with open('.gitlab.yml', 'w') as f:
+            f.write('one: debian:8.2\n')
+            f.write('two: debian:9.3\n')
+            f.write('three: debian:10.1\n')
+
+        with open('.scuba.yml', 'w') as f:
+            f.write('image: !from_yaml .gitlab.yml one\n')
+            f.write('aliases:\n')
+            f.write('  two:\n')
+            f.write('    image:  !from_yaml .gitlab.yml two\n')
+            f.write('    script: ugh\n')
+            f.write('  three:\n')
+            f.write('    image:  !from_yaml .gitlab.yml three\n')
+            f.write('    script: ugh\n')
+
+
+        with mock_open() as m:
+            config = scuba.config.load_config('.scuba.yml')
+
+        # Assert that .gitlab.yml was only opened once
+        assert_equals(m.mock_calls, [
+            mock.call('.scuba.yml', 'r'),
+            mock.call('.gitlab.yml', 'r'),
+        ])
+
     def test_load_config_image_from_yaml_nested_key_missing(self):
         '''load_config raises ConfigError when !from_yaml references nonexistant key'''
         with open('.gitlab.yml', 'w') as f:
