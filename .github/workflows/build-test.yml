@@ -1,0 +1,40 @@
+name: Build and Test
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [2.7, 3.5, 3.6, 3.7, 3.8]
+      fail-fast: False
+
+    steps:
+    - uses: actions/checkout@v2
+
+    # https://github.com/actions/checkout#fetch-all-history-for-all-tags-and-branches
+    - run: git fetch --prune --unshallow
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        docker version
+
+        sudo apt-get update
+        sudo apt-get install -y musl-tools
+
+        ci/test_setup.sh
+        pip install wheel
+    - name: Run tests
+      run: |
+        python setup.py bdist_wheel
+        pip install dist/scuba-*-py2.py3-none-any.whl
+        ./run_nosetests.py --no-local-import
+        ./run_full_tests.py
