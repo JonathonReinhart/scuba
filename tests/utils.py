@@ -78,6 +78,11 @@ class PseudoTTY(object):
         return True
 
 
+def skipUnlessTty():
+    return unittest.skipUnless(sys.stdin.isatty(),
+            "Can't test docker tty if not connected to a terminal")
+
+
 class InTempDir(object):
     def __init__(self, suffix='', prefix='tmp', delete=True):
         self.delete = delete
