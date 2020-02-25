@@ -253,6 +253,7 @@ class TestMain(TmpDirTestCase):
             f.write('if [ -t 1 ]; then echo "isatty"; else echo "notatty"; fi\n')
         make_executable('check_tty.sh')
 
+    @skipUnlessTty()
     def test_with_tty(self):
         '''Verify docker allocates tty if stdout is a tty.'''
         self._setup_test_tty()
@@ -261,6 +262,7 @@ class TestMain(TmpDirTestCase):
 
         assert_str_equalish(out, 'isatty')
 
+    @skipUnlessTty()
     def test_without_tty(self):
         '''Verify docker doesn't allocate tty if stdout is not a tty.'''
         self._setup_test_tty()

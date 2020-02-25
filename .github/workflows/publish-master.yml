@@ -1,0 +1,39 @@
+name: Upload to Test PyPI
+
+# On every push to master, push to Test PyPI
+on:
+  push:
+    branches:
+      - master
+
+# TODO: De-duplicate with python-publish-release.yml
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    # https://github.com/actions/checkout#fetch-all-history-for-all-tags-and-branches
+    - run: git fetch --prune --unshallow
+
+    - name: Set up Python
+      uses: actions/setup-python@v1
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install setuptools wheel twine
+        sudo apt-get update
+        sudo apt-get install -y musl-tools
+
+    - name: Build and publish
+      env:
+        CC: /usr/bin/musl-gcc
+        CI_VERSION_BUILD_NUMBER: ${{ github.run_id }}
+        TWINE_USERNAME: ${{ secrets.PYPI_TEST_USERNAME }}
+        TWINE_PASSWORD: ${{ secrets.PYPI_TEST_PASSWORD }}
+      run: |
+        python setup.py sdist bdist_wheel
+        twine upload --repository-url https://test.pypi.org/legacy/ dist/*

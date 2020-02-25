@@ -36,13 +36,13 @@ def read_project_file(path):
 # Dynamic versioning
 
 def get_version():
-    # Travis builds
-    # If we're not building for a tag, then append the build number
-    build_num = os.getenv('TRAVIS_BUILD_NUMBER')
-    build_tag = os.getenv('TRAVIS_TAG')
-    if (not build_tag) and (build_num != None):
+    # CI builds
+    # If CI_VERSION_BUILD_NUMBER is set, append that to the base version
+    build_num = os.getenv('CI_VERSION_BUILD_NUMBER')
+    if build_num:
         return '{}.{}'.format(scuba.version.BASE_VERSION, build_num)
 
+    # Otherwise, use the auto-versioning
     return scuba.version.__version__
 
 ################################################################################
