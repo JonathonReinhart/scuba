@@ -31,6 +31,7 @@ jobs:
     - name: Build and publish
       env:
         CC: /usr/bin/musl-gcc
+        CI_VERSION_BUILD_NUMBER: ${{ github.run_id }}
         TWINE_USERNAME: ${{ secrets.PYPI_TEST_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_TEST_PASSWORD }}
       run: |
