@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.4.2] - 2020-02-24
+### Changed
+- Use GitHub Actions instead of Travis CI for publishing releases
+
+
 ## [2.4.1] - 2020-02-21
 ### Added
 - Cache yaml files loaded by `!from_yaml`
@@ -181,7 +186,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 First versioned release
 
 
-[Unreleased]: https://github.com/JonathonReinhart/scuba/compare/v2.4.1...HEAD
+[Unreleased]: https://github.com/JonathonReinhart/scuba/compare/v2.4.2...HEAD
+[2.4.1]: https://github.com/JonathonReinhart/scuba/compare/v2.4.1...v2.4.2
 [2.4.1]: https://github.com/JonathonReinhart/scuba/compare/v2.4.0...v2.4.1
 [2.4.0]: https://github.com/JonathonReinhart/scuba/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/JonathonReinhart/scuba/compare/v2.2.0...v2.3.0
