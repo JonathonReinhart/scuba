@@ -187,7 +187,7 @@ First versioned release
 
 
 [Unreleased]: https://github.com/JonathonReinhart/scuba/compare/v2.4.2...HEAD
-[2.4.1]: https://github.com/JonathonReinhart/scuba/compare/v2.4.1...v2.4.2
+[2.4.2]: https://github.com/JonathonReinhart/scuba/compare/v2.4.1...v2.4.2
 [2.4.1]: https://github.com/JonathonReinhart/scuba/compare/v2.4.0...v2.4.1
 [2.4.0]: https://github.com/JonathonReinhart/scuba/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/JonathonReinhart/scuba/compare/v2.2.0...v2.3.0
