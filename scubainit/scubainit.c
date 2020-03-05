@@ -365,6 +365,19 @@ mkdir_p(const char *path)
 static int
 make_homedir(const char *path, unsigned int uid, unsigned int gid)
 {
+    struct stat st;
+
+    /* See if the home directory already exists */
+    if (stat(path, &st) == 0) {
+        verbose("Homedir %s already exists\n", path);
+        return 0;
+    }
+    else if (errno != ENOENT) {
+        errmsg("Failed to stat %s: %m\n", path);
+        return -1;
+    }
+
+    /* Create the home directory */
     if (mkdir_p(path) != 0) {
         errmsg("Failed to create %s: %m\n", path);
         return -1;
@@ -377,6 +390,8 @@ make_homedir(const char *path, unsigned int uid, unsigned int gid)
         errmsg("Failed to chown %s: %m\n", path);
         return -1;
     }
+
+    verbose("Created homedir %s\n", path);
     return 0;
 }
 
