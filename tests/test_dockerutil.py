@@ -15,7 +15,8 @@ class TestDockerutil(TestCase):
 
     def test_get_image_command_bad_image(self):
         '''get_image_command raises an exception for a bad image name'''
-        assert_raises(uut.DockerError, uut.get_image_command, 'nosuchimageZZZZZZZZ')
+        with self.assertRaises(uut.DockerError):
+            uut.get_image_command('nosuchimageZZZZZZZZ')
 
     def test_get_image_no_docker(self):
         '''get_image_command raises an exception if docker is not installed'''
@@ -27,7 +28,8 @@ class TestDockerutil(TestCase):
             return real_Popen(popen_args, *args, **kw)
 
         with mock.patch('subprocess.Popen', side_effect=mocked_popen) as popen_mock:
-            assert_raises(uut.DockerError, uut.get_image_command, 'n/a')
+            with self.assertRaises(uut.DockerError):
+                uut.get_image_command('n/a')
 
     def test__get_image_command__pulls_image_if_missing(self):
         '''get_image_command pulls an image if missing'''

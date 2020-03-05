@@ -47,8 +47,8 @@ class TestCommonScriptSchema(TmpDirTestCase):
                 whatisthis = 'idontknow',
             ),
         )
-        assert_raises(scuba.config.ConfigError,
-                scuba.config._process_script_node, node, 'dontcare')
+        with self.assertRaises(scuba.config.ConfigError):
+            scuba.config._process_script_node(node, 'dontcare')
 
 
 class TestConfig(TmpDirTestCase):
@@ -101,17 +101,22 @@ class TestConfig(TmpDirTestCase):
 
     def test_find_config_nonexist(self):
         '''find_config raises ConfigError if the config cannot be found'''
-        assert_raises(scuba.config.ConfigError, scuba.config.find_config)
+        with self.assertRaises(scuba.config.ConfigError):
+            scuba.config.find_config()
 
     ######################################################################
     # Load config
+
+    def _test_invalid_config(self):
+        with self.assertRaises(scuba.config.ConfigError):
+            scuba.config.load_config('.scuba.yml')
 
     def test_load_config_empty(self):
         '''load_config raises ConfigError if the config is empty'''
         with open('.scuba.yml', 'w') as f:
             pass
 
-        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
+        self._test_invalid_config()
 
     def test_load_unexpected_node(self):
         '''load_config raises ConfigError on unexpected config node'''
@@ -119,7 +124,7 @@ class TestConfig(TmpDirTestCase):
             f.write('image: busybox\n')
             f.write('unexpected_node_123456: value\n')
 
-        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
+        self._test_invalid_config()
 
     def test_load_config_minimal(self):
         '''load_config loads a minimal config'''
@@ -150,7 +155,7 @@ class TestConfig(TmpDirTestCase):
             f.write('aliases:\n')
             f.write('  this has spaces: whatever\n')
 
-        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
+        self._test_invalid_config()
 
     def test_load_config_image_from_yaml(self):
         '''load_config loads a config using !from_yaml'''
@@ -225,21 +230,21 @@ class TestConfig(TmpDirTestCase):
         with open('.scuba.yml', 'w') as f:
             f.write('image: !from_yaml .gitlab.yml somewhere.NONEXISTANT\n')
 
-        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
+        self._test_invalid_config()
 
     def test_load_config_image_from_yaml_missing_file(self):
         '''load_config raises ConfigError when !from_yaml references nonexistant file'''
         with open('.scuba.yml', 'w') as f:
             f.write('image: !from_yaml .NONEXISTANT.yml image\n')
 
-        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
+        self._test_invalid_config()
 
     def test_load_config_image_from_yaml_unicode_args(self):
         '''load_config raises ConfigError when !from_yaml has unicode args'''
         with open('.scuba.yml', 'w') as f:
             f.write('image: !from_yaml .NONEXISTANT.yml ½\n')
 
-        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
+        self._test_invalid_config()
 
     def test_load_config_image_from_yaml_missing_arg(self):
         '''load_config raises ConfigError when !from_yaml has missing args'''
@@ -249,7 +254,7 @@ class TestConfig(TmpDirTestCase):
         with open('.scuba.yml', 'w') as f:
             f.write('image: !from_yaml .gitlab.yml\n')
 
-        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
+        self._test_invalid_config()
 
 
     def __test_load_config_safe(self, bad_yaml_path):
@@ -375,7 +380,8 @@ class TestConfig(TmpDirTestCase):
                     cat = 'dog',
                     ),
                 )
-        assert_raises(scuba.config.ConfigError, cfg.process_command, ['apple', 'ARGS', 'NOT ALLOWED'])
+        with self.assertRaises(scuba.config.ConfigError):
+            cfg.process_command(['apple', 'ARGS', 'NOT ALLOWED'])
 
     def test_process_command_alias_overrides_image(self):
         '''aliases can override the image'''
@@ -472,7 +478,7 @@ class TestConfig(TmpDirTestCase):
                     - a 'script'
                 ''')
 
-        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
+        self._test_invalid_config()
 
     def test_hooks_missing_script(self):
         '''hooks with dict, but missing "script" are invalid'''
@@ -484,7 +490,7 @@ class TestConfig(TmpDirTestCase):
                     not_script: missing "script" key
                 ''')
 
-        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
+        self._test_invalid_config()
 
 
     ############################################################################
