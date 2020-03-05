@@ -27,7 +27,7 @@
 #define ETC_SHADOW          "/etc/shadow"
 #define INVALID_PASSWORD    "x"
 
-#define USER_HOME          "/home/"
+#define USER_HOME           "/home"
 
 #define SCUBAINIT_UID       "SCUBAINIT_UID"
 #define SCUBAINIT_GID       "SCUBAINIT_GID"
@@ -49,6 +49,18 @@ static const char *m_full_name;
 
 static const char *m_user_hook;
 static const char *m_root_hook;
+
+
+static char *
+path_join(const char *p1, const char *p2)
+{
+    char *result;
+    if (asprintf(&result, "%s/%s", p1, p2) < 0) {
+        errmsg("Failed to allocate path string: %m\n");
+        exit(99);
+    }
+    return result;
+}
 
 
 /* Returns true if root should be used */
@@ -589,15 +601,8 @@ main(int argc, char **argv)
         exit(99);
 
     if (!use_root()) {
-        size_t home_len = sizeof(USER_HOME) + strlen(m_user) + 1;
-        home = malloc(home_len);
-        if (!home)
-            exit(99);
-
-        sprintf(home, "%s%s", USER_HOME, m_user);
-        home[home_len-1] = '\0';
-
-        /* Create scuba user home directory */
+        /* Create user home directory */
+        home = path_join(USER_HOME, m_user);
         if (make_homedir(home, m_uid, m_gid) != 0)
             goto fail;
 
