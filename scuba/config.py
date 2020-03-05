@@ -2,10 +2,6 @@ import os
 import yaml
 import re
 import shlex
-try:
-    basestring
-except NameError:
-    basestring = str    # Python 3
 
 from .constants import *
 from .utils import *
@@ -112,7 +108,7 @@ def _process_script_node(node, name):
     This handles nodes that follow the *Common script schema*,
     as outlined in doc/yaml-reference.md.
     '''
-    if isinstance(node, basestring):
+    if isinstance(node, str):
         # The script is just the text itself
         return [node]
 
@@ -126,7 +122,7 @@ def _process_script_node(node, name):
         if isinstance(script, list):
             return script
 
-        if isinstance(script, basestring):
+        if isinstance(script, str):
             return [script]
 
         raise ConfigError("{}.script: must be a string or list".format(name))
@@ -176,7 +172,7 @@ def _get_entrypoint(data):
     if ep is None:
         ep = ''
 
-    if not isinstance(ep, basestring):
+    if not isinstance(ep, str):
         raise ConfigError("'{}' must be a string, not {}".format(
                 key, type(ep).__name__))
     return ep
