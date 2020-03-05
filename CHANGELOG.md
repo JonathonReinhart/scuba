@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [2.5.0] - 2020-03-05
 ### Changed
 - Use username/groupname of invoking user inside container (#153)
 - Ignore already existing UID/GIDs (#139)
@@ -199,7 +199,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 First versioned release
 
 
-[Unreleased]: https://github.com/JonathonReinhart/scuba/compare/v2.4.2...HEAD
+[Unreleased]: https://github.com/JonathonReinhart/scuba/compare/v2.5.0...HEAD
+[2.5.0]: https://github.com/JonathonReinhart/scuba/compare/v2.4.2...v2.5.0
 [2.4.2]: https://github.com/JonathonReinhart/scuba/compare/v2.4.1...v2.4.2
 [2.4.1]: https://github.com/JonathonReinhart/scuba/compare/v2.4.0...v2.4.1
 [2.4.0]: https://github.com/JonathonReinhart/scuba/compare/v2.3.0...v2.4.0
