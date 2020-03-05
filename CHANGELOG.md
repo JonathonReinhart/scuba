@@ -6,6 +6,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 - Use username/groupname of invoking user inside container (#153)
 - Ignore already existing UID/GIDs (#139)
+- Allow top-level `image` to be omitted in `.scuba.yml` (#158)
 
 ### Fixed
 - Fixed deprecation error with collections.Mapping (#156)
