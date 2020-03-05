@@ -12,7 +12,7 @@ import itertools
 import argparse
 import tempfile
 import shutil
-import collections
+from collections.abc import Mapping
 from io import StringIO
 
 from .cmdlineargs import *
@@ -98,7 +98,7 @@ class ScubaDive(object):
             image_override=None, entrypoint=None):
 
         env = env or {}
-        if not isinstance(env, collections.Mapping):
+        if not isinstance(env, Mapping):
             raise ValueError('Argument env must be dict-like')
 
         self.user_command = user_command

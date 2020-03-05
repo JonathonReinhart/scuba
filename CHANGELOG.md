@@ -7,6 +7,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Use username/groupname of invoking user inside container (#153)
 - Ignore already existing UID/GIDs (#139)
 
+### Fixed
+- Fixed deprecation error with collections.Mapping (#156)
+
 ### Removed
 - Drop support for Python 2 (#154)
 
