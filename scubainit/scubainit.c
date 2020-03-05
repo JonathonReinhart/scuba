@@ -323,7 +323,7 @@ change_user(const char *home)
 }
 
 static int
-mkdir_p(const char *path)
+mkdir_p(const char *path, mode_t mode)
 {
     /* Adapted from http://stackoverflow.com/a/2336245/119527 */
     const size_t len = strlen(path);
@@ -345,7 +345,7 @@ mkdir_p(const char *path)
             /* Temporarily truncate */
             *p = '\0';
 
-            if (mkdir(_path, S_IRWXU) != 0) {
+            if (mkdir(_path, mode) != 0) {
                 if (errno != EEXIST)
                     return -1;
             }
@@ -354,7 +354,7 @@ mkdir_p(const char *path)
         }
     }
 
-    if (mkdir(_path, S_IRWXU) != 0) {
+    if (mkdir(_path, mode) != 0) {
         if (errno != EEXIST)
             return -1;
     }
@@ -378,7 +378,7 @@ make_homedir(const char *path, unsigned int uid, unsigned int gid)
     }
 
     /* Create the home directory */
-    if (mkdir_p(path) != 0) {
+    if (mkdir_p(path, 0755) != 0) {
         errmsg("Failed to create %s: %m\n", path);
         return -1;
     }
