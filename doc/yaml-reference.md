@@ -10,13 +10,17 @@ other YAML file schemas, most options are controlled by top-level keys.
 
 ### `image`
 
-The `image` node *is required* and defines the Docker image from which Scuba
+The `image` node defines the Docker image from which Scuba
 containers are created.
 
 Example:
 ```yaml
 image: debian:8.2
 ```
+
+The `image` node is usually necessary but, as of scuba 2.5, can be omitted for
+`.scuba.yml` files in which only the `aliases` are intended to be used.
+
 
 ### `environment`
 
