@@ -29,10 +29,6 @@
 
 #define USER_HOME          "/home/"
 
-#define SCUBA_USER          "scubauser"
-#define SCUBA_GROUP         "scubauser"
-#define SCUBA_USER_FULLNAME "Scuba User"
-
 #define SCUBAINIT_UID       "SCUBAINIT_UID"
 #define SCUBAINIT_GID       "SCUBAINIT_GID"
 #define SCUBAINIT_UMASK     "SCUBAINIT_UMASK"
@@ -493,6 +489,7 @@ getenv_str_unset(const char *name)
 
     /* Duplicate the string then unset the var */
     var = strdup(var);
+    verbose("%s = %s\n", name, var);
     unsetenv(name);
 
     return var;
@@ -507,8 +504,12 @@ process_envvars(void)
     /* Get the env. vars from scuba */
 
     /**
-     * SCUBAINIT_UID and SCUBAINIT_GID are optional,
-     * but if either is set, both must be set.
+     * The following variables are optional, but if any is set,
+     * all must be set:
+     * - SCUBAINIT_UID
+     * - SCUBAINIT_GID
+     * - SCUBAINIT_USER
+     * - SCUBAINIT_GROUP
      */
     switch (getenv_uint_opt_unset(SCUBAINIT_UID, &m_uid)) {
         case -1:
@@ -524,12 +525,19 @@ process_envvars(void)
             ids_set++;
             break;
     }
+    if ((m_user = getenv_str_unset(SCUBAINIT_USER)) != NULL) {
+        ids_set++;
+        m_full_name = m_user;
+    }
+    if ((m_group = getenv_str_unset(SCUBAINIT_GROUP)) != NULL) {
+        ids_set++;
+    }
     switch (ids_set) {
         case 0:
-        case 2:
+        case 4:
             break;
         default:
-            errmsg("If SCUBAINIT_UID or SCUBAINIT_GID are set, both must be set.\n");
+            errmsg("If any of SCUBAINIT_(UID,GID,USER,GROUP) are set, all must be set.\n");
             return -1;
     }
 
@@ -547,19 +555,6 @@ process_envvars(void)
         unsetenv(SCUBAINIT_VERBOSE);
         m_verbose = true;
     }
-
-    /* Optional user/group */
-    m_user = getenv_str_unset(SCUBAINIT_USER);
-    if (!m_user) {
-        m_user = SCUBA_USER;
-        m_full_name = SCUBA_USER_FULLNAME;
-    }
-    else
-        m_full_name = m_user;
-
-    m_group = getenv_str_unset(SCUBAINIT_GROUP);
-    if (!m_group)
-        m_group = SCUBA_GROUP;
 
     /* Hook scripts */
     m_user_hook = getenv_str_unset(SCUBAINIT_HOOK_USER);
