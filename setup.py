@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import scuba.version
 from setuptools import setup, Command
 from distutils.command.build import build
