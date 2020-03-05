@@ -459,6 +459,9 @@ def main(argv=None):
     try:
         rc = run_scuba(scuba_args) or 0
         sys.exit(rc)
+    except ConfigError as e:
+        appmsg("Config error: " + str(e))
+        sys.exit(128)
     except DockerExecuteError as e:
         appmsg(str(e))
         sys.exit(2)
