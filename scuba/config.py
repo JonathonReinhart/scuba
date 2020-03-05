@@ -207,8 +207,8 @@ class ScubaContext(object):
 
 class ScubaConfig(object):
     def __init__(self, **data):
-        required_nodes = ('image',)
-        optional_nodes = ('aliases','hooks','entrypoint','environment')
+        required_nodes = ()
+        optional_nodes = ('image','aliases','hooks','entrypoint','environment')
 
         # Check for missing required nodes
         missing = [n for n in required_nodes if not n in data]
@@ -222,7 +222,7 @@ class ScubaConfig(object):
             raise ConfigError('{}: Unrecognized node{}: {}'.format(SCUBA_YML,
                     's' if len(extra) > 1 else '', ', '.join(extra)))
 
-        self._image = data['image']
+        self._image = data.get('image')
         self._entrypoint = _get_entrypoint(data)
         self._load_aliases(data)
         self._load_hooks(data)
@@ -255,6 +255,8 @@ class ScubaConfig(object):
 
     @property
     def image(self):
+        if not self._image:
+            raise ConfigError("Top-level 'image' not set")
         return self._image
 
     @property
@@ -274,11 +276,12 @@ class ScubaConfig(object):
         return self._environment
 
 
-    def process_command(self, command):
+    def process_command(self, command, image=None):
         '''Processes a user command using aliases
 
         Arguments:
             command     A user command list (e.g. argv)
+            image       Override the image from .scuba.yml
 
         Returns: A ScubaContext object with the following attributes:
             script: a list of command line strings
@@ -286,7 +289,7 @@ class ScubaConfig(object):
         '''
         result = ScubaContext()
         result.script = None
-        result.image = self.image
+        result.image = None
         result.entrypoint = self.entrypoint
         result.environment = self.environment.copy()
 
@@ -321,6 +324,15 @@ class ScubaConfig(object):
                     result.script = [alias.script[0] + ' ' + shell_quote_cmd(command)]
 
             result.script = flatten_list(result.script)
+
+        # If an image was given, it overrides what might have been set by an alias
+        if image:
+            result.image = image
+
+        # If the image was still not set, then try to get it from the confg,
+        # which will raise a ConfigError if it is not set
+        if not result.image:
+            result.image = self.image
 
         return result
 

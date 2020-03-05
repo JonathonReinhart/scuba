@@ -111,12 +111,14 @@ class TestConfig(TmpDirTestCase):
         with self.assertRaises(scuba.config.ConfigError):
             scuba.config.load_config('.scuba.yml')
 
-    def test_load_config_empty(self):
-        '''load_config raises ConfigError if the config is empty'''
+    def test_load_config_no_image(self):
+        '''load_config raises ConfigError if the config is empty and image is referenced'''
         with open('.scuba.yml', 'w') as f:
             pass
 
-        self._test_invalid_config()
+        config = scuba.config.load_config('.scuba.yml')
+        with self.assertRaises(scuba.config.ConfigError):
+            img = config.image
 
     def test_load_unexpected_node(self):
         '''load_config raises ConfigError on unexpected config node'''
@@ -440,6 +442,42 @@ class TestConfig(TmpDirTestCase):
         assert_equal(result.image, 'overridden')
         assert_equal(result.entrypoint, '')
 
+
+    def test_process_command_image_override(self):
+        '''process_command allows image to be overridden when provided'''
+        override_image_name = 'override_image'
+
+        cfg = scuba.config.ScubaConfig(
+                image = 'test_image',
+                )
+        result = cfg.process_command([], image=override_image_name)
+        assert_equal(result.image, override_image_name)
+
+    def test_process_command_image_override_missing(self):
+        '''process_command allows image to be overridden when not provided'''
+        override_image_name = 'override_image'
+
+        cfg = scuba.config.ScubaConfig()
+        result = cfg.process_command([], image=override_image_name)
+        assert_equal(result.image, override_image_name)
+
+    def test_process_command_image_override_alias(self):
+        '''process_command allows image to be overridden when provided by alias'''
+        override_image_name = 'override_image'
+
+        cfg = scuba.config.ScubaConfig(
+                aliases = dict(
+                    apple = dict(
+                        script = [
+                            'banana cherry "pie is good"',
+                            'so is peach',
+                        ],
+                        image = 'apple_image',
+                    ),
+                )
+            )
+        result = cfg.process_command([], image=override_image_name)
+        assert_equal(result.image, override_image_name)
 
     ############################################################################
     # Hooks
