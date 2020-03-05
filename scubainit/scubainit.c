@@ -27,14 +27,13 @@
 #define ETC_SHADOW          "/etc/shadow"
 #define INVALID_PASSWORD    "x"
 
-#define SCUBA_USER          "scubauser"
-#define SCUBA_GROUP         "scubauser"
-#define SCUBA_HOME          "/home/scubauser"
-#define SCUBA_USER_FULLNAME "Scuba User"
+#define USER_HOME           "/home"
 
 #define SCUBAINIT_UID       "SCUBAINIT_UID"
 #define SCUBAINIT_GID       "SCUBAINIT_GID"
 #define SCUBAINIT_UMASK     "SCUBAINIT_UMASK"
+#define SCUBAINIT_USER      "SCUBAINIT_USER"
+#define SCUBAINIT_GROUP     "SCUBAINIT_GROUP"
 #define SCUBAINIT_HOOK_USER "SCUBAINIT_HOOK_USER"
 #define SCUBAINIT_HOOK_ROOT "SCUBAINIT_HOOK_ROOT"
 #define SCUBAINIT_VERBOSE   "SCUBAINIT_VERBOSE"
@@ -44,20 +43,36 @@ static int m_uid = -1;
 static int m_gid = -1;
 static int m_umask = -1;
 
+static const char *m_user;
+static const char *m_group;
+static const char *m_full_name;
+
 static const char *m_user_hook;
 static const char *m_root_hook;
 
 
-/* Returns true if the scuba user should be used */
-static bool
-use_scuba_user(void)
+static char *
+path_join(const char *p1, const char *p2)
 {
-    if (m_uid >= 0) {
-        assert(m_gid >= 0);
+    char *result;
+    if (asprintf(&result, "%s/%s", p1, p2) < 0) {
+        errmsg("Failed to allocate path string: %m\n");
+        exit(99);
+    }
+    return result;
+}
+
+
+/* Returns true if root should be used */
+static bool
+use_root(void)
+{
+    if (m_uid == -1) {
+        assert(m_gid == -1);
         return true;
     }
 
-    assert(m_gid == -1);
+    assert(m_gid >= 0);
     return false;
 }
 
@@ -277,7 +292,7 @@ out:
 }
 
 static int
-change_user(void)
+change_user(const char *home)
 {
     /* TODO: Would we ever want to get this list from scuba, too? */
     if (setgroups(0, NULL) != 0) {
@@ -297,9 +312,9 @@ change_user(void)
     }
 
     /* Set expected environment variables */
-    setenv("USER", SCUBA_USER, 1);
-    setenv("LOGNAME", SCUBA_USER, 1);
-    setenv("HOME", SCUBA_HOME, 1);
+    setenv("USER", m_user, 1);
+    setenv("LOGNAME", m_user, 1);
+    setenv("HOME", home, 1);
 
     verbose("Changed to uid=%u euid=%u  gid=%u egid=%u\n",
             getuid(), geteuid(), getgid(), getegid());
@@ -308,7 +323,7 @@ change_user(void)
 }
 
 static int
-mkdir_p(const char *path)
+mkdir_p(const char *path, mode_t mode)
 {
     /* Adapted from http://stackoverflow.com/a/2336245/119527 */
     const size_t len = strlen(path);
@@ -330,7 +345,7 @@ mkdir_p(const char *path)
             /* Temporarily truncate */
             *p = '\0';
 
-            if (mkdir(_path, S_IRWXU) != 0) {
+            if (mkdir(_path, mode) != 0) {
                 if (errno != EEXIST)
                     return -1;
             }
@@ -339,7 +354,7 @@ mkdir_p(const char *path)
         }
     }
 
-    if (mkdir(_path, S_IRWXU) != 0) {
+    if (mkdir(_path, mode) != 0) {
         if (errno != EEXIST)
             return -1;
     }
@@ -350,7 +365,20 @@ mkdir_p(const char *path)
 static int
 make_homedir(const char *path, unsigned int uid, unsigned int gid)
 {
-    if (mkdir_p(path) != 0) {
+    struct stat st;
+
+    /* See if the home directory already exists */
+    if (stat(path, &st) == 0) {
+        verbose("Homedir %s already exists\n", path);
+        return 0;
+    }
+    else if (errno != ENOENT) {
+        errmsg("Failed to stat %s: %m\n", path);
+        return -1;
+    }
+
+    /* Create the home directory */
+    if (mkdir_p(path, 0755) != 0) {
         errmsg("Failed to create %s: %m\n", path);
         return -1;
     }
@@ -362,6 +390,8 @@ make_homedir(const char *path, unsigned int uid, unsigned int gid)
         errmsg("Failed to chown %s: %m\n", path);
         return -1;
     }
+
+    verbose("Created homedir %s\n", path);
     return 0;
 }
 
@@ -486,6 +516,7 @@ getenv_str_unset(const char *name)
 
     /* Duplicate the string then unset the var */
     var = strdup(var);
+    verbose("%s = %s\n", name, var);
     unsetenv(name);
 
     return var;
@@ -500,8 +531,12 @@ process_envvars(void)
     /* Get the env. vars from scuba */
 
     /**
-     * SCUBAINIT_UID and SCUBAINIT_GID are optional,
-     * but if either is set, both must be set.
+     * The following variables are optional, but if any is set,
+     * all must be set:
+     * - SCUBAINIT_UID
+     * - SCUBAINIT_GID
+     * - SCUBAINIT_USER
+     * - SCUBAINIT_GROUP
      */
     switch (getenv_uint_opt_unset(SCUBAINIT_UID, &m_uid)) {
         case -1:
@@ -517,12 +552,19 @@ process_envvars(void)
             ids_set++;
             break;
     }
+    if ((m_user = getenv_str_unset(SCUBAINIT_USER)) != NULL) {
+        ids_set++;
+        m_full_name = m_user;
+    }
+    if ((m_group = getenv_str_unset(SCUBAINIT_GROUP)) != NULL) {
+        ids_set++;
+    }
     switch (ids_set) {
         case 0:
-        case 2:
+        case 4:
             break;
         default:
-            errmsg("If SCUBAINIT_UID or SCUBAINIT_GID are set, both must be set.\n");
+            errmsg("If any of SCUBAINIT_(UID,GID,USER,GROUP) are set, all must be set.\n");
             return -1;
     }
 
@@ -559,6 +601,7 @@ main(int argc, char **argv)
 {
     char **new_argv;
     int new_argc;
+    char *home = NULL;
 
     /**
      * This is the assumption that execv() makes.
@@ -572,28 +615,32 @@ main(int argc, char **argv)
     if (process_envvars() < 0)
         exit(99);
 
-    if (use_scuba_user()) {
-        /* Create scuba user home directory */
-        if (make_homedir(SCUBA_HOME, m_uid, m_gid) != 0)
-            exit(99);
+    if (!use_root()) {
+        /* Create user home directory */
+        home = path_join(USER_HOME, m_user);
+        if (make_homedir(home, m_uid, m_gid) != 0)
+            goto fail;
 
         /* Add scuba user and group */
-        if (add_group(ETC_GROUP, SCUBA_GROUP, m_gid) != 0)
-            exit(99);
-        if (add_user(ETC_PASSWD, SCUBA_USER, m_uid, m_gid,
-                    SCUBA_USER_FULLNAME, SCUBA_HOME) != 0)
-            exit(99);
-        if (add_shadow(ETC_SHADOW, SCUBA_USER) != 0)
-            exit(99);
+        if (add_group(ETC_GROUP, m_group, m_gid) != 0)
+            goto fail;
+        if (add_user(ETC_PASSWD, m_user, m_uid, m_gid,
+                    m_full_name, home) != 0)
+            goto fail;
+        if (add_shadow(ETC_SHADOW, m_user) != 0)
+            goto fail;
     }
 
     /* Call pre-su hook */
     call_hook(m_root_hook);
 
     /* Handle the scuba user */
-    if (use_scuba_user()) {
-        if (change_user() < 0)
-            exit(99);
+    if (!use_root()) {
+        if (change_user(home) < 0)
+            goto fail;
+
+        free(home);
+        home = NULL;
     }
 
     if (m_umask >= 0) {
@@ -602,7 +649,7 @@ main(int argc, char **argv)
     }
 
     /* Call post-su hook, only if we switch users */
-    if (use_scuba_user()) {
+    if (!use_root()) {
         call_hook(m_user_hook);
     }
 
@@ -620,5 +667,9 @@ main(int argc, char **argv)
     execvp(new_argv[0], new_argv);
 
     errmsg("execvp(\"%s\", ...) failed: %m\n", new_argv[0]);
+
+fail:
+    if (home)
+        free(home);
     exit(99);
 }

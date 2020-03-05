@@ -4,6 +4,8 @@
 
 from __future__ import print_function
 import os, os.path
+from pwd import getpwuid
+from grp import getgrgid
 import errno
 import sys
 import shlex
@@ -252,8 +254,12 @@ class ScubaDive(object):
         self.add_env('SCUBAINIT_UMASK', '{:04o}'.format(get_umask()))
 
         if not self.as_root:
-            self.add_env('SCUBAINIT_UID', os.getuid())
-            self.add_env('SCUBAINIT_GID', os.getgid())
+            uid = os.getuid()
+            gid = os.getgid()
+            self.add_env('SCUBAINIT_UID', uid)
+            self.add_env('SCUBAINIT_GID', gid)
+            self.add_env('SCUBAINIT_USER', getpwuid(uid).pw_name)
+            self.add_env('SCUBAINIT_GROUP', getgrgid(gid).gr_name)
 
         if self.verbose:
             self.add_env('SCUBAINIT_VERBOSE', 1)

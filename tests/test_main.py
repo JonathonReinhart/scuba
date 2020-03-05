@@ -14,6 +14,8 @@ import sys
 from tempfile import TemporaryFile, NamedTemporaryFile
 import subprocess
 import shlex
+from pwd import getpwuid
+from grp import getgrgid
 
 import scuba.__main__ as main
 import scuba.constants
@@ -302,9 +304,9 @@ class TestMain(TmpDirTestCase):
         uid, username, gid, groupname = self._test_user()
 
         assert_equal(uid, os.getuid())
-        assert_equal(username, scuba.constants.SCUBA_USER)
+        assert_equal(username, getpwuid(os.getuid()).pw_name)
         assert_equal(gid, os.getgid())
-        assert_equal(groupname, scuba.constants.SCUBA_GROUP)
+        assert_equal(groupname, getgrgid(os.getgid()).gr_name)
 
 
     def test_user_root(self):
