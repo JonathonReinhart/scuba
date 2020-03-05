@@ -51,7 +51,7 @@ remedied by forcing a [wheel] to be installed, as such:
 $ export CC=/usr/local/musl/bin/musl-gcc    # (optional)
 $ sudo pip install wheel
 $ python setup.py bdist_wheel
-$ sudo pip install dist/scuba-<version>-py2.py3-none-any.whl
+$ sudo pip install dist/scuba-<version>-py3-none-any.whl
 ```
 
 ## Configuration

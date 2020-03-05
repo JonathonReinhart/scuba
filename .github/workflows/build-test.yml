@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [2.7, 3.5, 3.6, 3.7, 3.8]
+        python-version: [3.5, 3.6, 3.7, 3.8]
       fail-fast: False
 
     steps:
@@ -35,6 +35,6 @@ jobs:
     - name: Run tests
       run: |
         python setup.py bdist_wheel
-        pip install dist/scuba-*-py2.py3-none-any.whl
+        pip install dist/scuba-*-py3-none-any.whl
         ./run_nosetests.py --no-local-import
         ./run_full_tests.py

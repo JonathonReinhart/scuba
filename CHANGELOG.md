@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 - Use username/groupname of invoking user inside container (#153)
 
+### Removed
+- Drop support for Python 2 (#154)
+
 
 ## [2.4.2] - 2020-02-24
 ### Changed

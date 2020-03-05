@@ -1,11 +1,10 @@
  # coding=utf-8
-from __future__ import print_function
 from unittest import TestCase
 from .utils import RedirStd
 
 import sys
 import argparse
-from scuba.compat import StringIO
+from io import StringIO
 
 # UUT
 from scuba.cmdlineargs import ListOptsAction

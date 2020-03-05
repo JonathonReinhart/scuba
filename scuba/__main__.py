@@ -2,7 +2,6 @@
 # (C) 2015 Jonathon Reinhart
 # https://github.com/JonathonReinhart/scuba
 
-from __future__ import print_function
 import os, os.path
 from pwd import getpwuid
 from grp import getgrgid
@@ -14,9 +13,9 @@ import argparse
 import tempfile
 import shutil
 import collections
+from io import StringIO
 
 from .cmdlineargs import *
-from .compat import File, StringIO
 from .constants import *
 from .config import find_config, load_config, ScubaConfig, \
         ConfigError, ConfigNotFoundError
@@ -343,9 +342,9 @@ class ScubaDive(object):
         assert not os.path.exists(path)
 
         # Make any directories required
-        mkdir_p(os.path.dirname(path))
+        os.makedirs(os.path.dirname(path), exist_ok=True)
 
-        f = File(path, mode)
+        f = open(path, mode)
         f.container_path = os.path.join(self.__scubadir_contpath, name)
         return f
 

@@ -1,11 +1,6 @@
-from __future__ import print_function
-
 from nose.tools import *
 from unittest import TestCase
-try:
-    from unittest import mock
-except ImportError:
-    import mock
+from unittest import mock
 
 import logging
 import shlex
@@ -61,20 +56,6 @@ class TestUtils(TestCase):
         out_args = shlex.split(result)
 
         assert_seq_equal(out_args, args)
-
-
-    def test_mkdir_p(self):
-        '''mkdir_p creates directories as expected'''
-        relpath = 'one/two/three'
-        with InTempDir(prefix='scubatest'):
-            scuba.utils.mkdir_p(relpath)
-
-            assert(os.path.exists(relpath))
-            assert(os.path.isdir(relpath))
-
-    def test_mkdir_p_fail_exist(self):
-        '''mkdir_p fails when expected'''
-        assert_raises(OSError, scuba.utils.mkdir_p, '/dev/null')
 
 
     def test_parse_env_var(self):

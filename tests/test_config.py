@@ -1,6 +1,4 @@
  # coding=utf-8
-from __future__ import print_function
-
 from nose.tools import *
 from .utils import *
 from unittest import TestCase
