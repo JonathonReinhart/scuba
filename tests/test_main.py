@@ -313,7 +313,46 @@ class TestMain(TmpDirTestCase):
         assert_equal(username, 'root')
         assert_equal(gid, 0)
         assert_equal(groupname, 'root')
-    
+
+    def test_user_root_alias(self):
+        '''Verify that aliases can set whether the container is run as root'''
+        with open('.scuba.yml', 'w') as f:
+            f.write('''
+                image: {image}
+                aliases:
+                  root_test:
+                    root: true
+                    script:
+                      - echo $(id -u) $(id -un) $(id -g) $(id -gn)
+                '''.format(image=DOCKER_IMAGE))
+
+        out, _ = self.run_scuba(["root_test"])
+        uid, username, gid, groupname = out.split()
+
+        assert_equal(int(uid), 0)
+        assert_equal(username, 'root')
+        assert_equal(int(gid), 0)
+        assert_equal(groupname, 'root')
+
+        # No one should ever specify 'root: false' in an alias, but Scuba should behave
+        # correctly if they do
+        with open('.scuba.yml', 'w') as f:
+            f.write('''
+                image: {image}
+                aliases:
+                  no_root_test:
+                    root: false
+                    script:
+                      - echo $(id -u) $(id -un) $(id -g) $(id -gn)
+                '''.format(image=DOCKER_IMAGE))
+
+        out, _ = self.run_scuba(["no_root_test"])
+        uid, username, gid, groupname = out.split()
+
+        assert_equal(int(uid), os.getuid())
+        assert_equal(username, getpwuid(os.getuid()).pw_name)
+        assert_equal(int(gid), os.getgid())
+        assert_equal(groupname, getgrgid(os.getgid()).gr_name)
 
     def _test_home_writable(self, scuba_args=[]):
         with open('.scuba.yml', 'w') as f:

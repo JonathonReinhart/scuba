@@ -250,11 +250,15 @@ class ScubaDive(object):
         # with SELinux. See `man docker-run` for more information.
         self.vol_opts = ['z']
 
+        # Process any aliases
+        context = self.config.process_command(self.user_command,
+                image=self.image_override, shell=self.shell_override)
 
         # Pass variables to scubainit
         self.add_env('SCUBAINIT_UMASK', '{:04o}'.format(get_umask()))
 
-        if not self.as_root:
+        # Check if the CLI args specify "run as root", or if the command (alias) does
+        if not self.as_root and not context.as_root:
             uid = os.getuid()
             gid = os.getgid()
             self.add_env('SCUBAINIT_UID', uid)
@@ -271,18 +275,15 @@ class ScubaDive(object):
         # /usr, and Fedora 28 gives an AVC denial.
         scubainit_cpath = self.copy_scubadir_file('scubainit', self.scubainit_path)
 
+        # Hooks
+        for name in ('root', 'user', ):
+            self.__generate_hook_script(name, context.shell)
+
         # allocate TTY if scuba's output is going to a terminal
         # and stdin is not redirected
         if sys.stdout.isatty() and sys.stdin.isatty():
             self.add_option('--tty')
 
-        # Process any aliases
-        context = self.config.process_command(self.user_command,
-                image=self.image_override, shell=self.shell_override)
-
-        # Hooks
-        for name in ('root', 'user', ):
-            self.__generate_hook_script(name, context.shell)
 
         '''
         Normally, if the user provides no command to "docker run", the image's

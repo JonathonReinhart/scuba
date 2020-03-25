@@ -179,13 +179,14 @@ def _get_entrypoint(data):
 
 
 class ScubaAlias(object):
-    def __init__(self, name, script, image, entrypoint, environment, shell):
+    def __init__(self, name, script, image, entrypoint, environment, shell, as_root):
         self.name = name
         self.script = script
         self.image = image
         self.entrypoint = entrypoint
         self.environment = environment
         self.shell = shell
+        self.as_root = as_root
 
     @classmethod
     def from_dict(cls, name, node):
@@ -194,6 +195,7 @@ class ScubaAlias(object):
         entrypoint = None
         environment = None
         shell = None
+        as_root = False
 
         if isinstance(node, dict):  # Rich alias
             image = node.get('image')
@@ -202,8 +204,9 @@ class ScubaAlias(object):
                     node.get('environment'),
                     '{}.{}'.format(name, 'environment'))
             shell = node.get('shell')
+            as_root = node.get('root', as_root)
 
-        return cls(name, script, image, entrypoint, environment, shell)
+        return cls(name, script, image, entrypoint, environment, shell, as_root)
 
 class ScubaContext(object):
     pass
@@ -302,6 +305,7 @@ class ScubaConfig(object):
         result.entrypoint = self.entrypoint
         result.environment = self.environment.copy()
         result.shell = self.shell
+        result.as_root = False
 
         if command:
             alias = self.aliases.get(command[0])
@@ -317,6 +321,8 @@ class ScubaConfig(object):
                     result.entrypoint = alias.entrypoint
                 if alias.shell is not None:
                     result.shell = alias.shell
+                if alias.as_root:
+                    result.as_root = True
 
                 # Merge/override the environment
                 if alias.environment:

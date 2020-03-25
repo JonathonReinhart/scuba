@@ -133,6 +133,24 @@ aliases:
       - echo "This is executing in scuba's default shell"
 ```
 
+
+## Alias-level keys
+
+### `root`
+
+The optional `root` node allows an alias to specify whether its container
+should be run as root:
+```yaml
+aliases:
+  root_check:
+    root: true
+    script:
+      - echo 'Only root can do this!'
+      - echo "I am UID $(id -u)"
+      - cat /etc/shadow
+```
+
+
 ## Common script schema
 Several parts of `.scuba.yml` which define "scripts" use a common schema.
 The *common script schema* can define a "script" in one of several forms:
