@@ -61,6 +61,7 @@ def parse_scuba_args(argv):
     ap.add_argument('--list-available-options', action=ListOptsAction,
             help=argparse.SUPPRESS)
     ap.add_argument('--image', help='Override Docker image')
+    ap.add_argument('--shell', help='Override shell used in Docker container')
     ap.add_argument('-n', '--dry-run', action='store_true',
             help="Don't actually invoke docker; just print the docker cmdline")
     ap.add_argument('-r', '--root', action='store_true',
@@ -95,7 +96,7 @@ class ScubaError(Exception):
 
 class ScubaDive(object):
     def __init__(self, user_command, docker_args=None, env=None, as_root=False, verbose=False,
-            image_override=None, entrypoint=None):
+            image_override=None, entrypoint=None, shell_override=None):
 
         env = env or {}
         if not isinstance(env, Mapping):
@@ -106,6 +107,7 @@ class ScubaDive(object):
         self.verbose = verbose
         self.image_override = image_override
         self.entrypoint_override = entrypoint
+        self.shell_override = shell_override
 
         # These will be added to docker run cmdline
         self.env_vars = env
@@ -269,10 +271,6 @@ class ScubaDive(object):
         # /usr, and Fedora 28 gives an AVC denial.
         scubainit_cpath = self.copy_scubadir_file('scubainit', self.scubainit_path)
 
-        # Hooks
-        for name in ('root', 'user', ):
-            self.__generate_hook_script(name)
-
         # allocate TTY if scuba's output is going to a terminal
         # and stdin is not redirected
         if sys.stdout.isatty() and sys.stdin.isatty():
@@ -280,7 +278,11 @@ class ScubaDive(object):
 
         # Process any aliases
         context = self.config.process_command(self.user_command,
-                image=self.image_override)
+                image=self.image_override, shell=self.shell_override)
+
+        # Hooks
+        for name in ('root', 'user', ):
+            self.__generate_hook_script(name, context.shell)
 
         '''
         Normally, if the user provides no command to "docker run", the image's
@@ -316,8 +318,8 @@ class ScubaDive(object):
 
         # The user command is executed via a generated shell script
         with self.open_scubadir_file('command.sh', 'wt') as f:
-            self.docker_cmd += ['/bin/sh', f.container_path]
-            writeln(f, '#!/bin/sh')
+            self.docker_cmd += [context.shell, f.container_path]
+            writeln(f, '#!{}'.format(context.shell))
             writeln(f, '# Auto-generated from scuba')
             writeln(f, 'set -e')
             for cmd in context.script:
@@ -356,7 +358,7 @@ class ScubaDive(object):
         return os.path.join(self.__scubadir_contpath, name)
 
 
-    def __generate_hook_script(self, name):
+    def __generate_hook_script(self, name, shell):
         script = self.config.hooks.get(name)
         if not script:
             return
@@ -366,7 +368,7 @@ class ScubaDive(object):
 
             self.add_env('SCUBAINIT_HOOK_{}'.format(name.upper()), f.container_path)
 
-            writeln(f, '#!/bin/sh')
+            writeln(f, '#!{}'.format(shell))
             writeln(f, '# Auto-generated from .scuba.yml')
             writeln(f, 'set -e')
             for cmd in script:
@@ -414,6 +416,7 @@ def run_scuba(scuba_args):
         verbose = scuba_args.verbose,
         image_override = scuba_args.image,
         entrypoint = scuba_args.entrypoint,
+        shell_override = scuba_args.shell,
         )
 
     if scuba_args.list_aliases:
