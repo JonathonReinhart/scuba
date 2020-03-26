@@ -412,7 +412,7 @@ def run_scuba(scuba_args):
         scuba_args.command,
         docker_args = scuba_args.docker_args,
         env = scuba_args.env_vars,
-        as_root = scuba_args.root,
+        as_root = os.geteuid() == 0 or scuba_args.root,
         verbose = scuba_args.verbose,
         image_override = scuba_args.image,
         entrypoint = scuba_args.entrypoint,
