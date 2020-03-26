@@ -732,11 +732,17 @@ class TestMain(TmpDirTestCase):
     def test_use_top_level_shell_override(self):
         '''Verify that the shell can be overriden at the top level'''
         with open('.scuba.yml', 'w') as f:
-            f.write('image: {}\nshell: /bin/bash'.format(DOCKER_IMAGE))
+            f.write('''
+                image: {image}
+                shell: /bin/bash
+                aliases:
+                  check_shell:
+                    script: readlink -f /proc/$$/exe
+                '''.format(image=DOCKER_IMAGE))
 
-        out, _ = self.run_scuba(['cat', '/.scuba/command.sh'])
+        out, _ = self.run_scuba(['check_shell'])
         # If we failed to override, the shebang would be #!/bin/sh
-        self.assertTrue("#!/bin/bash" in out)
+        self.assertTrue("/bin/bash" in out)
 
     def test_alias_level_shell_override(self):
         '''Verify that the shell can be overriden at the alias level without affecting other aliases'''
@@ -746,15 +752,17 @@ class TestMain(TmpDirTestCase):
                 aliases:
                   shell_override:
                     shell: /bin/bash
-                    script: cat /.scuba/command.sh
+                    script: readlink -f /proc/$$/exe
                   default_shell:
-                    script: cat /.scuba/command.sh
+                    script: readlink -f /proc/$$/exe
                 '''.format(image=DOCKER_IMAGE))
         out, _ = self.run_scuba(['shell_override'])
-        self.assertTrue("#!/bin/bash" in out)
+        self.assertTrue("/bin/bash" in out)
 
         out, _ = self.run_scuba(['default_shell'])
-        self.assertTrue("#!/bin/sh" in out)
+        # The way that we check the shell uses the resolved symlink of /bin/sh,
+        # which is /bin/dash on Debian
+        self.assertTrue("/bin/sh" in out or "/bin/dash" in out)
 
     def test_cli_shell_override(self):
         '''Verify that the shell can be overriden by the CLI'''
@@ -763,11 +771,11 @@ class TestMain(TmpDirTestCase):
                 image: {image}
                 aliases:
                   default_shell:
-                    script: cat /.scuba/command.sh
+                    script: readlink -f /proc/$$/exe
                 '''.format(image=DOCKER_IMAGE))
 
         out, _ = self.run_scuba(['--shell', '/bin/bash', 'default_shell'])
-        self.assertTrue("#!/bin/bash" in out)
+        self.assertTrue("/bin/bash" in out)
 
     def test_shell_override_precedence(self):
         '''Verify that shell overrides at different levels override each other as expected'''
@@ -782,10 +790,10 @@ class TestMain(TmpDirTestCase):
                 aliases:
                   shell_override:
                     shell: /bin/bash
-                    script: cat /.scuba/command.sh
+                    script: readlink -f /proc/$$/exe
                 '''.format(image=DOCKER_IMAGE))
         out, _ = self.run_scuba(['shell_override'])
-        self.assertTrue("#!/bin/bash" in out)
+        self.assertTrue("/bin/bash" in out)
 
         # Test alias-level << CLI
         with open('.scuba.yml', 'w') as f:
@@ -794,10 +802,10 @@ class TestMain(TmpDirTestCase):
                 aliases:
                   shell_overridden:
                     shell: /bin/this_is_not_a_real_shell
-                    script: cat /.scuba/command.sh
+                    script: readlink -f /proc/$$/exe
                 '''.format(image=DOCKER_IMAGE))
         out, _ = self.run_scuba(['--shell', '/bin/bash', 'shell_overridden'])
-        self.assertTrue("#!/bin/bash" in out)
+        self.assertTrue("/bin/bash" in out)
 
         # Test top-level << CLI
         with open('.scuba.yml', 'w') as f:
@@ -805,10 +813,10 @@ class TestMain(TmpDirTestCase):
                 image: {image}
                 shell: /bin/this_is_not_a_real_shell
                 aliases:
-                  shell_check: cat /.scuba/command.sh
+                  shell_check: readlink -f /proc/$$/exe
                 '''.format(image=DOCKER_IMAGE))
         out, _ = self.run_scuba(['--shell', '/bin/bash', 'shell_check'])
-        self.assertTrue("#!/bin/bash" in out)
+        self.assertTrue("/bin/bash" in out)
 
 
     ############################################################################

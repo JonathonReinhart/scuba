@@ -320,7 +320,6 @@ class ScubaDive(object):
         # The user command is executed via a generated shell script
         with self.open_scubadir_file('command.sh', 'wt') as f:
             self.docker_cmd += [context.shell, f.container_path]
-            writeln(f, '#!{}'.format(context.shell))
             writeln(f, '# Auto-generated from scuba')
             writeln(f, 'set -e')
             for cmd in context.script:
