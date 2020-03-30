@@ -73,7 +73,7 @@ Loader.add_constructor('!from_yaml', Loader.from_yaml)
 
 
 def find_config():
-    '''Search up the diretcory hierarchy for .scuba.yml
+    '''Search up the directory hierarchy for .scuba.yml
 
     Returns: path, rel on success, or None if not found
         path    The absolute path of the directory where .scuba.yml was found
