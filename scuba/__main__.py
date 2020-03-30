@@ -10,6 +10,7 @@ import sys
 import shlex
 import itertools
 import argparse
+import argcomplete
 import tempfile
 import shutil
 from collections.abc import Mapping
@@ -69,9 +70,18 @@ def parse_scuba_args(argv):
     ap.add_argument('-v', '--version', action='version', version='scuba ' + __version__)
     ap.add_argument('-V', '--verbose', action='store_true',
             help="Be verbose")
-    ap.add_argument('command', nargs=argparse.REMAINDER,
-            help="Command (and arguments) to run in the container")
 
+    def list_aliases_completer(**_):
+        try:
+            _, _, config = ScubaDive.get_paths_and_config()
+            return sorted(config.aliases)
+        except (ConfigNotFoundError, ConfigError):
+            return []
+
+    ap.add_argument('command', nargs=argparse.REMAINDER,
+            help="Command (and arguments) to run in the container").completer = list_aliases_completer
+
+    argcomplete.autocomplete(ap)
     args = ap.parse_args(argv)
 
     # Flatten docker arguments into single list
@@ -207,6 +217,12 @@ class ScubaDive(object):
         if not os.path.isfile(self.scubainit_path):
             raise ScubaError('scubainit not found at "{}"'.format(self.scubainit_path))
 
+    @staticmethod
+    def get_paths_and_config():
+        '''Helper function to find and load .scuba.yml
+        '''
+        top_path, top_rel = find_config()
+        return top_path, top_rel, load_config(os.path.join(top_path, SCUBA_YML))
 
     def __load_config(self):
         '''Find and load .scuba.yml
@@ -217,8 +233,7 @@ class ScubaDive(object):
         # and is where we'll set the working directory in the container (relative to
         # the bind mount point).
         try:
-            top_path, top_rel = find_config()
-            self.config = load_config(os.path.join(top_path, SCUBA_YML))
+            top_path, top_rel, self.config = self.get_paths_and_config()
         except ConfigNotFoundError as cfgerr:
             # SCUBA_YML can be missing if --image was given.
             # In this case, we assume a default config

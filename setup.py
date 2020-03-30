@@ -81,6 +81,7 @@ setup(
         ]
     },
     install_requires = [
+        'argcomplete',
         'PyYAML',
     ],
 
