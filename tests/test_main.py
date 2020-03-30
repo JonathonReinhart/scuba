@@ -314,6 +314,18 @@ class TestMain(TmpDirTestCase):
         assert_equal(gid, 0)
         assert_equal(groupname, 'root')
 
+    @mock.patch('os.geteuid', return_value=0)
+    def test_user_run_as_root(self, geteuid_mock):
+        '''Verify scuba run as root is identical to "scuba -r"'''
+
+        uid, username, gid, groupname = self._test_user()
+
+        assert_true(geteuid_mock.called)
+        assert_equal(uid, 0)
+        assert_equal(username, 'root')
+        assert_equal(gid, 0)
+        assert_equal(groupname, 'root')
+
     def test_user_root_alias(self):
         '''Verify that aliases can set whether the container is run as root'''
         with open('.scuba.yml', 'w') as f:
