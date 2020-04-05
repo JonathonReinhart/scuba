@@ -39,9 +39,13 @@
 #define SCUBAINIT_VERBOSE   "SCUBAINIT_VERBOSE"
 
 static bool m_verbose = false;
-static int m_uid = -1;
-static int m_gid = -1;
-static int m_umask = -1;
+
+#define NO_VALUE    -1
+#define HAS_VALUE(x)    ((x) != NO_VALUE)
+
+static int m_uid = NO_VALUE;
+static int m_gid = NO_VALUE;
+static int m_umask = NO_VALUE;
 
 static const char *m_user;
 static const char *m_group;
@@ -63,16 +67,16 @@ path_join(const char *p1, const char *p2)
 }
 
 
-/* Returns true if root should be used */
+/* Returns true if scubainit will be changing users */
 static bool
-use_root(void)
+should_change_user(void)
 {
-    if (m_uid == -1) {
-        assert(m_gid == -1);
+    if (HAS_VALUE(m_uid)) {
+        assert(HAS_VALUE(m_gid));
         return true;
     }
 
-    assert(m_gid >= 0);
+    assert(!HAS_VALUE(m_gid));
     return false;
 }
 
@@ -292,6 +296,10 @@ out:
 static int
 change_user(const char *home)
 {
+    assert(HAS_VALUE(m_uid));
+    assert(HAS_VALUE(m_gid));
+    assert(m_user != NULL);
+
     /* TODO: Would we ever want to get this list from scuba, too? */
     if (setgroups(0, NULL) != 0) {
         errmsg("Failed to setgroups(): %m\n");
@@ -613,7 +621,7 @@ main(int argc, char **argv)
     if (process_envvars() < 0)
         exit(99);
 
-    if (!use_root()) {
+    if (should_change_user()) {
         /* Create user home directory */
         home = path_join(USER_HOME, m_user);
         if (make_homedir(home, m_uid, m_gid) != 0)
@@ -633,7 +641,7 @@ main(int argc, char **argv)
     call_hook(m_root_hook);
 
     /* Handle the scuba user */
-    if (!use_root()) {
+    if (should_change_user()) {
         if (change_user(home) < 0)
             goto fail;
 
@@ -647,7 +655,7 @@ main(int argc, char **argv)
     }
 
     /* Call post-su hook, only if we switch users */
-    if (!use_root()) {
+    if (should_change_user()) {
         call_hook(m_user_hook);
     }
 
