@@ -116,12 +116,21 @@ add_group(const char *path, const char *name, unsigned int gid)
         if (gr == NULL)
             break;
 
-        if (strcmp(gr->gr_name, name) == 0) {
-            errmsg("Group \"%s\" already exists in %s\n", name, path);
+        bool name_matches = (strcmp(gr->gr_name, name) == 0);
+        bool gid_matches = (gr->gr_gid == gid);
+
+        if (name_matches) {
+            if (gid_matches) {
+                /* Identical name+gid exists; surprising, but no problem */
+                result = 0;
+                goto out;
+            }
+            errmsg("Group \"%s\" already exists with different gid in %s\n",
+                    name, path);
             goto out;
         }
 
-        if (gr->gr_gid == gid) {
+        if (gid_matches) {
             errmsg("Warning: GID %u already exists in %s\n", gid, path);
         }
     }
@@ -187,12 +196,21 @@ add_user(const char *path, const char *name, unsigned int uid, unsigned int gid,
         if (pw == NULL)
             break;
 
-        if (strcmp(pw->pw_name, name) == 0) {
-            errmsg("User \"%s\" already exists in %s\n", name, path);
+        bool name_matches = (strcmp(pw->pw_name, name) == 0);
+        bool uid_matches = (pw->pw_uid == uid);
+
+        if (name_matches) {
+            if (uid_matches) {
+                /* Identical name+uid exists; surprising, but no problem */
+                result = 0;
+                goto out;
+            }
+            errmsg("User \"%s\" already exists with different uid in %s\n",
+                    name, path);
             goto out;
         }
 
-        if (pw->pw_uid == uid) {
+        if (uid_matches) {
             errmsg("Warning: UID %u already exists in %s\n", uid, path);
         }
     }
@@ -260,7 +278,8 @@ add_shadow(const char *path, const char *name)
             break;
 
         if (strcmp(sp->sp_namp, name) == 0) {
-            errmsg("User \"%s\" already exists in %s\n", name, path);
+            /* Already exists; we don't really care about its values */
+            result = 0;
             goto out;
         }
     }
