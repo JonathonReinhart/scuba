@@ -282,7 +282,10 @@ class TestMain(TmpDirTestCase):
         assert_str_equalish(out, test_str)
 
 
-    def _test_user(self, scuba_args=[]):
+    def _test_user(self,
+                   expected_uid, expected_username,
+                   expected_gid, expected_groupname,
+                   scuba_args=[]):
         with open('.scuba.yml', 'w') as f:
             f.write('image: {}\n'.format(DOCKER_IMAGE))
 
@@ -290,29 +293,47 @@ class TestMain(TmpDirTestCase):
         out, _ = self.run_scuba(args)
 
         uid, username, gid, groupname = out.split()
-        return int(uid), username, int(gid), groupname
+        uid = int(uid)
+        gid = int(gid)
+
+        assert_equal(uid, expected_uid)
+        assert_equal(username, expected_username)
+        assert_equal(gid, expected_gid)
+        assert_equal(groupname, expected_groupname)
 
 
     def test_user_scubauser(self):
         '''Verify scuba runs container as the current (host) uid/gid'''
+        self._test_user(
+            expected_uid = os.getuid(),
+            expected_username = getpwuid(os.getuid()).pw_name,
+            expected_gid = os.getgid(),
+            expected_groupname = getgrgid(os.getgid()).gr_name,
+        )
 
-        uid, username, gid, groupname = self._test_user()
-
-        assert_equal(uid, os.getuid())
-        assert_equal(username, getpwuid(os.getuid()).pw_name)
-        assert_equal(gid, os.getgid())
-        assert_equal(groupname, getgrgid(os.getgid()).gr_name)
-
+    EXPECT_ROOT = dict(
+        expected_uid = 0,
+        expected_username = 'root',
+        expected_gid = 0,
+        expected_groupname = 'root',
+    )
 
     def test_user_root(self):
         '''Verify scuba -r runs container as root'''
+        self._test_user(
+            **self.EXPECT_ROOT,
+            scuba_args = ['-r'],
+        )
 
-        uid, username, gid, groupname = self._test_user(['-r'])
+    def test_user_run_as_root(self):
+        '''Verify running scuba as root is identical to "scuba -r"'''
 
-        assert_equal(uid, 0)
-        assert_equal(username, 'root')
-        assert_equal(gid, 0)
-        assert_equal(groupname, 'root')
+        with mock.patch('os.getuid', return_value=0) as getuid_mock, \
+             mock.patch('os.getgid', return_value=0) as getgid_mock:
+
+            self._test_user(**self.EXPECT_ROOT)
+            assert_true(getuid_mock.called)
+            assert_true(getgid_mock.called)
 
     def test_user_root_alias(self):
         '''Verify that aliases can set whether the container is run as root'''
