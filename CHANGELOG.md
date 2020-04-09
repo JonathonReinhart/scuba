@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+### Fixed
+- scubainit ignores matching passwd/group/shadow file entries when creating the
+  user. This allows transparently running scuba as root. (#164)
+
+
 ## [2.6.0] - 2020-03-25
 ### Added
 - Add ability to override the shell in which the scuba-generated
