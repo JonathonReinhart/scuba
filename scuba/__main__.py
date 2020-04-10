@@ -2,10 +2,9 @@
 # (C) 2015 Jonathon Reinhart
 # https://github.com/JonathonReinhart/scuba
 
-import os, os.path
+import os.path
 from pwd import getpwuid
 from grp import getgrgid
-import errno
 import sys
 import shlex
 import itertools
@@ -16,7 +15,6 @@ import shutil
 from collections.abc import Mapping
 from io import StringIO
 
-from .cmdlineargs import *
 from .constants import *
 from .config import find_config, load_config, ScubaConfig, \
         ConfigError, ConfigNotFoundError
@@ -57,10 +55,6 @@ def parse_scuba_args(argv):
             help='Environment variables to pass to docker')
     ap.add_argument('--entrypoint',
             help='Override the default ENTRYPOINT of the image')
-    ap.add_argument('--list-aliases', action='store_true',
-            help=argparse.SUPPRESS)
-    ap.add_argument('--list-available-options', action=ListOptsAction,
-            help=argparse.SUPPRESS)
     ap.add_argument('--image', help='Override Docker image')
     ap.add_argument('--shell', help='Override shell used in Docker container')
     ap.add_argument('-n', '--dry-run', action='store_true',
@@ -433,13 +427,6 @@ def run_scuba(scuba_args):
         entrypoint = scuba_args.entrypoint,
         shell_override = scuba_args.shell,
         )
-
-    if scuba_args.list_aliases:
-        print('ALIAS\tIMAGE')
-        for name in sorted(dive.config.aliases):
-            alias = dive.config.aliases[name]
-            print('{}\t{}'.format(alias.name, alias.image or dive.config.image))
-        return
 
     try:
         dive.prepare()
