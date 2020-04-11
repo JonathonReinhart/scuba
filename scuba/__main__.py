@@ -9,7 +9,13 @@ import sys
 import shlex
 import itertools
 import argparse
-import argcomplete
+try:
+    import argcomplete
+except ImportError:
+    class argcomplete(object):
+        @staticmethod
+        def autocomplete(_):
+            pass
 import tempfile
 import shutil
 from collections.abc import Mapping

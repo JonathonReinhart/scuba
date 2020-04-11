@@ -81,9 +81,13 @@ setup(
         ]
     },
     install_requires = [
-        'argcomplete',
         'PyYAML',
     ],
+    extras_require = {
+        'argcomplete': [
+            'argcomplete',
+        ],
+    },
 
     # http://stackoverflow.com/questions/17806485
     # http://stackoverflow.com/questions/21915469

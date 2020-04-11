@@ -1,4 +1,4 @@
-argcomplete
+argcomplete [ARGCOMPLETE]
 PyYAML
 nose
 coverage
