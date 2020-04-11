@@ -25,6 +25,10 @@ To install:
 
     $ sudo pip install scuba
 
+To install with `argcomplete` (for [bash completion support](#bash-completion)):
+
+    $ sudo pip install scuba[ARGCOMPLETE]
+
 To uninstall:
 
     $ sudo pip uninstall scuba
@@ -78,6 +82,13 @@ Scuba defines the following environment variables in the container:
 
 - `SCUBA_ROOT` the root of the scuba working directory mount; the directory
   where `.scuba.yml` was found.
+
+
+## Bash Completion
+Scuba supports command-line completion using the [`argcomplete` package](https://github.com/kislyuk/argcomplete).  Per
+the [`argcomplete` README](https://github.com/kislyuk/argcomplete#global-completion), command-line completion can be
+activated by running `eval "$(register-python-argcomplete scuba)"` manually *or* by using the
+`activate-global-python-argcomplete` script.
 
 
 ## License

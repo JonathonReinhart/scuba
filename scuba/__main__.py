@@ -1,6 +1,7 @@
 # SCUBA - Simple Container-Utilizing Build Architecture
 # (C) 2015 Jonathon Reinhart
 # https://github.com/JonathonReinhart/scuba
+# PYTHON_ARGCOMPLETE_OK
 
 import os.path
 from pwd import getpwuid
