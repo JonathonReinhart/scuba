@@ -444,6 +444,33 @@ out:
     return ret;
 }
 
+
+static void
+handle_wait_status(const char *cmd, int wstatus)
+{
+    if (wstatus < 0) {
+        errmsg("Failed to execute %s: %m\n", cmd);
+        exit(99);
+    }
+    else if (WIFEXITED(wstatus)) {
+        int es = WEXITSTATUS(wstatus);
+        if (es != 0) {
+            errmsg("%s exited with status %d\n", cmd, es);
+            exit(99);
+        }
+        // Success
+    }
+    else if (WIFSIGNALED(wstatus)) {
+        int sig = WTERMSIG(wstatus);
+        errmsg("%s terminated by signal %d\n", cmd, sig);
+        exit(99);
+    }
+    else {
+        errmsg("%s exited for an unknown reason! (wstatus=0x%X)\n", cmd, wstatus);
+        exit(99);
+    }
+}
+
 static int
 call_hook(const char *hook_path)
 {
@@ -460,16 +487,7 @@ call_hook(const char *hook_path)
 
     verbose("About to execute %s\n", hook_path);
     rc = system(hook_path);
-
-    if (rc < 0) {
-        errmsg("Failed to execute %s: %m\n", hook_path);
-        exit(99);
-    }
-    if (rc > 0) {
-        errmsg("%s exited with status %d\n", hook_path, rc);
-        exit(rc);
-    }
-
+    handle_wait_status(hook_path, rc);
     return 0;
 }
 
