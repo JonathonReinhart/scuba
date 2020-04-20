@@ -1,6 +1,7 @@
 import subprocess
 import errno
 import json
+import re
 
 class DockerError(Exception):
     pass
@@ -67,6 +68,51 @@ def docker_inspect_or_pull(image):
         # If it doesn't exist yet, try to pull it now (#79)
         docker_pull(image)
         return docker_inspect(image)
+
+
+def get_images(get_all=False):
+    '''Get the current list of docker images
+
+    Returns: List of image names
+    '''
+
+    args = ['docker', 'images']
+    if get_all:
+        args.append('-a')
+    p = Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    stdout, stderr = p.communicate()
+    stdout = stdout.decode('utf-8')
+    stderr = stderr.decode('utf-8')
+
+    if not p.returncode == 0:
+        raise DockerError('Failed to retrieve images: {}'.format(stderr.strip()))
+
+    images = []
+    skip_header = True
+    pat = re.compile('^(?P<image>[^\s]+)\s+(?P<tag>[^\s]+)\s+(?P<id>[0-9a-f]+)\s+')
+    for line in stdout.split('\n'):
+        if skip_header:
+            skip_header = False
+            continue
+
+        if not line:
+            continue
+
+        m = pat.search(line)
+        if not m:
+            # What happened?
+            raise DockerError('Failed to parse "docker images" output line: {}'.format(line))
+
+        if m.group('image') == '<none>' and m.group('tag') == '<none>':
+            images.append(m.group('id'))
+        elif m.group('tag') == 'latest':
+            images.append(m.group('image'))
+        else:
+            images.append('{image}:{tag}'.format(image=m.group('image'), tag=m.group('tag')))
+
+    return images
+
 
 def get_image_command(image):
     '''Gets the default command for an image'''

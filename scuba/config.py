@@ -75,18 +75,20 @@ Loader.add_constructor('!from_yaml', Loader.from_yaml)
 def find_config():
     '''Search up the directory hierarchy for .scuba.yml
 
-    Returns: path, rel on success, or None if not found
+    Returns: path, rel, scuba_config on success, or None if not found
         path    The absolute path of the directory where .scuba.yml was found
         rel     The relative path from the directory where .scuba.yml was found
                 to the current directory
+        config  The loaded configuration
     '''
     cross_fs = 'SCUBA_DISCOVERY_ACROSS_FILESYSTEM' in os.environ
     path = os.getcwd()
 
     rel = ''
     while True:
-        if os.path.exists(os.path.join(path, SCUBA_YML)):
-            return path, rel
+        config = os.path.join(path, SCUBA_YML)
+        if os.path.exists(config):
+            return path, rel, load_config(config)
 
         if not cross_fs and os.path.ismount(path):
             msg = '{} not found here or any parent up to mount point {}'.format(SCUBA_YML, path) \

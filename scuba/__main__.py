@@ -62,7 +62,11 @@ def parse_scuba_args(argv):
             help='Environment variables to pass to docker')
     ap.add_argument('--entrypoint',
             help='Override the default ENTRYPOINT of the image')
-    ap.add_argument('--image', help='Override Docker image')
+
+    def _list_images_completer(**_):
+        return dockerutil.get_images()
+
+    ap.add_argument('--image', help='Override Docker image').completer = _list_images_completer
     ap.add_argument('--shell', help='Override shell used in Docker container')
     ap.add_argument('-n', '--dry-run', action='store_true',
             help="Don't actually invoke docker; just print the docker cmdline")
@@ -72,15 +76,20 @@ def parse_scuba_args(argv):
     ap.add_argument('-V', '--verbose', action='store_true',
             help="Be verbose")
 
-    def list_aliases_completer(**_):
+    def _list_aliases_completer(**kwargs):
+        # We don't want to try to complete any aliases if one was already given
+        if kwargs['parsed_args'].command:
+            return []
+
         try:
-            _, _, config = ScubaDive.get_paths_and_config()
+            _, _, config = find_config()
             return sorted(config.aliases)
         except (ConfigNotFoundError, ConfigError):
+            argcomplete.warn('No or invalid config found.  Cannot auto-complete aliases.')
             return []
 
     ap.add_argument('command', nargs=argparse.REMAINDER,
-            help="Command (and arguments) to run in the container").completer = list_aliases_completer
+            help="Command (and arguments) to run in the container").completer = _list_aliases_completer
 
     argcomplete.autocomplete(ap)
     args = ap.parse_args(argv)
@@ -218,13 +227,6 @@ class ScubaDive(object):
         if not os.path.isfile(self.scubainit_path):
             raise ScubaError('scubainit not found at "{}"'.format(self.scubainit_path))
 
-    @staticmethod
-    def get_paths_and_config():
-        '''Helper function to find and load .scuba.yml
-        '''
-        top_path, top_rel = find_config()
-        return top_path, top_rel, load_config(os.path.join(top_path, SCUBA_YML))
-
     def __load_config(self):
         '''Find and load .scuba.yml
         '''
@@ -234,7 +236,7 @@ class ScubaDive(object):
         # and is where we'll set the working directory in the container (relative to
         # the bind mount point).
         try:
-            top_path, top_rel, self.config = self.get_paths_and_config()
+            top_path, top_rel, self.config = find_config()
         except ConfigNotFoundError as cfgerr:
             # SCUBA_YML can be missing if --image was given.
             # In this case, we assume a default config
