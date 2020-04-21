@@ -21,13 +21,12 @@ class TestDockerutil(TestCase):
     def test_get_image_no_docker(self):
         '''get_image_command raises an exception if docker is not installed'''
 
-        real_Popen = subprocess.Popen
-        def mocked_popen(popen_args, *args, **kw):
-            assert_equal(popen_args[0], 'docker')
-            popen_args[0] = 'dockerZZZZ'
-            return real_Popen(popen_args, *args, **kw)
+        def mocked_run(args, real_run=subprocess.run, **kw):
+            assert_equal(args[0], 'docker')
+            args[0] = 'dockerZZZZ'
+            return real_run(args, **kw)
 
-        with mock.patch('subprocess.Popen', side_effect=mocked_popen) as popen_mock:
+        with mock.patch('subprocess.run', side_effect=mocked_run) as run_mock:
             with self.assertRaises(uut.DockerError):
                 uut.get_image_command('n/a')
 
@@ -39,7 +38,7 @@ class TestDockerutil(TestCase):
             mock_obj.stdout = stdout
             return mock_obj
 
-        with mock.patch('scuba.dockerutil.run', side_effect=mocked_run) as run_mock:
+        with mock.patch('subprocess.run', side_effect=mocked_run) as run_mock:
             return uut.get_images()
 
 

@@ -1,7 +1,6 @@
 import subprocess
 import errno
 import json
-import re
 
 class DockerError(Exception):
     pass
@@ -19,18 +18,31 @@ class NoSuchImageError(DockerError):
 
 def __wrap_docker_exec(func):
     '''Wrap a function to raise DockerExecuteError on ENOENT'''
-    def call(*args, **kwargs):
+    def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
         except OSError as e:
             if e.errno == errno.ENOENT:
                 raise DockerExecuteError('Failed to execute docker. Is it installed?')
             raise
-    return call
+    return wrapper
 
-Popen = __wrap_docker_exec(subprocess.Popen)
-call  = __wrap_docker_exec(subprocess.call)
-run   = __wrap_docker_exec(subprocess.run)
+call = __wrap_docker_exec(subprocess.call)
+
+
+def _run_docker(*args, capture=False):
+    '''Run docker and raise DockerExecuteError on ENOENT'''
+    args = ['docker'] + list(args)
+    kw = dict(
+            universal_newlines=True,    # TODO: Use 'text' in Python 3.7+
+            )
+    if capture:
+        kw.update(
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                )
+
+    return __wrap_docker_exec(subprocess.run)(args, **kw)
 
 
 def docker_inspect(image):
@@ -38,27 +50,20 @@ def docker_inspect(image):
 
     Returns: Parsed JSON data
     '''
-    args = ['docker', 'inspect', '--type', 'image', image]
-    p = Popen(args, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+    cp = _run_docker('inspect', '--type', 'image', image, capture=True)
 
-    stdout, stderr = p.communicate()
-    stdout = stdout.decode('utf-8')
-    stderr = stderr.decode('utf-8')
-
-    if not p.returncode == 0:
-        if 'no such image' in stderr.lower():
+    if not cp.returncode == 0:
+        if 'no such image' in cp.stderr.lower():
             raise NoSuchImageError(image)
-        raise DockerError('Failed to inspect image: {}'.format(stderr.strip()))
+        raise DockerError('Failed to inspect image: {}'.format(cp.stderr.strip()))
 
-    return json.loads(stdout)[0]
+    return json.loads(cp.stdout)[0]
 
 def docker_pull(image):
     '''Pulls an image'''
-    args = ['docker', 'pull', image]
-
     # If this fails, the default docker stdout/stderr looks good to the user.
-    ret = call(args)
-    if ret != 0:
+    cp = _run_docker('pull', image)
+    if cp.returncode != 0:
         raise DockerError('Failed to pull image "{}"'.format(image))
 
 def docker_inspect_or_pull(image):
@@ -76,9 +81,7 @@ def get_images():
 
     Returns: List of image names
     '''
-    args = [
-        'docker', 'images',
-
+    cp = _run_docker('images',
         # This format ouputs the same thing as '__docker_images --repo --tag'
         '--format', (
             # Always show the bare repository name
@@ -86,11 +89,9 @@ def get_images():
             # And if there is a tag, show that too
             r'{{if ne .Tag "<none>"}}\n{{.Repository}}:{{.Tag}}{{end}}'
         ),
-    ]
+        capture=True,
+    )
 
-    cp = run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            universal_newlines=True,    # Use 'text' in Python 3.7+
-            )
     if not cp.returncode == 0:
         raise DockerError('Failed to retrieve images: {}'.format(cp.stderr.strip()))
 
