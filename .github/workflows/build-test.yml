@@ -1,11 +1,9 @@
 name: Build and Test
 
-# Run this workflow whenever someone pushes to any branch,
-# or when a PR is created or pushed to.
+# Run this workflow whenever a PR is created or pushed to.
 on:
-  push:
   pull_request:
-    types: [synchronize]
+    types: [opened, synchronize]
 
 jobs:
   build:
