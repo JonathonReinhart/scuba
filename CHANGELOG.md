@@ -6,6 +6,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 - scubainit ignores matching passwd/group/shadow file entries when creating the
   user. This allows transparently running scuba as root. (#164)
+- Fixed bug where scubainit incorrectly displayed the exit status of a failed
+  hook script. (#165)
 
 
 ## [2.6.0] - 2020-03-25

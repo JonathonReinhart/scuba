@@ -18,6 +18,7 @@ import scuba.dockerutil
 import scuba
 
 DOCKER_IMAGE = 'debian:8.2'
+SCUBAINIT_EXIT_FAIL = 99
 
 class TestMain(TmpDirTestCase):
 
@@ -631,15 +632,21 @@ class TestMain(TmpDirTestCase):
     ############################################################################
     # Hooks
 
-    def _test_one_hook(self, hookname, exp_uid, exp_gid):
+    def _test_one_hook(self, hookname, hookcmd, cmd, exp_retval=0):
         with open('.scuba.yml', 'w') as f:
             f.write('image: {}\n'.format(DOCKER_IMAGE))
             f.write('hooks:\n')
-            f.write('  {}: echo $(id -u) $(id -g)\n'.format(hookname))
+            f.write('  {}: {}\n'.format(hookname, hookcmd))
 
-        args = ['/bin/sh', '-c', 'echo success']
-        out, _ = self.run_scuba(args)
+        args = ['/bin/sh', '-c', cmd]
+        return self.run_scuba(args, exp_retval=exp_retval)
 
+    def _test_hook_runs_as(self, hookname, exp_uid, exp_gid):
+        out, _ = self._test_one_hook(
+                hookname,
+                'echo $(id -u) $(id -g)',
+                'echo success',
+                )
         out = out.splitlines()
 
         uid, gid = map(int, out[0].split())
@@ -648,13 +655,23 @@ class TestMain(TmpDirTestCase):
 
         assert_str_equalish(out[1], 'success')
 
-    def test_user_hook(self):
+    def test_user_hook_runs_as_user(self):
         '''Verify user hook executes as user'''
-        self._test_one_hook('user', os.getuid(), os.getgid())
+        self._test_hook_runs_as('user', os.getuid(), os.getgid())
 
-    def test_root_hook(self):
+    def test_root_hook_runs_as_root(self):
         '''Verify root hook executes as root'''
-        self._test_one_hook('root', 0, 0)
+        self._test_hook_runs_as('root', 0, 0)
+
+    def test_hook_failure_shows_correct_status(self):
+        testval = 42
+        out, err = self._test_one_hook(
+                'root',
+                'exit {}'.format(testval),
+                'dont care',
+                exp_retval = SCUBAINIT_EXIT_FAIL,
+                )
+        self.assertRegex(err, '^scubainit:.*exited with status {}'.format(testval))
 
 
     ############################################################################
