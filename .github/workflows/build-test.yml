@@ -3,7 +3,7 @@ name: Build and Test
 # Run this workflow whenever a PR is created or pushed to.
 on:
   pull_request:
-    types: [synchronize]
+    types: [opened, synchronize]
 
 jobs:
   build:
