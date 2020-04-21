@@ -30,6 +30,7 @@ def __wrap_docker_exec(func):
 
 Popen = __wrap_docker_exec(subprocess.Popen)
 call  = __wrap_docker_exec(subprocess.call)
+run   = __wrap_docker_exec(subprocess.run)
 
 
 def docker_inspect(image):
@@ -70,48 +71,30 @@ def docker_inspect_or_pull(image):
         return docker_inspect(image)
 
 
-def get_images(get_all=False):
+def get_images():
     '''Get the current list of docker images
 
     Returns: List of image names
     '''
+    args = [
+        'docker', 'images',
 
-    args = ['docker', 'images']
-    if get_all:
-        args.append('-a')
-    p = Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        # This format ouputs the same thing as '__docker_images --repo --tag'
+        '--format', (
+            # Always show the bare repository name
+            r'{{.Repository}}'
+            # And if there is a tag, show that too
+            r'{{if ne .Tag "<none>"}}\n{{.Repository}}:{{.Tag}}{{end}}'
+        ),
+    ]
 
-    stdout, stderr = p.communicate()
-    stdout = stdout.decode('utf-8')
-    stderr = stderr.decode('utf-8')
+    cp = run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            universal_newlines=True,    # Use 'text' in Python 3.7+
+            )
+    if not cp.returncode == 0:
+        raise DockerError('Failed to retrieve images: {}'.format(cp.stderr.strip()))
 
-    if not p.returncode == 0:
-        raise DockerError('Failed to retrieve images: {}'.format(stderr.strip()))
-
-    images = []
-    skip_header = True
-    pat = re.compile('^(?P<image>[^\s]+)\s+(?P<tag>[^\s]+)\s+(?P<id>[0-9a-f]+)\s+')
-    for line in stdout.split('\n'):
-        if skip_header:
-            skip_header = False
-            continue
-
-        if not line:
-            continue
-
-        m = pat.search(line)
-        if not m:
-            # What happened?
-            raise DockerError('Failed to parse "docker images" output line: {}'.format(line))
-
-        if m.group('image') == '<none>' and m.group('tag') == '<none>':
-            images.append(m.group('id'))
-        elif m.group('tag') == 'latest':
-            images.append(m.group('image'))
-        else:
-            images.append('{image}:{tag}'.format(image=m.group('image'), tag=m.group('tag')))
-
-    return images
+    return cp.stdout.splitlines()
 
 
 def get_image_command(image):
