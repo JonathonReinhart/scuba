@@ -18,6 +18,7 @@ import scuba.dockerutil
 import scuba
 
 DOCKER_IMAGE = 'debian:8.2'
+SCUBAINIT_EXIT_FAIL = 99
 
 class TestMain(TmpDirTestCase):
 
@@ -661,6 +662,16 @@ class TestMain(TmpDirTestCase):
     def test_root_hook_runs_as_root(self):
         '''Verify root hook executes as root'''
         self._test_hook_runs_as('root', 0, 0)
+
+    def test_hook_failure_shows_correct_status(self):
+        testval = 42
+        out, err = self._test_one_hook(
+                'root',
+                'exit {}'.format(testval),
+                'dont care',
+                exp_retval = SCUBAINIT_EXIT_FAIL,
+                )
+        self.assertRegex(err, '^scubainit:.*exited with status {}'.format(testval))
 
 
     ############################################################################
