@@ -27,7 +27,7 @@ To install:
 
 To install with `argcomplete` (for [bash completion support](#bash-completion)):
 
-    $ sudo pip install scuba[ARGCOMPLETE]
+    $ sudo pip install scuba[argcomplete]
 
 To uninstall:
 
@@ -87,8 +87,19 @@ Scuba defines the following environment variables in the container:
 ## Bash Completion
 Scuba supports command-line completion using the [`argcomplete` package](https://github.com/kislyuk/argcomplete).  Per
 the [`argcomplete` README](https://github.com/kislyuk/argcomplete#global-completion), command-line completion can be
-activated by running `eval "$(register-python-argcomplete scuba)"` manually *or* by using the
-`activate-global-python-argcomplete` script.
+activated by:
+
+- Running `eval "$(register-python-argcomplete scuba)"` manually to enable completion *in the current shell instance*
+- Adding `eval "$(register-python-argcomplete scuba)"` to `~/.bash_completion`
+- Running `activate-global-python-argcomplete --user` to install the script `~/.bash_completion.d/python-argcomplete`.
+    * NOTE: The generated file must be sourced, which is *not* the default behavior.  Adding the following code block to
+`~/.bash_completion` is one possible solution.
+        ```shell
+        for bcfile in ~/.bash_completion.d/*; do
+            [ -f "$bcfile" ] && . "$bcfile"
+        done
+        ```
+- Running `activate-global-python-argcomplete` as `root` (or `sudo`) to use `argcomplete` for *all* users
 
 
 ## License

@@ -85,7 +85,7 @@ setup(
     ],
     extras_require = {
         'argcomplete': [
-            'argcomplete',
+            'argcomplete>=1.10.1',
         ],
     },
 

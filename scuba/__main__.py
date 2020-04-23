@@ -53,32 +53,13 @@ def writeln(f, line):
 
 
 def parse_scuba_args(argv):
-    ap = argparse.ArgumentParser(description='Simple Container-Utilizing Build Apparatus')
-    ap.add_argument('-d', '--docker-arg', dest='docker_args', action='append',
-            type=lambda x: shlex.split(x), default=[],
-            help="Pass additional arguments to 'docker run'")
-    ap.add_argument('-e', '--env', dest='env_vars', action='append',
-            type=parse_env_var, default=[],
-            help='Environment variables to pass to docker')
-    ap.add_argument('--entrypoint',
-            help='Override the default ENTRYPOINT of the image')
 
     def _list_images_completer(**_):
         return dockerutil.get_images()
 
-    ap.add_argument('--image', help='Override Docker image').completer = _list_images_completer
-    ap.add_argument('--shell', help='Override shell used in Docker container')
-    ap.add_argument('-n', '--dry-run', action='store_true',
-            help="Don't actually invoke docker; just print the docker cmdline")
-    ap.add_argument('-r', '--root', action='store_true',
-            help="Run container as root (don't create scubauser)")
-    ap.add_argument('-v', '--version', action='version', version='scuba ' + __version__)
-    ap.add_argument('-V', '--verbose', action='store_true',
-            help="Be verbose")
-
-    def _list_aliases_completer(**kwargs):
+    def _list_aliases_completer(parsed_args, **_):
         # We don't want to try to complete any aliases if one was already given
-        if kwargs['parsed_args'].command:
+        if parsed_args.command:
             return []
 
         try:
@@ -88,6 +69,24 @@ def parse_scuba_args(argv):
             argcomplete.warn('No or invalid config found.  Cannot auto-complete aliases.')
             return []
 
+    ap = argparse.ArgumentParser(description='Simple Container-Utilizing Build Apparatus')
+    ap.add_argument('-d', '--docker-arg', dest='docker_args', action='append',
+            type=lambda x: shlex.split(x), default=[],
+            help="Pass additional arguments to 'docker run'")
+    ap.add_argument('-e', '--env', dest='env_vars', action='append',
+            type=parse_env_var, default=[],
+            help='Environment variables to pass to docker')
+    ap.add_argument('--entrypoint',
+            help='Override the default ENTRYPOINT of the image')
+    ap.add_argument('--image', help='Override Docker image').completer = _list_images_completer
+    ap.add_argument('--shell', help='Override shell used in Docker container')
+    ap.add_argument('-n', '--dry-run', action='store_true',
+            help="Don't actually invoke docker; just print the docker cmdline")
+    ap.add_argument('-r', '--root', action='store_true',
+            help="Run container as root (don't create scubauser)")
+    ap.add_argument('-v', '--version', action='version', version='scuba ' + __version__)
+    ap.add_argument('-V', '--verbose', action='store_true',
+            help="Be verbose")
     ap.add_argument('command', nargs=argparse.REMAINDER,
             help="Command (and arguments) to run in the container").completer = _list_aliases_completer
 
