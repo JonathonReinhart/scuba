@@ -61,7 +61,7 @@ class TestConfig(TmpDirTestCase):
         with open('.scuba.yml', 'w') as f:
             f.write('image: busybox\n')
 
-        path, rel = scuba.config.find_config()
+        path, rel, _ = scuba.config.find_config()
         assert_paths_equal(path, self.path)
         assert_paths_equal(rel, '')
 
@@ -77,7 +77,7 @@ class TestConfig(TmpDirTestCase):
         # Verify our current working dir
         assert_paths_equal(os.getcwd(), join(self.path, 'subdir'))
 
-        path, rel = scuba.config.find_config()
+        path, rel, _ = scuba.config.find_config()
         assert_paths_equal(path, self.path)
         assert_paths_equal(rel, 'subdir')
 
@@ -95,7 +95,7 @@ class TestConfig(TmpDirTestCase):
         # Verify our current working dir
         assert_paths_equal(os.getcwd(), join(self.path, *subdirs))
 
-        path, rel = scuba.config.find_config()
+        path, rel, _ = scuba.config.find_config()
         assert_paths_equal(path, self.path)
         assert_paths_equal(rel, join(*subdirs))
 

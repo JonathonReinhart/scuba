@@ -855,34 +855,3 @@ class TestMain(TmpDirTestCase):
                 '''.format(image=DOCKER_IMAGE))
         out, _ = self.run_scuba(['--shell', '/bin/bash', 'shell_check'])
         self.assertTrue("/bin/bash" in out)
-
-
-    ############################################################################
-    # Misc
-    def test_list_aliases(self):
-        '''Verify --list-aliases works'''
-        with open('.scuba.yml', 'w') as f:
-            f.write('image: default\n')
-            f.write('aliases:\n')
-            f.write('  aaa:\n')
-            f.write('    image: aaa_image\n')
-            f.write('    script:\n')
-            f.write('      - foo\n')
-            f.write('  bbb:\n')
-            f.write('    script:\n')
-            f.write('      - foo\n')
-            f.write('  ccc: foo\n')
-
-        expected = (
-            ('ALIAS',   'IMAGE'),
-            ('aaa',     'aaa_image'),
-            ('bbb',     'default'),
-            ('ccc',     'default'),
-        )
-
-        out, err = self.run_scuba(['--list-aliases'])
-        lines = out.splitlines()
-
-        assert_equal(len(expected), len(lines))
-        for i in range(len(expected)):
-            assert_seq_equal(expected[i], lines[i].split('\t'))

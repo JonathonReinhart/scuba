@@ -83,6 +83,11 @@ setup(
     install_requires = [
         'PyYAML',
     ],
+    extras_require = {
+        'argcomplete': [
+            'argcomplete>=1.10.1',
+        ],
+    },
 
     # http://stackoverflow.com/questions/17806485
     # http://stackoverflow.com/questions/21915469

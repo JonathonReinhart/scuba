@@ -1,21 +1,27 @@
 # SCUBA - Simple Container-Utilizing Build Architecture
 # (C) 2015 Jonathon Reinhart
 # https://github.com/JonathonReinhart/scuba
+# PYTHON_ARGCOMPLETE_OK
 
-import os, os.path
+import os.path
 from pwd import getpwuid
 from grp import getgrgid
-import errno
 import sys
 import shlex
 import itertools
 import argparse
+try:
+    import argcomplete
+except ImportError:
+    class argcomplete(object):
+        @staticmethod
+        def autocomplete(_):
+            pass
 import tempfile
 import shutil
 from collections.abc import Mapping
 from io import StringIO
 
-from .cmdlineargs import *
 from .constants import *
 from .config import find_config, load_config, ScubaConfig, \
         ConfigError, ConfigNotFoundError
@@ -47,6 +53,22 @@ def writeln(f, line):
 
 
 def parse_scuba_args(argv):
+
+    def _list_images_completer(**_):
+        return dockerutil.get_images()
+
+    def _list_aliases_completer(parsed_args, **_):
+        # We don't want to try to complete any aliases if one was already given
+        if parsed_args.command:
+            return []
+
+        try:
+            _, _, config = find_config()
+            return sorted(config.aliases)
+        except (ConfigNotFoundError, ConfigError):
+            argcomplete.warn('No or invalid config found.  Cannot auto-complete aliases.')
+            return []
+
     ap = argparse.ArgumentParser(description='Simple Container-Utilizing Build Apparatus')
     ap.add_argument('-d', '--docker-arg', dest='docker_args', action='append',
             type=lambda x: shlex.split(x), default=[],
@@ -56,11 +78,7 @@ def parse_scuba_args(argv):
             help='Environment variables to pass to docker')
     ap.add_argument('--entrypoint',
             help='Override the default ENTRYPOINT of the image')
-    ap.add_argument('--list-aliases', action='store_true',
-            help=argparse.SUPPRESS)
-    ap.add_argument('--list-available-options', action=ListOptsAction,
-            help=argparse.SUPPRESS)
-    ap.add_argument('--image', help='Override Docker image')
+    ap.add_argument('--image', help='Override Docker image').completer = _list_images_completer
     ap.add_argument('--shell', help='Override shell used in Docker container')
     ap.add_argument('-n', '--dry-run', action='store_true',
             help="Don't actually invoke docker; just print the docker cmdline")
@@ -70,8 +88,9 @@ def parse_scuba_args(argv):
     ap.add_argument('-V', '--verbose', action='store_true',
             help="Be verbose")
     ap.add_argument('command', nargs=argparse.REMAINDER,
-            help="Command (and arguments) to run in the container")
+            help="Command (and arguments) to run in the container").completer = _list_aliases_completer
 
+    argcomplete.autocomplete(ap, always_complete_options=False)
     args = ap.parse_args(argv)
 
     # Flatten docker arguments into single list
@@ -207,7 +226,6 @@ class ScubaDive(object):
         if not os.path.isfile(self.scubainit_path):
             raise ScubaError('scubainit not found at "{}"'.format(self.scubainit_path))
 
-
     def __load_config(self):
         '''Find and load .scuba.yml
         '''
@@ -217,8 +235,7 @@ class ScubaDive(object):
         # and is where we'll set the working directory in the container (relative to
         # the bind mount point).
         try:
-            top_path, top_rel = find_config()
-            self.config = load_config(os.path.join(top_path, SCUBA_YML))
+            top_path, top_rel, self.config = find_config()
         except ConfigNotFoundError as cfgerr:
             # SCUBA_YML can be missing if --image was given.
             # In this case, we assume a default config
@@ -418,13 +435,6 @@ def run_scuba(scuba_args):
         entrypoint = scuba_args.entrypoint,
         shell_override = scuba_args.shell,
         )
-
-    if scuba_args.list_aliases:
-        print('ALIAS\tIMAGE')
-        for name in sorted(dive.config.aliases):
-            alias = dive.config.aliases[name]
-            print('{}\t{}'.format(alias.name, alias.image or dive.config.image))
-        return
 
     try:
         dive.prepare()
