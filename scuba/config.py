@@ -1,12 +1,7 @@
-from __future__ import print_function
 import os
 import yaml
 import re
 import shlex
-try:
-    basestring
-except NameError:
-    basestring = str    # Python 3
 
 from .constants import *
 from .utils import *
@@ -78,20 +73,22 @@ Loader.add_constructor('!from_yaml', Loader.from_yaml)
 
 
 def find_config():
-    '''Search up the diretcory hierarchy for .scuba.yml
+    '''Search up the directory hierarchy for .scuba.yml
 
-    Returns: path, rel on success, or None if not found
+    Returns: path, rel, config on success, or None if not found
         path    The absolute path of the directory where .scuba.yml was found
         rel     The relative path from the directory where .scuba.yml was found
                 to the current directory
+        config  The loaded configuration
     '''
     cross_fs = 'SCUBA_DISCOVERY_ACROSS_FILESYSTEM' in os.environ
     path = os.getcwd()
 
     rel = ''
     while True:
-        if os.path.exists(os.path.join(path, SCUBA_YML)):
-            return path, rel
+        cfg_path = os.path.join(path, SCUBA_YML)
+        if os.path.exists(cfg_path):
+            return path, rel, load_config(cfg_path)
 
         if not cross_fs and os.path.ismount(path):
             msg = '{} not found here or any parent up to mount point {}'.format(SCUBA_YML, path) \
@@ -113,7 +110,7 @@ def _process_script_node(node, name):
     This handles nodes that follow the *Common script schema*,
     as outlined in doc/yaml-reference.md.
     '''
-    if isinstance(node, basestring):
+    if isinstance(node, str):
         # The script is just the text itself
         return [node]
 
@@ -127,7 +124,7 @@ def _process_script_node(node, name):
         if isinstance(script, list):
             return script
 
-        if isinstance(script, basestring):
+        if isinstance(script, str):
             return [script]
 
         raise ConfigError("{}.script: must be a string or list".format(name))
@@ -177,19 +174,21 @@ def _get_entrypoint(data):
     if ep is None:
         ep = ''
 
-    if not isinstance(ep, basestring):
+    if not isinstance(ep, str):
         raise ConfigError("'{}' must be a string, not {}".format(
                 key, type(ep).__name__))
     return ep
 
 
 class ScubaAlias(object):
-    def __init__(self, name, script, image, entrypoint, environment):
+    def __init__(self, name, script, image, entrypoint, environment, shell, as_root):
         self.name = name
         self.script = script
         self.image = image
         self.entrypoint = entrypoint
         self.environment = environment
+        self.shell = shell
+        self.as_root = as_root
 
     @classmethod
     def from_dict(cls, name, node):
@@ -197,6 +196,8 @@ class ScubaAlias(object):
         image = None
         entrypoint = None
         environment = None
+        shell = None
+        as_root = False
 
         if isinstance(node, dict):  # Rich alias
             image = node.get('image')
@@ -204,16 +205,18 @@ class ScubaAlias(object):
             environment = _process_environment(
                     node.get('environment'),
                     '{}.{}'.format(name, 'environment'))
+            shell = node.get('shell')
+            as_root = node.get('root', as_root)
 
-        return cls(name, script, image, entrypoint, environment)
+        return cls(name, script, image, entrypoint, environment, shell, as_root)
 
 class ScubaContext(object):
     pass
 
 class ScubaConfig(object):
     def __init__(self, **data):
-        required_nodes = ('image',)
-        optional_nodes = ('aliases','hooks','entrypoint','environment')
+        required_nodes = ()
+        optional_nodes = ('image','aliases','hooks','entrypoint','environment','shell')
 
         # Check for missing required nodes
         missing = [n for n in required_nodes if not n in data]
@@ -227,7 +230,8 @@ class ScubaConfig(object):
             raise ConfigError('{}: Unrecognized node{}: {}'.format(SCUBA_YML,
                     's' if len(extra) > 1 else '', ', '.join(extra)))
 
-        self._image = data['image']
+        self._image = data.get('image')
+        self._shell = data.get('shell', DEFAULT_SHELL)
         self._entrypoint = _get_entrypoint(data)
         self._load_aliases(data)
         self._load_hooks(data)
@@ -260,6 +264,8 @@ class ScubaConfig(object):
 
     @property
     def image(self):
+        if not self._image:
+            raise ConfigError("Top-level 'image' not set")
         return self._image
 
     @property
@@ -278,12 +284,18 @@ class ScubaConfig(object):
     def environment(self):
         return self._environment
 
+    @property
+    def shell(self):
+        return self._shell
 
-    def process_command(self, command):
+
+    def process_command(self, command, image=None, shell=None):
         '''Processes a user command using aliases
 
         Arguments:
             command     A user command list (e.g. argv)
+            image       Override the image from .scuba.yml
+            shell       Override the shell from .scuba.yml
 
         Returns: A ScubaContext object with the following attributes:
             script: a list of command line strings
@@ -291,9 +303,11 @@ class ScubaConfig(object):
         '''
         result = ScubaContext()
         result.script = None
-        result.image = self.image
+        result.image = None
         result.entrypoint = self.entrypoint
         result.environment = self.environment.copy()
+        result.shell = self.shell
+        result.as_root = False
 
         if command:
             alias = self.aliases.get(command[0])
@@ -307,6 +321,10 @@ class ScubaConfig(object):
                     result.image = alias.image
                 if alias.entrypoint is not None:
                     result.entrypoint = alias.entrypoint
+                if alias.shell is not None:
+                    result.shell = alias.shell
+                if alias.as_root:
+                    result.as_root = True
 
                 # Merge/override the environment
                 if alias.environment:
@@ -326,6 +344,20 @@ class ScubaConfig(object):
                     result.script = [alias.script[0] + ' ' + shell_quote_cmd(command)]
 
             result.script = flatten_list(result.script)
+
+        # If a shell was given on the CLI, it should override the shell set by
+        # the alias or top-level config
+        if shell:
+            result.shell = shell
+
+        # If an image was given, it overrides what might have been set by an alias
+        if image:
+            result.image = image
+
+        # If the image was still not set, then try to get it from the confg,
+        # which will raise a ConfigError if it is not set
+        if not result.image:
+            result.image = self.image
 
         return result
 

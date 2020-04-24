@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-from __future__ import print_function
 import scuba.version
 from setuptools import setup, Command
 from distutils.command.build import build
@@ -50,6 +48,7 @@ def get_version():
 setup(
     name = 'scuba',
     version = get_version(),
+    python_requires='>=3.5',
     description = 'Simplify use of Docker containers for building software',
     long_description = read_project_file('README.md'),
     long_description_content_type = 'text/markdown',
@@ -84,6 +83,11 @@ setup(
     install_requires = [
         'PyYAML',
     ],
+    extras_require = {
+        'argcomplete': [
+            'argcomplete>=1.10.1',
+        ],
+    },
 
     # http://stackoverflow.com/questions/17806485
     # http://stackoverflow.com/questions/21915469

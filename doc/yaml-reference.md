@@ -10,13 +10,17 @@ other YAML file schemas, most options are controlled by top-level keys.
 
 ### `image`
 
-The `image` node *is required* and defines the Docker image from which Scuba
+The `image` node defines the Docker image from which Scuba
 containers are created.
 
 Example:
 ```yaml
 image: debian:8.2
 ```
+
+The `image` node is usually necessary but, as of scuba 2.5, can be omitted for
+`.scuba.yml` files in which only the `aliases` are intended to be used.
+
 
 ### `environment`
 
@@ -104,6 +108,48 @@ hooks:
       - id
   user: 'echo "HOOK: After switching users, uid=$(id -u) gid=$(id -g)"'
 ```
+
+### `shell`
+
+The optional `shell` node allows the default shell that Scuba uses in the 
+container (`/bin/sh`) to be overridden by another shell. This is useful for
+images that do not have a shell located at `/bin/sh`.
+
+Example:
+```yaml
+shell: /busybox/sh
+```
+
+Aliases can also override the shell from the default or the top-level of
+the .scuba.yml file:
+```yaml
+aliases:
+  my_shell:
+    shell: /bin/cool_shell
+    script:
+      - echo "This is executing in cool_shell"
+  busybox_shell:
+    script:
+      - echo "This is executing in scuba's default shell"
+```
+
+
+## Alias-level keys
+
+### `root`
+
+The optional `root` node allows an alias to specify whether its container
+should be run as root:
+```yaml
+aliases:
+  root_check:
+    root: true
+    script:
+      - echo 'Only root can do this!'
+      - echo "I am UID $(id -u)"
+      - cat /etc/shadow
+```
+
 
 ## Common script schema
 Several parts of `.scuba.yml` which define "scripts" use a common schema.

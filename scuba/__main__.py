@@ -1,22 +1,27 @@
 # SCUBA - Simple Container-Utilizing Build Architecture
 # (C) 2015 Jonathon Reinhart
 # https://github.com/JonathonReinhart/scuba
+# PYTHON_ARGCOMPLETE_OK
 
-from __future__ import print_function
-import os, os.path
+import os.path
 from pwd import getpwuid
 from grp import getgrgid
-import errno
 import sys
 import shlex
 import itertools
 import argparse
+try:
+    import argcomplete
+except ImportError:
+    class argcomplete(object):
+        @staticmethod
+        def autocomplete(_):
+            pass
 import tempfile
 import shutil
-import collections
+from collections.abc import Mapping
+from io import StringIO
 
-from .cmdlineargs import *
-from .compat import File, StringIO
 from .constants import *
 from .config import find_config, load_config, ScubaConfig, \
         ConfigError, ConfigNotFoundError
@@ -48,6 +53,22 @@ def writeln(f, line):
 
 
 def parse_scuba_args(argv):
+
+    def _list_images_completer(**_):
+        return dockerutil.get_images()
+
+    def _list_aliases_completer(parsed_args, **_):
+        # We don't want to try to complete any aliases if one was already given
+        if parsed_args.command:
+            return []
+
+        try:
+            _, _, config = find_config()
+            return sorted(config.aliases)
+        except (ConfigNotFoundError, ConfigError):
+            argcomplete.warn('No or invalid config found.  Cannot auto-complete aliases.')
+            return []
+
     ap = argparse.ArgumentParser(description='Simple Container-Utilizing Build Apparatus')
     ap.add_argument('-d', '--docker-arg', dest='docker_args', action='append',
             type=lambda x: shlex.split(x), default=[],
@@ -57,11 +78,8 @@ def parse_scuba_args(argv):
             help='Environment variables to pass to docker')
     ap.add_argument('--entrypoint',
             help='Override the default ENTRYPOINT of the image')
-    ap.add_argument('--list-aliases', action='store_true',
-            help=argparse.SUPPRESS)
-    ap.add_argument('--list-available-options', action=ListOptsAction,
-            help=argparse.SUPPRESS)
-    ap.add_argument('--image', help='Override Docker image')
+    ap.add_argument('--image', help='Override Docker image').completer = _list_images_completer
+    ap.add_argument('--shell', help='Override shell used in Docker container')
     ap.add_argument('-n', '--dry-run', action='store_true',
             help="Don't actually invoke docker; just print the docker cmdline")
     ap.add_argument('-r', '--root', action='store_true',
@@ -70,8 +88,9 @@ def parse_scuba_args(argv):
     ap.add_argument('-V', '--verbose', action='store_true',
             help="Be verbose")
     ap.add_argument('command', nargs=argparse.REMAINDER,
-            help="Command (and arguments) to run in the container")
+            help="Command (and arguments) to run in the container").completer = _list_aliases_completer
 
+    argcomplete.autocomplete(ap, always_complete_options=False)
     args = ap.parse_args(argv)
 
     # Flatten docker arguments into single list
@@ -96,10 +115,10 @@ class ScubaError(Exception):
 
 class ScubaDive(object):
     def __init__(self, user_command, docker_args=None, env=None, as_root=False, verbose=False,
-            image_override=None, entrypoint=None):
+            image_override=None, entrypoint=None, shell_override=None):
 
         env = env or {}
-        if not isinstance(env, collections.Mapping):
+        if not isinstance(env, Mapping):
             raise ValueError('Argument env must be dict-like')
 
         self.user_command = user_command
@@ -107,6 +126,7 @@ class ScubaDive(object):
         self.verbose = verbose
         self.image_override = image_override
         self.entrypoint_override = entrypoint
+        self.shell_override = shell_override
 
         # These will be added to docker run cmdline
         self.env_vars = env
@@ -206,7 +226,6 @@ class ScubaDive(object):
         if not os.path.isfile(self.scubainit_path):
             raise ScubaError('scubainit not found at "{}"'.format(self.scubainit_path))
 
-
     def __load_config(self):
         '''Find and load .scuba.yml
         '''
@@ -216,8 +235,7 @@ class ScubaDive(object):
         # and is where we'll set the working directory in the container (relative to
         # the bind mount point).
         try:
-            top_path, top_rel = find_config()
-            self.config = load_config(os.path.join(top_path, SCUBA_YML))
+            top_path, top_rel, self.config = find_config()
         except ConfigNotFoundError as cfgerr:
             # SCUBA_YML can be missing if --image was given.
             # In this case, we assume a default config
@@ -249,11 +267,15 @@ class ScubaDive(object):
         # with SELinux. See `man docker-run` for more information.
         self.vol_opts = ['z']
 
+        # Process any aliases
+        context = self.config.process_command(self.user_command,
+                image=self.image_override, shell=self.shell_override)
 
         # Pass variables to scubainit
         self.add_env('SCUBAINIT_UMASK', '{:04o}'.format(get_umask()))
 
-        if not self.as_root:
+        # Check if the CLI args specify "run as root", or if the command (alias) does
+        if not self.as_root and not context.as_root:
             uid = os.getuid()
             gid = os.getgid()
             self.add_env('SCUBAINIT_UID', uid)
@@ -272,21 +294,13 @@ class ScubaDive(object):
 
         # Hooks
         for name in ('root', 'user', ):
-            self.__generate_hook_script(name)
+            self.__generate_hook_script(name, context.shell)
 
         # allocate TTY if scuba's output is going to a terminal
         # and stdin is not redirected
         if sys.stdout.isatty() and sys.stdin.isatty():
             self.add_option('--tty')
 
-        # Process any aliases
-        try:
-            context = self.config.process_command(self.user_command)
-        except ConfigError as cfgerr:
-            raise ScubaError(str(cfgerr))
-
-        if self.image_override:
-            context.image = self.image_override
 
         '''
         Normally, if the user provides no command to "docker run", the image's
@@ -322,8 +336,7 @@ class ScubaDive(object):
 
         # The user command is executed via a generated shell script
         with self.open_scubadir_file('command.sh', 'wt') as f:
-            self.docker_cmd += ['/bin/sh', f.container_path]
-            writeln(f, '#!/bin/sh')
+            self.docker_cmd += [context.shell, f.container_path]
             writeln(f, '# Auto-generated from scuba')
             writeln(f, 'set -e')
             for cmd in context.script:
@@ -343,9 +356,9 @@ class ScubaDive(object):
         assert not os.path.exists(path)
 
         # Make any directories required
-        mkdir_p(os.path.dirname(path))
+        os.makedirs(os.path.dirname(path), exist_ok=True)
 
-        f = File(path, mode)
+        f = open(path, mode)
         f.container_path = os.path.join(self.__scubadir_contpath, name)
         return f
 
@@ -362,7 +375,7 @@ class ScubaDive(object):
         return os.path.join(self.__scubadir_contpath, name)
 
 
-    def __generate_hook_script(self, name):
+    def __generate_hook_script(self, name, shell):
         script = self.config.hooks.get(name)
         if not script:
             return
@@ -372,7 +385,7 @@ class ScubaDive(object):
 
             self.add_env('SCUBAINIT_HOOK_{}'.format(name.upper()), f.container_path)
 
-            writeln(f, '#!/bin/sh')
+            writeln(f, '#!{}'.format(shell))
             writeln(f, '# Auto-generated from .scuba.yml')
             writeln(f, 'set -e')
             for cmd in script:
@@ -420,14 +433,8 @@ def run_scuba(scuba_args):
         verbose = scuba_args.verbose,
         image_override = scuba_args.image,
         entrypoint = scuba_args.entrypoint,
+        shell_override = scuba_args.shell,
         )
-
-    if scuba_args.list_aliases:
-        print('ALIAS\tIMAGE')
-        for name in sorted(dive.config.aliases):
-            alias = dive.config.aliases[name]
-            print('{}\t{}'.format(alias.name, alias.image or dive.config.image))
-        return
 
     try:
         dive.prepare()
@@ -465,6 +472,9 @@ def main(argv=None):
     try:
         rc = run_scuba(scuba_args) or 0
         sys.exit(rc)
+    except ConfigError as e:
+        appmsg("Config error: " + str(e))
+        sys.exit(128)
     except DockerExecuteError as e:
         appmsg(str(e))
         sys.exit(2)

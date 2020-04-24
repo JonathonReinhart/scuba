@@ -1,3 +1,4 @@
+argcomplete >= 1.10.1
 PyYAML
 nose
 coverage

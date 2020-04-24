@@ -1,12 +1,7 @@
-from __future__ import print_function
-
 from nose.tools import *
 from .utils import *
 from unittest import TestCase
-try:
-    from unittest import mock
-except ImportError:
-    import mock
+from unittest import mock
 
 import logging
 import os
@@ -23,6 +18,7 @@ import scuba.dockerutil
 import scuba
 
 DOCKER_IMAGE = 'debian:8.2'
+SCUBAINIT_EXIT_FAIL = 99
 
 class TestMain(TmpDirTestCase):
 
@@ -287,7 +283,10 @@ class TestMain(TmpDirTestCase):
         assert_str_equalish(out, test_str)
 
 
-    def _test_user(self, scuba_args=[]):
+    def _test_user(self,
+                   expected_uid, expected_username,
+                   expected_gid, expected_groupname,
+                   scuba_args=[]):
         with open('.scuba.yml', 'w') as f:
             f.write('image: {}\n'.format(DOCKER_IMAGE))
 
@@ -295,30 +294,87 @@ class TestMain(TmpDirTestCase):
         out, _ = self.run_scuba(args)
 
         uid, username, gid, groupname = out.split()
-        return int(uid), username, int(gid), groupname
+        uid = int(uid)
+        gid = int(gid)
+
+        assert_equal(uid, expected_uid)
+        assert_equal(username, expected_username)
+        assert_equal(gid, expected_gid)
+        assert_equal(groupname, expected_groupname)
 
 
     def test_user_scubauser(self):
         '''Verify scuba runs container as the current (host) uid/gid'''
+        self._test_user(
+            expected_uid = os.getuid(),
+            expected_username = getpwuid(os.getuid()).pw_name,
+            expected_gid = os.getgid(),
+            expected_groupname = getgrgid(os.getgid()).gr_name,
+        )
 
-        uid, username, gid, groupname = self._test_user()
-
-        assert_equal(uid, os.getuid())
-        assert_equal(username, getpwuid(os.getuid()).pw_name)
-        assert_equal(gid, os.getgid())
-        assert_equal(groupname, getgrgid(os.getgid()).gr_name)
-
+    EXPECT_ROOT = dict(
+        expected_uid = 0,
+        expected_username = 'root',
+        expected_gid = 0,
+        expected_groupname = 'root',
+    )
 
     def test_user_root(self):
         '''Verify scuba -r runs container as root'''
+        self._test_user(
+            **self.EXPECT_ROOT,
+            scuba_args = ['-r'],
+        )
 
-        uid, username, gid, groupname = self._test_user(['-r'])
+    def test_user_run_as_root(self):
+        '''Verify running scuba as root is identical to "scuba -r"'''
 
-        assert_equal(uid, 0)
+        with mock.patch('os.getuid', return_value=0) as getuid_mock, \
+             mock.patch('os.getgid', return_value=0) as getgid_mock:
+
+            self._test_user(**self.EXPECT_ROOT)
+            assert_true(getuid_mock.called)
+            assert_true(getgid_mock.called)
+
+    def test_user_root_alias(self):
+        '''Verify that aliases can set whether the container is run as root'''
+        with open('.scuba.yml', 'w') as f:
+            f.write('''
+                image: {image}
+                aliases:
+                  root_test:
+                    root: true
+                    script:
+                      - echo $(id -u) $(id -un) $(id -g) $(id -gn)
+                '''.format(image=DOCKER_IMAGE))
+
+        out, _ = self.run_scuba(["root_test"])
+        uid, username, gid, groupname = out.split()
+
+        assert_equal(int(uid), 0)
         assert_equal(username, 'root')
-        assert_equal(gid, 0)
+        assert_equal(int(gid), 0)
         assert_equal(groupname, 'root')
-    
+
+        # No one should ever specify 'root: false' in an alias, but Scuba should behave
+        # correctly if they do
+        with open('.scuba.yml', 'w') as f:
+            f.write('''
+                image: {image}
+                aliases:
+                  no_root_test:
+                    root: false
+                    script:
+                      - echo $(id -u) $(id -un) $(id -g) $(id -gn)
+                '''.format(image=DOCKER_IMAGE))
+
+        out, _ = self.run_scuba(["no_root_test"])
+        uid, username, gid, groupname = out.split()
+
+        assert_equal(int(uid), os.getuid())
+        assert_equal(username, getpwuid(os.getuid()).pw_name)
+        assert_equal(int(gid), os.getgid())
+        assert_equal(groupname, getgrgid(os.getgid()).gr_name)
 
     def _test_home_writable(self, scuba_args=[]):
         with open('.scuba.yml', 'w') as f:
@@ -587,15 +643,21 @@ class TestMain(TmpDirTestCase):
     ############################################################################
     # Hooks
 
-    def _test_one_hook(self, hookname, exp_uid, exp_gid):
+    def _test_one_hook(self, hookname, hookcmd, cmd, exp_retval=0):
         with open('.scuba.yml', 'w') as f:
             f.write('image: {}\n'.format(DOCKER_IMAGE))
             f.write('hooks:\n')
-            f.write('  {}: echo $(id -u) $(id -g)\n'.format(hookname))
+            f.write('  {}: {}\n'.format(hookname, hookcmd))
 
-        args = ['/bin/sh', '-c', 'echo success']
-        out, _ = self.run_scuba(args)
+        args = ['/bin/sh', '-c', cmd]
+        return self.run_scuba(args, exp_retval=exp_retval)
 
+    def _test_hook_runs_as(self, hookname, exp_uid, exp_gid):
+        out, _ = self._test_one_hook(
+                hookname,
+                'echo $(id -u) $(id -g)',
+                'echo success',
+                )
         out = out.splitlines()
 
         uid, gid = map(int, out[0].split())
@@ -604,13 +666,23 @@ class TestMain(TmpDirTestCase):
 
         assert_str_equalish(out[1], 'success')
 
-    def test_user_hook(self):
+    def test_user_hook_runs_as_user(self):
         '''Verify user hook executes as user'''
-        self._test_one_hook('user', os.getuid(), os.getgid())
+        self._test_hook_runs_as('user', os.getuid(), os.getgid())
 
-    def test_root_hook(self):
+    def test_root_hook_runs_as_root(self):
         '''Verify root hook executes as root'''
-        self._test_one_hook('root', 0, 0)
+        self._test_hook_runs_as('root', 0, 0)
+
+    def test_hook_failure_shows_correct_status(self):
+        testval = 42
+        out, err = self._test_one_hook(
+                'root',
+                'exit {}'.format(testval),
+                'dont care',
+                exp_retval = SCUBAINIT_EXIT_FAIL,
+                )
+        self.assertRegex(err, '^scubainit:.*exited with status {}'.format(testval))
 
 
     ############################################################################
@@ -703,33 +775,94 @@ class TestMain(TmpDirTestCase):
         assert_str_equalish(self.path, out)
 
 
-
     ############################################################################
-    # Misc
-    def test_list_aliases(self):
-        '''Verify --list-aliases works'''
+    # Shell Override
+
+    def test_use_top_level_shell_override(self):
+        '''Verify that the shell can be overriden at the top level'''
         with open('.scuba.yml', 'w') as f:
-            f.write('image: default\n')
-            f.write('aliases:\n')
-            f.write('  aaa:\n')
-            f.write('    image: aaa_image\n')
-            f.write('    script:\n')
-            f.write('      - foo\n')
-            f.write('  bbb:\n')
-            f.write('    script:\n')
-            f.write('      - foo\n')
-            f.write('  ccc: foo\n')
+            f.write('''
+                image: {image}
+                shell: /bin/bash
+                aliases:
+                  check_shell:
+                    script: readlink -f /proc/$$/exe
+                '''.format(image=DOCKER_IMAGE))
 
-        expected = (
-            ('ALIAS',   'IMAGE'),
-            ('aaa',     'aaa_image'),
-            ('bbb',     'default'),
-            ('ccc',     'default'),
-        )
+        out, _ = self.run_scuba(['check_shell'])
+        # If we failed to override, the shebang would be #!/bin/sh
+        self.assertTrue("/bin/bash" in out)
 
-        out, err = self.run_scuba(['--list-aliases'])
-        lines = out.splitlines()
+    def test_alias_level_shell_override(self):
+        '''Verify that the shell can be overriden at the alias level without affecting other aliases'''
+        with open('.scuba.yml', 'w') as f:
+            f.write('''
+                image: {image}
+                aliases:
+                  shell_override:
+                    shell: /bin/bash
+                    script: readlink -f /proc/$$/exe
+                  default_shell:
+                    script: readlink -f /proc/$$/exe
+                '''.format(image=DOCKER_IMAGE))
+        out, _ = self.run_scuba(['shell_override'])
+        self.assertTrue("/bin/bash" in out)
 
-        assert_equal(len(expected), len(lines))
-        for i in range(len(expected)):
-            assert_seq_equal(expected[i], lines[i].split('\t'))
+        out, _ = self.run_scuba(['default_shell'])
+        # The way that we check the shell uses the resolved symlink of /bin/sh,
+        # which is /bin/dash on Debian
+        self.assertTrue("/bin/sh" in out or "/bin/dash" in out)
+
+    def test_cli_shell_override(self):
+        '''Verify that the shell can be overriden by the CLI'''
+        with open('.scuba.yml', 'w') as f:
+            f.write('''
+                image: {image}
+                aliases:
+                  default_shell:
+                    script: readlink -f /proc/$$/exe
+                '''.format(image=DOCKER_IMAGE))
+
+        out, _ = self.run_scuba(['--shell', '/bin/bash', 'default_shell'])
+        self.assertTrue("/bin/bash" in out)
+
+    def test_shell_override_precedence(self):
+        '''Verify that shell overrides at different levels override each other as expected'''
+        # Precedence expectations are (with "<<" meaning "overridden by"):
+        # Top-level SCUBA_YML shell << alias-level SCUBA_YML shell << CLI-specified shell
+
+        # Test top-level << alias-level
+        with open('.scuba.yml', 'w') as f:
+            f.write('''
+                image: {image}
+                shell: /bin/this_does_not_exist
+                aliases:
+                  shell_override:
+                    shell: /bin/bash
+                    script: readlink -f /proc/$$/exe
+                '''.format(image=DOCKER_IMAGE))
+        out, _ = self.run_scuba(['shell_override'])
+        self.assertTrue("/bin/bash" in out)
+
+        # Test alias-level << CLI
+        with open('.scuba.yml', 'w') as f:
+            f.write('''
+                image: {image}
+                aliases:
+                  shell_overridden:
+                    shell: /bin/this_is_not_a_real_shell
+                    script: readlink -f /proc/$$/exe
+                '''.format(image=DOCKER_IMAGE))
+        out, _ = self.run_scuba(['--shell', '/bin/bash', 'shell_overridden'])
+        self.assertTrue("/bin/bash" in out)
+
+        # Test top-level << CLI
+        with open('.scuba.yml', 'w') as f:
+            f.write('''
+                image: {image}
+                shell: /bin/this_is_not_a_real_shell
+                aliases:
+                  shell_check: readlink -f /proc/$$/exe
+                '''.format(image=DOCKER_IMAGE))
+        out, _ = self.run_scuba(['--shell', '/bin/bash', 'shell_check'])
+        self.assertTrue("/bin/bash" in out)

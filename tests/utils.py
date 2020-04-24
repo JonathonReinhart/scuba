@@ -6,11 +6,7 @@ import tempfile
 import shutil
 import unittest
 import logging
-from scuba.compat import builtins_module_name
-try:
-    from unittest import mock
-except ImportError:
-    import mock
+from unittest import mock
 
 
 def assert_set_equal(a, b):
@@ -64,8 +60,7 @@ def mock_open():
     def mocked_open(*args, **kwargs):
         return real_open(*args, **kwargs)
 
-    name = builtins_module_name + '.open'
-    return mock.patch(name, side_effect=mocked_open)
+    return mock.patch('builtins.open', side_effect=mocked_open)
 
 
 # http://stackoverflow.com/a/8389373/119527

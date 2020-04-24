@@ -1,6 +1,4 @@
  # coding=utf-8
-from __future__ import print_function
-
 from nose.tools import *
 from .utils import *
 from unittest import TestCase
@@ -49,8 +47,8 @@ class TestCommonScriptSchema(TmpDirTestCase):
                 whatisthis = 'idontknow',
             ),
         )
-        assert_raises(scuba.config.ConfigError,
-                scuba.config._process_script_node, node, 'dontcare')
+        with self.assertRaises(scuba.config.ConfigError):
+            scuba.config._process_script_node(node, 'dontcare')
 
 
 class TestConfig(TmpDirTestCase):
@@ -63,7 +61,7 @@ class TestConfig(TmpDirTestCase):
         with open('.scuba.yml', 'w') as f:
             f.write('image: busybox\n')
 
-        path, rel = scuba.config.find_config()
+        path, rel, _ = scuba.config.find_config()
         assert_paths_equal(path, self.path)
         assert_paths_equal(rel, '')
 
@@ -79,7 +77,7 @@ class TestConfig(TmpDirTestCase):
         # Verify our current working dir
         assert_paths_equal(os.getcwd(), join(self.path, 'subdir'))
 
-        path, rel = scuba.config.find_config()
+        path, rel, _ = scuba.config.find_config()
         assert_paths_equal(path, self.path)
         assert_paths_equal(rel, 'subdir')
 
@@ -97,23 +95,30 @@ class TestConfig(TmpDirTestCase):
         # Verify our current working dir
         assert_paths_equal(os.getcwd(), join(self.path, *subdirs))
 
-        path, rel = scuba.config.find_config()
+        path, rel, _ = scuba.config.find_config()
         assert_paths_equal(path, self.path)
         assert_paths_equal(rel, join(*subdirs))
 
     def test_find_config_nonexist(self):
         '''find_config raises ConfigError if the config cannot be found'''
-        assert_raises(scuba.config.ConfigError, scuba.config.find_config)
+        with self.assertRaises(scuba.config.ConfigError):
+            scuba.config.find_config()
 
     ######################################################################
     # Load config
 
-    def test_load_config_empty(self):
-        '''load_config raises ConfigError if the config is empty'''
+    def _test_invalid_config(self):
+        with self.assertRaises(scuba.config.ConfigError):
+            scuba.config.load_config('.scuba.yml')
+
+    def test_load_config_no_image(self):
+        '''load_config raises ConfigError if the config is empty and image is referenced'''
         with open('.scuba.yml', 'w') as f:
             pass
 
-        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
+        config = scuba.config.load_config('.scuba.yml')
+        with self.assertRaises(scuba.config.ConfigError):
+            img = config.image
 
     def test_load_unexpected_node(self):
         '''load_config raises ConfigError on unexpected config node'''
@@ -121,7 +126,7 @@ class TestConfig(TmpDirTestCase):
             f.write('image: busybox\n')
             f.write('unexpected_node_123456: value\n')
 
-        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
+        self._test_invalid_config()
 
     def test_load_config_minimal(self):
         '''load_config loads a minimal config'''
@@ -152,7 +157,7 @@ class TestConfig(TmpDirTestCase):
             f.write('aliases:\n')
             f.write('  this has spaces: whatever\n')
 
-        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
+        self._test_invalid_config()
 
     def test_load_config_image_from_yaml(self):
         '''load_config loads a config using !from_yaml'''
@@ -227,21 +232,21 @@ class TestConfig(TmpDirTestCase):
         with open('.scuba.yml', 'w') as f:
             f.write('image: !from_yaml .gitlab.yml somewhere.NONEXISTANT\n')
 
-        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
+        self._test_invalid_config()
 
     def test_load_config_image_from_yaml_missing_file(self):
         '''load_config raises ConfigError when !from_yaml references nonexistant file'''
         with open('.scuba.yml', 'w') as f:
             f.write('image: !from_yaml .NONEXISTANT.yml image\n')
 
-        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
+        self._test_invalid_config()
 
     def test_load_config_image_from_yaml_unicode_args(self):
         '''load_config raises ConfigError when !from_yaml has unicode args'''
         with open('.scuba.yml', 'w') as f:
             f.write('image: !from_yaml .NONEXISTANT.yml ½\n')
 
-        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
+        self._test_invalid_config()
 
     def test_load_config_image_from_yaml_missing_arg(self):
         '''load_config raises ConfigError when !from_yaml has missing args'''
@@ -251,7 +256,7 @@ class TestConfig(TmpDirTestCase):
         with open('.scuba.yml', 'w') as f:
             f.write('image: !from_yaml .gitlab.yml\n')
 
-        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
+        self._test_invalid_config()
 
 
     def __test_load_config_safe(self, bad_yaml_path):
@@ -377,7 +382,8 @@ class TestConfig(TmpDirTestCase):
                     cat = 'dog',
                     ),
                 )
-        assert_raises(scuba.config.ConfigError, cfg.process_command, ['apple', 'ARGS', 'NOT ALLOWED'])
+        with self.assertRaises(scuba.config.ConfigError):
+            cfg.process_command(['apple', 'ARGS', 'NOT ALLOWED'])
 
     def test_process_command_alias_overrides_image(self):
         '''aliases can override the image'''
@@ -437,6 +443,42 @@ class TestConfig(TmpDirTestCase):
         assert_equal(result.entrypoint, '')
 
 
+    def test_process_command_image_override(self):
+        '''process_command allows image to be overridden when provided'''
+        override_image_name = 'override_image'
+
+        cfg = scuba.config.ScubaConfig(
+                image = 'test_image',
+                )
+        result = cfg.process_command([], image=override_image_name)
+        assert_equal(result.image, override_image_name)
+
+    def test_process_command_image_override_missing(self):
+        '''process_command allows image to be overridden when not provided'''
+        override_image_name = 'override_image'
+
+        cfg = scuba.config.ScubaConfig()
+        result = cfg.process_command([], image=override_image_name)
+        assert_equal(result.image, override_image_name)
+
+    def test_process_command_image_override_alias(self):
+        '''process_command allows image to be overridden when provided by alias'''
+        override_image_name = 'override_image'
+
+        cfg = scuba.config.ScubaConfig(
+                aliases = dict(
+                    apple = dict(
+                        script = [
+                            'banana cherry "pie is good"',
+                            'so is peach',
+                        ],
+                        image = 'apple_image',
+                    ),
+                )
+            )
+        result = cfg.process_command([], image=override_image_name)
+        assert_equal(result.image, override_image_name)
+
     ############################################################################
     # Hooks
 
@@ -474,7 +516,7 @@ class TestConfig(TmpDirTestCase):
                     - a 'script'
                 ''')
 
-        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
+        self._test_invalid_config()
 
     def test_hooks_missing_script(self):
         '''hooks with dict, but missing "script" are invalid'''
@@ -486,7 +528,7 @@ class TestConfig(TmpDirTestCase):
                     not_script: missing "script" key
                 ''')
 
-        assert_raises(scuba.config.ConfigError, scuba.config.load_config, '.scuba.yml')
+        self._test_invalid_config()
 
 
     ############################################################################

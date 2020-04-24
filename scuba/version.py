@@ -1,4 +1,3 @@
-from __future__ import print_function
 from os.path import abspath, dirname, exists, join, normpath
 import sys
 
@@ -11,7 +10,7 @@ PROJPATH = dirname(PACKAGEPATH)
 DIST_SPEC = 'scuba'
 
 # Base version, which will be augmented with Git information
-BASE_VERSION = '2.4.2'
+BASE_VERSION = '2.6.0'
 
 # This string will be replaced by `git-archive`
 # with the abbreviated commit hash
