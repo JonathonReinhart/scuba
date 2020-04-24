@@ -79,9 +79,9 @@ def skipUnlessTty():
 
 
 class InTempDir(object):
-    def __init__(self, suffix='', prefix='tmp', delete=True):
+    def __init__(self, suffix='', prefix='tmp', dir=None, delete=True):
         self.delete = delete
-        self.temp_path = tempfile.mkdtemp(suffix=suffix, prefix=prefix)
+        self.temp_path = tempfile.mkdtemp(suffix=suffix, prefix=prefix, dir=dir)
 
     def __enter__(self):
         self.orig_path = os.getcwd()
