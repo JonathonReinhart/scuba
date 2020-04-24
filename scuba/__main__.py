@@ -90,7 +90,7 @@ def parse_scuba_args(argv):
     ap.add_argument('command', nargs=argparse.REMAINDER,
             help="Command (and arguments) to run in the container").completer = _list_aliases_completer
 
-    argcomplete.autocomplete(ap)
+    argcomplete.autocomplete(ap, always_complete_options=False)
     args = ap.parse_args(argv)
 
     # Flatten docker arguments into single list
