@@ -332,7 +332,18 @@ class TestMain(TmpDirTestCase):
 
     def test_home_writable_scubauser(self):
         '''Verify scubauser has a writable homedir'''
-        self._test_home_writable()
+
+        # Run this test in /home/$username if applicable
+        username = getpwuid(os.getuid()).pw_name
+        homedir = os.path.expanduser('~')
+
+        expected = os.path.join('/home', username)
+        if homedir != expected:
+            warnings.warn("Homedir ({}) is not as expected ({}); test inconclusive"
+                    .format(homedir, expected))
+
+        with InTempDir(prefix='tmp-scubatest-', dir=homedir):
+            self._test_home_writable()
 
 
     def test_home_writable_root(self):
