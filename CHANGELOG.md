@@ -6,6 +6,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 - Switched to using `argcomplete` to provide Bash command line completion (#162)
 
+## [2.6.1] - 2020-04-24
 ### Fixed
 - scubainit ignores matching passwd/group/shadow file entries when creating the
   user. This allows transparently running scuba as root. (#164)
@@ -221,7 +222,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 First versioned release
 
 
-[Unreleased]: https://github.com/JonathonReinhart/scuba/compare/v2.6.0...HEAD
+[Unreleased]: https://github.com/JonathonReinhart/scuba/compare/v2.6.1...HEAD
+[2.6.1]: https://github.com/JonathonReinhart/scuba/compare/v2.6.0...v2.6.1
 [2.6.0]: https://github.com/JonathonReinhart/scuba/compare/v2.5.0...v2.6.0
 [2.5.0]: https://github.com/JonathonReinhart/scuba/compare/v2.4.2...v2.5.0
 [2.4.2]: https://github.com/JonathonReinhart/scuba/compare/v2.4.1...v2.4.2
