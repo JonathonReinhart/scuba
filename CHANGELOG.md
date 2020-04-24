@@ -3,6 +3,9 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Changed
+- Switched to using `argcomplete` to provide Bash command line completion (#162)
+
 ### Fixed
 - scubainit ignores matching passwd/group/shadow file entries when creating the
   user. This allows transparently running scuba as root. (#164)
