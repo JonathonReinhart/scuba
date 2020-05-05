@@ -15,7 +15,7 @@ try:
 except ImportError:
     class argcomplete(object):
         @staticmethod
-        def autocomplete(_):
+        def autocomplete(*_, **__):
             pass
 import tempfile
 import shutil
