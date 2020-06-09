@@ -266,7 +266,7 @@ class TestConfig(TmpDirTestCase):
             f.write('  - !!python/object/apply:sys.exit [66]\n')
 
         pat = "could not determine a constructor for the tag.*python/object/apply"
-        with self.assertRaisesRegexp(scuba.config.ConfigError, pat) as ctx:
+        with self.assertRaisesRegex(scuba.config.ConfigError, pat) as ctx:
             scuba.config.load_config('.scuba.yml')
 
     def test_load_config_safe(self):
