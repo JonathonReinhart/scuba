@@ -2,9 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [2.7.0] - 2020-06-08
 ### Changed
 - Switched to using `argcomplete` to provide Bash command line completion (#162)
+
 
 ## [2.6.1] - 2020-04-24
 ### Fixed
@@ -222,7 +223,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 First versioned release
 
 
-[Unreleased]: https://github.com/JonathonReinhart/scuba/compare/v2.6.1...HEAD
+[Unreleased]: https://github.com/JonathonReinhart/scuba/compare/v2.7.0...HEAD
+[2.7.0]: https://github.com/JonathonReinhart/scuba/compare/v2.6.1...v2.7.0
 [2.6.1]: https://github.com/JonathonReinhart/scuba/compare/v2.6.0...v2.6.1
 [2.6.0]: https://github.com/JonathonReinhart/scuba/compare/v2.5.0...v2.6.0
 [2.5.0]: https://github.com/JonathonReinhart/scuba/compare/v2.4.2...v2.5.0
