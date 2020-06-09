@@ -64,7 +64,7 @@ def mock_open():
 
 
 # http://stackoverflow.com/a/8389373/119527
-class PseudoTTY(object):
+class PseudoTTY:
     def __init__(self, underlying):
         self.__underlying = underlying
     def __getattr__(self, name):
@@ -78,7 +78,7 @@ def skipUnlessTty():
             "Can't test docker tty if not connected to a terminal")
 
 
-class InTempDir(object):
+class InTempDir:
     def __init__(self, suffix='', prefix='tmp', dir=None, delete=True):
         self.delete = delete
         self.temp_path = tempfile.mkdtemp(suffix=suffix, prefix=prefix, dir=dir)
@@ -95,7 +95,7 @@ class InTempDir(object):
             shutil.rmtree(self.temp_path)
 
 
-class RedirStd(object):
+class RedirStd:
     def __init__(self, stdout=None, stderr=None):
         self.stdout = stdout
         self.stderr = stderr
