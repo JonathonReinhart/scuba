@@ -17,7 +17,7 @@ class Loader(yaml.SafeLoader):
     def __init__(self, stream):
         self._root = os.path.split(stream.name)[0]
         self._cache = dict()
-        super(Loader, self).__init__(stream)
+        super().__init__(stream)
 
     def from_yaml(self, node):
         '''
@@ -180,7 +180,7 @@ def _get_entrypoint(data):
     return ep
 
 
-class ScubaAlias(object):
+class ScubaAlias:
     def __init__(self, name, script, image, entrypoint, environment, shell, as_root):
         self.name = name
         self.script = script
@@ -210,10 +210,10 @@ class ScubaAlias(object):
 
         return cls(name, script, image, entrypoint, environment, shell, as_root)
 
-class ScubaContext(object):
+class ScubaContext:
     pass
 
-class ScubaConfig(object):
+class ScubaConfig:
     def __init__(self, **data):
         required_nodes = ()
         optional_nodes = ('image','aliases','hooks','entrypoint','environment','shell')

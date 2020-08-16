@@ -6,7 +6,7 @@ import tempfile
 import shutil
 
 
-class InTempDir(object):
+class InTempDir:
     def __init__(self, suffix='', prefix='tmp', delete=True):
         self.delete = delete
         self.temp_path = tempfile.mkdtemp(suffix=suffix, prefix=prefix)

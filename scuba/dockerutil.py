@@ -21,10 +21,8 @@ def __wrap_docker_exec(func):
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
-        except OSError as e:
-            if e.errno == errno.ENOENT:
-                raise DockerExecuteError('Failed to execute docker. Is it installed?')
-            raise
+        except FileNotFoundError:
+            raise DockerExecuteError('Failed to execute docker. Is it installed?')
     return wrapper
 
 call = __wrap_docker_exec(subprocess.call)

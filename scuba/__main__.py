@@ -13,7 +13,7 @@ import argparse
 try:
     import argcomplete
 except ImportError:
-    class argcomplete(object):
+    class argcomplete:
         @staticmethod
         def autocomplete(*_, **__):
             pass
@@ -113,7 +113,7 @@ def parse_scuba_args(argv):
 class ScubaError(Exception):
     pass
 
-class ScubaDive(object):
+class ScubaDive:
     def __init__(self, user_command, docker_args=None, env=None, as_root=False, verbose=False,
             image_override=None, entrypoint=None, shell_override=None):
 
