@@ -548,7 +548,7 @@ class TestMain:
         assert_str_equalish(test_str, out)
 
 
-    def test_entrypoint_override_none(self):
+    def test_yaml_entrypoint_override_none(self):
         '''Verify "none" entrypoint in .scuba.yml works'''
         with open('.scuba.yml', 'w') as f:
             f.write('''
