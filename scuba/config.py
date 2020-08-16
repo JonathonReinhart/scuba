@@ -17,7 +17,7 @@ class Loader(yaml.SafeLoader):
     def __init__(self, stream):
         self._root = os.path.split(stream.name)[0]
         self._cache = dict()
-        super(Loader, self).__init__(stream)
+        super().__init__(stream)
 
     def from_yaml(self, node):
         '''
