@@ -31,62 +31,52 @@ class TestMain:
 
         # Capture both scuba and docker's stdout/stderr,
         # just as the user would see it.
-        # Also mock atexit.register(), so we can simulate file cleanup.
-
-        atexit_funcs = []
-        def atexit_reg(cb, *args, **kw):
-            atexit_funcs.append((cb, args, kw))
-
         with TemporaryFile(prefix='scubatest-stdout', mode='w+t') as stdout:
             with TemporaryFile(prefix='scubatest-stderr', mode='w+t') as stderr:
-                with mock.patch('atexit.register', side_effect=atexit_reg) as atexit_reg_mock:
+                if mock_isatty:
+                    stdout = PseudoTTY(stdout)
+                    stderr = PseudoTTY(stderr)
 
-                    if mock_isatty:
-                        stdout = PseudoTTY(stdout)
-                        stderr = PseudoTTY(stderr)
+                old_stdin  = sys.stdin
+                old_stdout = sys.stdout
+                old_stderr = sys.stderr
 
-                    old_stdin  = sys.stdin
-                    old_stdout = sys.stdout
-                    old_stderr = sys.stderr
+                if stdin is not None:
+                    sys.stdin = stdin
+                sys.stdout = stdout
+                sys.stderr = stderr
 
-                    if stdin is not None:
-                        sys.stdin = stdin
-                    sys.stdout = stdout
-                    sys.stderr = stderr
-
+                try:
+                    '''
+                    Call scuba's main(), and expect it to either exit()
+                    with a given return code, or return (implying an exit
+                    status of 0).
+                    '''
                     try:
-                        '''
-                        Call scuba's main(), and expect it to either exit()
-                        with a given return code, or return (implying an exit
-                        status of 0).
-                        '''
-                        try:
-                            main.main(argv = args)
-                        except SystemExit as sysexit:
-                            retcode = sysexit.code
-                        else:
-                            retcode = 0
+                        main.main(argv = args)
+                    except SystemExit as sysexit:
+                        retcode = sysexit.code
+                    else:
+                        retcode = 0
 
-                        stdout.seek(0)
-                        stderr.seek(0)
+                    stdout.seek(0)
+                    stderr.seek(0)
 
-                        stdout_data = stdout.read()
-                        stderr_data = stderr.read()
+                    stdout_data = stdout.read()
+                    stderr_data = stderr.read()
 
-                        logging.info('scuba stdout:\n' + stdout_data)
-                        logging.info('scuba stderr:\n' + stderr_data)
+                    logging.info('scuba stdout:\n' + stdout_data)
+                    logging.info('scuba stderr:\n' + stderr_data)
 
-                        # Verify the return value was as expected
-                        assert exp_retval == retcode
+                    # Verify the return value was as expected
+                    assert exp_retval == retcode
 
-                        return stdout_data, stderr_data
+                    return stdout_data, stderr_data
 
-                    finally:
-                        sys.stdin  = old_stdin
-                        sys.stdout = old_stdout
-                        sys.stderr = old_stderr
-                        for f, args, kw in atexit_funcs:
-                            f(*args, **kw)
+                finally:
+                    sys.stdin  = old_stdin
+                    sys.stdout = old_stdout
+                    sys.stderr = old_stderr
 
 
     def test_basic(self):
