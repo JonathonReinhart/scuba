@@ -39,5 +39,5 @@ jobs:
       run: |
         python setup.py bdist_wheel
         pip install dist/scuba-*-py3-none-any.whl
-        ./run_nosetests.py --no-local-import
+        ./run_unit_tests.sh
         ./run_full_tests.py

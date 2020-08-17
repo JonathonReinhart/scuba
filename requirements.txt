@@ -1,5 +1,6 @@
 argcomplete >= 1.10.1
 PyYAML
-nose
+pytest
+pytest-cov
 coverage
 mock; python_version < '3.3'
