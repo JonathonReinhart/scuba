@@ -41,7 +41,9 @@ class TestMain:
                 old_stdout = sys.stdout
                 old_stderr = sys.stderr
 
-                if stdin is not None:
+                if stdin is None:
+                    sys.stdin = open(os.devnull, 'w')
+                else:
                     sys.stdin = stdin
                 sys.stdout = stdout
                 sys.stderr = stderr
