@@ -107,8 +107,8 @@ class TestConfig:
     ######################################################################
     # Load config
 
-    def _test_invalid_config(self):
-        with pytest.raises(scuba.config.ConfigError):
+    def _invalid_config(self, match=None):
+        with pytest.raises(scuba.config.ConfigError, match=match) as e:
             scuba.config.load_config('.scuba.yml')
 
     def test_load_config_no_image(self):
@@ -126,7 +126,7 @@ class TestConfig:
             f.write('image: busybox\n')
             f.write('unexpected_node_123456: value\n')
 
-        self._test_invalid_config()
+        self._invalid_config()
 
     def test_load_config_minimal(self):
         '''load_config loads a minimal config'''
@@ -157,7 +157,7 @@ class TestConfig:
             f.write('aliases:\n')
             f.write('  this has spaces: whatever\n')
 
-        self._test_invalid_config()
+        self._invalid_config()
 
     def test_load_config_image_from_yaml(self):
         '''load_config loads a config using !from_yaml'''
@@ -232,14 +232,14 @@ class TestConfig:
         with open('.scuba.yml', 'w') as f:
             f.write('image: !from_yaml .gitlab.yml somewhere.NONEXISTANT\n')
 
-        self._test_invalid_config()
+        self._invalid_config()
 
     def test_load_config_image_from_yaml_missing_file(self):
         '''load_config raises ConfigError when !from_yaml references nonexistant file'''
         with open('.scuba.yml', 'w') as f:
             f.write('image: !from_yaml .NONEXISTANT.yml image\n')
 
-        self._test_invalid_config()
+        self._invalid_config()
 
     def test_load_config_image_from_yaml_unicode_args(self):
         '''load_config !from_yaml works with unicode args'''
@@ -260,7 +260,7 @@ class TestConfig:
         with open('.scuba.yml', 'w') as f:
             f.write('image: !from_yaml .gitlab.yml\n')
 
-        self._test_invalid_config()
+        self._invalid_config()
 
 
     def __test_load_config_safe(self, bad_yaml_path):
@@ -520,7 +520,7 @@ class TestConfig:
                     - a 'script'
                 ''')
 
-        self._test_invalid_config()
+        self._invalid_config()
 
     def test_hooks_missing_script(self):
         '''hooks with dict, but missing "script" are invalid'''
@@ -532,11 +532,20 @@ class TestConfig:
                     not_script: missing "script" key
                 ''')
 
-        self._test_invalid_config()
+        self._invalid_config()
 
 
     ############################################################################
     # Env
+
+    def test_env_invalid(self):
+        '''Environment must be dict or list of strings'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                environment: 666
+                ''')
+        self._invalid_config('must be list or mapping')
 
     def test_env_top_dict(self):
         '''Top-level environment can be loaded (dict)'''
@@ -665,6 +674,16 @@ class TestConfig:
 
         config = scuba.config.load_config('.scuba.yml')
         assert config.entrypoint == ''     # Null => empty string
+
+    def test_entrypoint_invalid(self):
+        '''Entrypoint of incorrect type raises ConfigError'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                entrypoint: 666
+                ''')
+
+        self._invalid_config('must be a string')
 
     def test_entrypoint_emptry_string(self):
         '''Entrypoint can be set to an empty string'''
