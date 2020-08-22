@@ -40,11 +40,7 @@ class Loader(yaml.SafeLoader):
         content = self.construct_scalar(node)
 
         # Split on unquoted spaces
-        try:
-            parts = shlex.split(content)
-        except UnicodeEncodeError:
-            raise yaml.YAMLError('Non-ASCII arguments to !from_yaml are unsupported')
-
+        parts = shlex.split(content)
         if len(parts) != 2:
             raise yaml.YAMLError('Two arguments expected to !from_yaml')
         filename, key = parts

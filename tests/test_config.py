@@ -242,11 +242,15 @@ class TestConfig:
         self._test_invalid_config()
 
     def test_load_config_image_from_yaml_unicode_args(self):
-        '''load_config raises ConfigError when !from_yaml has unicode args'''
-        with open('.scuba.yml', 'w') as f:
-            f.write('image: !from_yaml .NONEXISTANT.yml ½\n')
+        '''load_config !from_yaml works with unicode args'''
+        with open('.gitlab.yml', 'w') as f:
+            f.write('𝕦𝕟𝕚𝕔𝕠𝕕𝕖: 𝕨𝕠𝕣𝕜𝕤:𝕠𝕜\n')
 
-        self._test_invalid_config()
+        with open('.scuba.yml', 'w') as f:
+            f.write('image: !from_yaml .gitlab.yml 𝕦𝕟𝕚𝕔𝕠𝕕𝕖\n')
+
+        config = scuba.config.load_config('.scuba.yml')
+        assert config.image == '𝕨𝕠𝕣𝕜𝕤:𝕠𝕜'
 
     def test_load_config_image_from_yaml_missing_arg(self):
         '''load_config raises ConfigError when !from_yaml has missing args'''
