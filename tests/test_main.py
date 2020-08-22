@@ -158,12 +158,7 @@ class TestMain:
 
         out, err = self.run_scuba(['-v'])
 
-        # Argparse in Python < 3.4 printed version to stderr, but
-        # changed that to stdout in 3.4. We don't care where it goes.
-        # https://bugs.python.org/issue18920
-        check = out or err
-
-        name, ver = check.split()
+        name, ver = out.split()
         assert name == 'scuba'
         assert ver == scuba.__version__
 
