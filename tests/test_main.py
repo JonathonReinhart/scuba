@@ -685,7 +685,7 @@ class TestMain:
         out, _ = self.run_scuba(args)
         assert_str_equalish(out, 'VAL')
 
-    def test_env_var_key_only(self):
+    def test_env_var_key_only(self, monkeypatch):
         '''Verify -e KEY works'''
         with open('.scuba.yml', 'w') as f:
             f.write('image: {}\n'.format(DOCKER_IMAGE))
@@ -693,12 +693,12 @@ class TestMain:
             '-e', 'KEY',
             '/bin/sh', '-c', 'echo $KEY',
         ]
-        with mocked_os_env(KEY='mockedvalue'):
-            out, _ = self.run_scuba(args)
+        monkeypatch.setenv('KEY', 'mockedvalue')
+        out, _ = self.run_scuba(args)
         assert_str_equalish(out, 'mockedvalue')
 
 
-    def test_env_var_sources(self):
+    def test_env_var_sources(self, monkeypatch):
         '''Verify scuba handles all possible environment variable sources'''
         with open('.scuba.yml', 'w') as f:
             f.write(r'''
@@ -729,13 +729,11 @@ class TestMain:
             'al',
         ]
 
-        m = mocked_os_env(
-                EXTERNAL_1 = "External value 1",
-                EXTERNAL_2 = "External value 2",
-                EXTERNAL_3 = "External value 3",
-                )
-        with m:
-            out, _ = self.run_scuba(args)
+        monkeypatch.setenv('EXTERNAL_1', 'External value 1')
+        monkeypatch.setenv('EXTERNAL_2', 'External value 2')
+        monkeypatch.setenv('EXTERNAL_3', 'External value 3')
+
+        out, _ = self.run_scuba(args)
 
         # Convert key/pair output to dictionary
         result = dict( pair.split('=', 1) for pair in shlex.split(out) )

@@ -62,16 +62,16 @@ def test_parse_env_var_more_equals():
     result = scuba.utils.parse_env_var('KEY=anotherkey=value')
     assert result == ('KEY', 'anotherkey=value')
 
-def test_parse_env_var_no_equals():
+def test_parse_env_var_no_equals(monkeypatch):
     '''parse_env_var handles no equals and gets value from environment'''
-    with mocked_os_env(KEY='mockedvalue'):
-        result = scuba.utils.parse_env_var('KEY')
+    monkeypatch.setenv('KEY', 'mockedvalue')
+    result = scuba.utils.parse_env_var('KEY')
     assert result == ('KEY', 'mockedvalue')
 
-def test_parse_env_var_not_set():
+def test_parse_env_var_not_set(monkeypatch):
     '''parse_env_var returns an empty string if not set'''
-    with mocked_os_env():
-        result = scuba.utils.parse_env_var('NOTSET')
+    monkeypatch.delenv('NOTSET', raising=False)
+    result = scuba.utils.parse_env_var('NOTSET')
     assert result == ('NOTSET', '')
 
 def test_flatten_list__not_list():

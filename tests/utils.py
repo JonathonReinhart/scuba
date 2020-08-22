@@ -27,10 +27,6 @@ def make_executable(path):
     mode |= (mode & 0o444) >> 2    # copy R bits to X
     os.chmod(path, mode)
 
-def mocked_os_env(**env):
-    return mock.patch('os.getenv', side_effect=env.get)
-
-
 def mock_open():
     real_open = open
     def mocked_open(*args, **kwargs):
