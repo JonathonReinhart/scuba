@@ -1,7 +1,6 @@
-from nose.tools import *
 from .utils import *
-from unittest import TestCase
 from unittest import mock
+import pytest
 
 import logging
 import os
@@ -16,11 +15,13 @@ import scuba.__main__ as main
 import scuba.constants
 import scuba.dockerutil
 import scuba
+import re
 
 DOCKER_IMAGE = 'debian:8.2'
 SCUBAINIT_EXIT_FAIL = 99
 
-class TestMain(TmpDirTestCase):
+@pytest.mark.usefixtures("in_tmp_path")
+class TestMain:
 
     def run_scuba(self, args, exp_retval=0, mock_isatty=False, stdin=None):
         '''Run scuba, checking its return value
@@ -30,62 +31,54 @@ class TestMain(TmpDirTestCase):
 
         # Capture both scuba and docker's stdout/stderr,
         # just as the user would see it.
-        # Also mock atexit.register(), so we can simulate file cleanup.
-
-        atexit_funcs = []
-        def atexit_reg(cb, *args, **kw):
-            atexit_funcs.append((cb, args, kw))
-
         with TemporaryFile(prefix='scubatest-stdout', mode='w+t') as stdout:
             with TemporaryFile(prefix='scubatest-stderr', mode='w+t') as stderr:
-                with mock.patch('atexit.register', side_effect=atexit_reg) as atexit_reg_mock:
+                if mock_isatty:
+                    stdout = PseudoTTY(stdout)
+                    stderr = PseudoTTY(stderr)
 
-                    if mock_isatty:
-                        stdout = PseudoTTY(stdout)
-                        stderr = PseudoTTY(stderr)
+                old_stdin  = sys.stdin
+                old_stdout = sys.stdout
+                old_stderr = sys.stderr
 
-                    old_stdin  = sys.stdin
-                    old_stdout = sys.stdout
-                    old_stderr = sys.stderr
+                if stdin is None:
+                    sys.stdin = open(os.devnull, 'w')
+                else:
+                    sys.stdin = stdin
+                sys.stdout = stdout
+                sys.stderr = stderr
 
-                    if stdin is not None:
-                        sys.stdin = stdin
-                    sys.stdout = stdout
-                    sys.stderr = stderr
-
+                try:
+                    '''
+                    Call scuba's main(), and expect it to either exit()
+                    with a given return code, or return (implying an exit
+                    status of 0).
+                    '''
                     try:
-                        '''
-                        Call scuba's main(), and expect it to either exit()
-                        with a given return code, or return (implying an exit
-                        status of 0).
-                        '''
-                        try:
-                            main.main(argv = args)
-                        except SystemExit as sysexit:
-                            retcode = sysexit.code
-                        else:
-                            retcode = 0
+                        main.main(argv = args)
+                    except SystemExit as sysexit:
+                        retcode = sysexit.code
+                    else:
+                        retcode = 0
 
-                        stdout.seek(0)
-                        stderr.seek(0)
+                    stdout.seek(0)
+                    stderr.seek(0)
 
-                        stdout_data = stdout.read()
-                        stderr_data = stderr.read()
+                    stdout_data = stdout.read()
+                    stderr_data = stderr.read()
 
-                        logging.info('scuba stdout:\n' + stdout_data)
-                        logging.info('scuba stderr:\n' + stderr_data)
+                    logging.info('scuba stdout:\n' + stdout_data)
+                    logging.info('scuba stderr:\n' + stderr_data)
 
-                        # Verify the return value was as expected
-                        assert_equal(exp_retval, retcode)
+                    # Verify the return value was as expected
+                    assert exp_retval == retcode
 
-                        return stdout_data, stderr_data
+                    return stdout_data, stderr_data
 
-                    finally:
-                        sys.stdin  = old_stdin
-                        sys.stdout = old_stdout
-                        sys.stderr = old_stderr
-                        for f, args, kw in atexit_funcs:
-                            f(*args, **kw)
+                finally:
+                    sys.stdin  = old_stdin
+                    sys.stdout = old_stdout
+                    sys.stderr = old_stderr
 
 
     def test_basic(self):
@@ -106,7 +99,7 @@ class TestMain(TmpDirTestCase):
             f.write('image: {}\n'.format('scuba/hello'))
 
         out, _ = self.run_scuba([])
-        self.assertTrue('Hello world' in out)
+        assert_str_equalish(out, 'Hello world')
 
     def test_no_image_cmd(self):
         '''Verify scuba gracefully handles an image with no Cmd and no user command'''
@@ -165,16 +158,9 @@ class TestMain(TmpDirTestCase):
 
         out, err = self.run_scuba(['-v'])
 
-
-        # Argparse in Python < 3.4 printed version to stderr, but
-        # changed that to stdout in 3.4. We don't care where it goes.
-        # https://bugs.python.org/issue18920
-        check = out or err
-
-        assert_startswith(check, 'scuba')
-
-        ver = check.split()[1]
-        assert_equal(ver, scuba.__version__)
+        name, ver = out.split()
+        assert name == 'scuba'
+        assert ver == scuba.__version__
 
 
     def test_no_docker(self):
@@ -204,7 +190,7 @@ class TestMain(TmpDirTestCase):
 
         _, err = self.run_scuba(args, 42)
 
-        assert_false(subproc_call_mock.called)
+        assert not subproc_call_mock.called
 
         #TODO: Assert temp files are not cleaned up?
 
@@ -238,8 +224,8 @@ class TestMain(TmpDirTestCase):
         self.run_scuba(['/bin/touch', filename])
 
         st = os.stat(filename)
-        assert_equal(st.st_uid, os.getuid())
-        assert_equal(st.st_gid, os.getgid())
+        assert st.st_uid == os.getuid()
+        assert st.st_gid == os.getgid()
 
 
     def _setup_test_tty(self):
@@ -297,10 +283,10 @@ class TestMain(TmpDirTestCase):
         uid = int(uid)
         gid = int(gid)
 
-        assert_equal(uid, expected_uid)
-        assert_equal(username, expected_username)
-        assert_equal(gid, expected_gid)
-        assert_equal(groupname, expected_groupname)
+        assert uid == expected_uid
+        assert username == expected_username
+        assert gid == expected_gid
+        assert groupname == expected_groupname
 
 
     def test_user_scubauser(self):
@@ -333,8 +319,8 @@ class TestMain(TmpDirTestCase):
              mock.patch('os.getgid', return_value=0) as getgid_mock:
 
             self._test_user(**self.EXPECT_ROOT)
-            assert_true(getuid_mock.called)
-            assert_true(getgid_mock.called)
+            assert getuid_mock.called
+            assert getgid_mock.called
 
     def test_user_root_alias(self):
         '''Verify that aliases can set whether the container is run as root'''
@@ -351,10 +337,10 @@ class TestMain(TmpDirTestCase):
         out, _ = self.run_scuba(["root_test"])
         uid, username, gid, groupname = out.split()
 
-        assert_equal(int(uid), 0)
-        assert_equal(username, 'root')
-        assert_equal(int(gid), 0)
-        assert_equal(groupname, 'root')
+        assert int(uid) == 0
+        assert username == 'root'
+        assert int(gid) == 0
+        assert groupname == 'root'
 
         # No one should ever specify 'root: false' in an alias, but Scuba should behave
         # correctly if they do
@@ -371,10 +357,10 @@ class TestMain(TmpDirTestCase):
         out, _ = self.run_scuba(["no_root_test"])
         uid, username, gid, groupname = out.split()
 
-        assert_equal(int(uid), os.getuid())
-        assert_equal(username, getpwuid(os.getuid()).pw_name)
-        assert_equal(int(gid), os.getgid())
-        assert_equal(groupname, getgrgid(os.getgid()).gr_name)
+        assert int(uid) == os.getuid()
+        assert username == getpwuid(os.getuid()).pw_name
+        assert int(gid) == os.getgid()
+        assert groupname == getgrgid(os.getgid()).gr_name
 
     def _test_home_writable(self, scuba_args=[]):
         with open('.scuba.yml', 'w') as f:
@@ -522,9 +508,9 @@ class TestMain(TmpDirTestCase):
         ]
         out, _ = self.run_scuba(args)
 
-        # Verify that ENTRYPOINT_WORKS wasn not set by the entrypoint
+        # Verify that ENTRYPOINT_WORKS was not set by the entrypoint
         # (because it didn't run)
-        self.assertNotIn('success', out)
+        assert_str_equalish('', out)
 
 
     def test_yaml_entrypoint_override(self):
@@ -549,7 +535,7 @@ class TestMain(TmpDirTestCase):
         assert_str_equalish(test_str, out)
 
 
-    def test_entrypoint_override_none(self):
+    def test_yaml_entrypoint_override_none(self):
         '''Verify "none" entrypoint in .scuba.yml works'''
         with open('.scuba.yml', 'w') as f:
             f.write('''
@@ -566,9 +552,9 @@ class TestMain(TmpDirTestCase):
         ]
         out, _ = self.run_scuba(args)
 
-        # Verify that ENTRYPOINT_WORKS wasn not set by the entrypoint
+        # Verify that ENTRYPOINT_WORKS was not set by the entrypoint
         # (because it didn't run)
-        self.assertNotIn('success', out)
+        assert_str_equalish('', out)
 
 
     ############################################################################
@@ -661,8 +647,8 @@ class TestMain(TmpDirTestCase):
         out = out.splitlines()
 
         uid, gid = map(int, out[0].split())
-        assert_equal(exp_uid, uid)
-        assert_equal(exp_gid, gid)
+        assert exp_uid == uid
+        assert exp_gid == gid
 
         assert_str_equalish(out[1], 'success')
 
@@ -682,7 +668,7 @@ class TestMain(TmpDirTestCase):
                 'dont care',
                 exp_retval = SCUBAINIT_EXIT_FAIL,
                 )
-        self.assertRegex(err, '^scubainit:.*exited with status {}'.format(testval))
+        assert re.match('^scubainit: .* exited with status {}$'.format(testval), err)
 
 
     ############################################################################
@@ -754,7 +740,7 @@ class TestMain(TmpDirTestCase):
         # Convert key/pair output to dictionary
         result = dict( pair.split('=', 1) for pair in shlex.split(out) )
 
-        self.assertEqual(result, dict(
+        assert result == dict(
                 FOO = "Overridden",
                 BAR = "42",
                 MORE = "Hello world",
@@ -762,9 +748,9 @@ class TestMain(TmpDirTestCase):
                 EXTERNAL_2 = "External value 2",
                 EXTERNAL_3 = "External value 3",
                 BAZ = "From the command line",
-            ))
+            )
 
-    def test_builtin_env__SCUBA_DIR(self):
+    def test_builtin_env__SCUBA_DIR(self, in_tmp_path):
         '''Verify SCUBA_DIR is set in container'''
         with open('.scuba.yml', 'w') as f:
             f.write('image: {}\n'.format(DOCKER_IMAGE))
@@ -772,7 +758,7 @@ class TestMain(TmpDirTestCase):
         args = ['/bin/sh', '-c', 'echo $SCUBA_ROOT']
         out, _ = self.run_scuba(args)
 
-        assert_str_equalish(self.path, out)
+        assert_str_equalish(in_tmp_path, out)
 
 
     ############################################################################
@@ -791,7 +777,7 @@ class TestMain(TmpDirTestCase):
 
         out, _ = self.run_scuba(['check_shell'])
         # If we failed to override, the shebang would be #!/bin/sh
-        self.assertTrue("/bin/bash" in out)
+        assert_str_equalish("/bin/bash", out)
 
     def test_alias_level_shell_override(self):
         '''Verify that the shell can be overriden at the alias level without affecting other aliases'''
@@ -806,12 +792,12 @@ class TestMain(TmpDirTestCase):
                     script: readlink -f /proc/$$/exe
                 '''.format(image=DOCKER_IMAGE))
         out, _ = self.run_scuba(['shell_override'])
-        self.assertTrue("/bin/bash" in out)
+        assert_str_equalish("/bin/bash", out)
 
         out, _ = self.run_scuba(['default_shell'])
         # The way that we check the shell uses the resolved symlink of /bin/sh,
         # which is /bin/dash on Debian
-        self.assertTrue("/bin/sh" in out or "/bin/dash" in out)
+        assert out.strip() in ["/bin/sh", "/bin/dash"]
 
     def test_cli_shell_override(self):
         '''Verify that the shell can be overriden by the CLI'''
@@ -824,7 +810,7 @@ class TestMain(TmpDirTestCase):
                 '''.format(image=DOCKER_IMAGE))
 
         out, _ = self.run_scuba(['--shell', '/bin/bash', 'default_shell'])
-        self.assertTrue("/bin/bash" in out)
+        assert_str_equalish("/bin/bash", out)
 
     def test_shell_override_precedence(self):
         '''Verify that shell overrides at different levels override each other as expected'''
@@ -842,7 +828,7 @@ class TestMain(TmpDirTestCase):
                     script: readlink -f /proc/$$/exe
                 '''.format(image=DOCKER_IMAGE))
         out, _ = self.run_scuba(['shell_override'])
-        self.assertTrue("/bin/bash" in out)
+        assert_str_equalish("/bin/bash", out)
 
         # Test alias-level << CLI
         with open('.scuba.yml', 'w') as f:
@@ -854,7 +840,7 @@ class TestMain(TmpDirTestCase):
                     script: readlink -f /proc/$$/exe
                 '''.format(image=DOCKER_IMAGE))
         out, _ = self.run_scuba(['--shell', '/bin/bash', 'shell_overridden'])
-        self.assertTrue("/bin/bash" in out)
+        assert_str_equalish("/bin/bash", out)
 
         # Test top-level << CLI
         with open('.scuba.yml', 'w') as f:
@@ -865,4 +851,4 @@ class TestMain(TmpDirTestCase):
                   shell_check: readlink -f /proc/$$/exe
                 '''.format(image=DOCKER_IMAGE))
         out, _ = self.run_scuba(['--shell', '/bin/bash', 'shell_check'])
-        self.assertTrue("/bin/bash" in out)
+        assert_str_equalish("/bin/bash", out)
