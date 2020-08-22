@@ -2,6 +2,7 @@ import shlex
 from itertools import chain
 
 from .utils import *
+import pytest
 
 import scuba.utils
 
@@ -73,6 +74,9 @@ def test_parse_env_var_not_set():
         result = scuba.utils.parse_env_var('NOTSET')
     assert result == ('NOTSET', '')
 
+def test_flatten_list__not_list():
+    with pytest.raises(ValueError):
+        scuba.utils.flatten_list('abc')
 
 def test_flatten_list__not_nested():
     sample = [1, 2, 3, 4]
