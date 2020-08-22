@@ -211,17 +211,10 @@ class ScubaContext:
 
 class ScubaConfig:
     def __init__(self, **data):
-        required_nodes = ()
         optional_nodes = ('image','aliases','hooks','entrypoint','environment','shell')
 
-        # Check for missing required nodes
-        missing = [n for n in required_nodes if not n in data]
-        if missing:
-            raise ConfigError('{}: Required node{} missing: {}'.format(SCUBA_YML,
-                    's' if len(missing) > 1 else '', ', '.join(missing)))
-
         # Check for unrecognized nodes
-        extra = [n for n in data if not n in required_nodes + optional_nodes]
+        extra = [n for n in data if not n in optional_nodes]
         if extra:
             raise ConfigError('{}: Unrecognized node{}: {}'.format(SCUBA_YML,
                     's' if len(extra) > 1 else '', ', '.join(extra)))
