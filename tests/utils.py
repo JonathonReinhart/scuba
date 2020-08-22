@@ -12,6 +12,9 @@ def assert_seq_equal(a, b):
     assert list(a) == list(b)
 
 def assert_paths_equal(a, b):
+    # TODO: normpath() updatd to handle Path in Python 3.6
+    a = str(a)
+    b = str(b)
     assert normpath(a) == normpath(b)
 
 def assert_str_equalish(exp, act):

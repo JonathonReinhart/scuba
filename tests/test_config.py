@@ -75,7 +75,7 @@ class TestConfig:
         os.chdir('subdir')
 
         # Verify our current working dir
-        assert_paths_equal(os.getcwd(), join(in_tmp_path, 'subdir'))
+        assert_paths_equal(os.getcwd(), in_tmp_path.joinpath('subdir'))
 
         path, rel, _ = scuba.config.find_config()
         assert_paths_equal(path, in_tmp_path)
@@ -93,7 +93,7 @@ class TestConfig:
             os.chdir(sd)
 
         # Verify our current working dir
-        assert_paths_equal(os.getcwd(), join(in_tmp_path, *subdirs))
+        assert_paths_equal(os.getcwd(), in_tmp_path.joinpath(*subdirs))
 
         path, rel, _ = scuba.config.find_config()
         assert_paths_equal(path, in_tmp_path)
