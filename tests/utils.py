@@ -19,29 +19,6 @@ def assert_str_equalish(exp, act):
     act = str(act).strip()
     assert exp == act
 
-def assert_startswith(s, prefix):
-    s = str(s)
-    prefix = str(prefix)
-    if not s.startswith(prefix):
-        raise AssertionError('"{}" does not start with "{}"'
-                .format(escape_str(s), prefix))
-
-def escape_str(s):
-    # Python 3 won't let us use s.encode('string_escape') :-(
-    replacements = [
-        ('\a', '\\a'),
-        ('\b', '\\b'),
-        ('\f', '\\f'),
-        ('\n', '\\n'),
-        ('\r', '\\r'),
-        ('\t', '\\t'),
-        ('\v', '\\v'),
-    ]
-
-    for r in replacements:
-        s = s.replace(*r)
-    return s
-
 def make_executable(path):
     mode = os.stat(path).st_mode
     mode |= (mode & 0o444) >> 2    # copy R bits to X
@@ -89,47 +66,3 @@ class InTempDir:
         os.chdir(self.orig_path)
         if self.delete:
             shutil.rmtree(self.temp_path)
-
-
-class RedirStd:
-    def __init__(self, stdout=None, stderr=None):
-        self.stdout = stdout
-        self.stderr = stderr
-
-        self.orig_stdout = None
-        self.orig_stderr = None
-
-    def __enter__(self):
-        if self.stdout:
-            self.orig_stdout = sys.stdout
-            sys.stdout = self.stdout
-
-        if self.stderr:
-            self.orig_stderr = sys.stderr
-            sys.stderr = self.stderr
-
-        return self
-
-    def __exit__(self, *exc_info):
-        if self.orig_stdout:
-            sys.stdout = self.orig_stdout
-
-        if self.orig_stderr:
-            sys.stderr = self.orig_stderr
-
-
-class TmpDirTestCase(unittest.TestCase):
-    def setUp(self):
-        # Run each test in its own temp directory
-        self.orig_path = os.getcwd()
-        self.path = tempfile.mkdtemp('scubatest')
-        os.chdir(self.path)
-        logging.info('Temp path: ' + self.path)
-
-
-    def tearDown(self):
-        # Restore the working dir and cleanup the temp one
-        shutil.rmtree(self.path)
-        self.path = None
-        os.chdir(self.orig_path)
-        self.orig_path = None
