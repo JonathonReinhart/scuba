@@ -547,7 +547,7 @@ class TestConfig:
                 ''')
         self._invalid_config('must be list or mapping')
 
-    def test_env_top_dict(self):
+    def test_env_top_dict(self, monkeypatch):
         '''Top-level environment can be loaded (dict)'''
         with open('.scuba.yml', 'w') as f:
             f.write(r'''
@@ -564,8 +564,10 @@ class TestConfig:
                   EXTERNAL_NOTSET:      # Missing in os env
                 ''')
 
-        with mocked_os_env(EXTERNAL='Outside world'):
-            config = scuba.config.load_config('.scuba.yml')
+        monkeypatch.setenv('EXTERNAL', 'Outside world')
+        monkeypatch.delenv('EXTERNAL_NOTSET', raising=False)
+
+        config = scuba.config.load_config('.scuba.yml')
 
         expect = dict(
             FOO = "This is foo",
@@ -581,7 +583,7 @@ class TestConfig:
         assert expect == config.environment
 
 
-    def test_env_top_list(self):
+    def test_env_top_list(self, monkeypatch):
         '''Top-level environment can be loaded (list)'''
         with open('.scuba.yml', 'w') as f:
             f.write(r'''
@@ -597,8 +599,10 @@ class TestConfig:
                   - EXTERNAL_NOTSET                 # Missing in os env
                 ''')
 
-        with mocked_os_env(EXTERNAL='Outside world'):
-            config = scuba.config.load_config('.scuba.yml')
+        monkeypatch.setenv('EXTERNAL', 'Outside world')
+        monkeypatch.delenv('EXTERNAL_NOTSET', raising=False)
+
+        config = scuba.config.load_config('.scuba.yml')
 
         expect = dict(
             FOO = "This is foo",
