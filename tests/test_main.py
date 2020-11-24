@@ -773,8 +773,8 @@ class TestMain:
                 BAZ = "From the command line",
             )
 
-    def test_builtin_env__SCUBA_DIR(self, in_tmp_path):
-        '''Verify SCUBA_DIR is set in container'''
+    def test_builtin_env__SCUBA_ROOT(self, in_tmp_path):
+        '''Verify SCUBA_ROOT is set in container'''
         with open('.scuba.yml', 'w') as f:
             f.write('image: {}\n'.format(DOCKER_IMAGE))
 
