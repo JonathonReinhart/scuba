@@ -122,7 +122,7 @@ class TestMain:
 
         # http://alexmarandon.com/articles/python_mock_gotchas/#patching-in-the-wrong-place
         # http://www.voidspace.org.uk/python/mock/patch.html#where-to-patch
-        with mock.patch('scuba.__main__.get_image_command', side_effect=mocked_gic):
+        with mock.patch('scuba.scuba.get_image_command', side_effect=mocked_gic):
             # DockerError -> exit(128)
             self.run_scuba([], 128)
 
