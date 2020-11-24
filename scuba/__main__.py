@@ -95,9 +95,10 @@ def run_scuba(scuba_args):
         image_override = scuba_args.image,
         entrypoint = scuba_args.entrypoint,
         shell_override = scuba_args.shell,
+        keep_tempfiles = scuba_args.dry_run,
         )
 
-    try:
+    with dive:
         dive.prepare()
         run_args = dive.get_docker_cmdline()
 
@@ -109,6 +110,7 @@ def run_scuba(scuba_args):
             print('$ ' + format_cmdline(run_args))
 
         if scuba_args.dry_run:
+            appmsg("Temp files not cleaned up")
             return 0
 
         # Explicitly pass sys.stdin/stdout/stderr so they apply to the
@@ -119,12 +121,6 @@ def run_scuba(scuba_args):
                 stdout = sys.stdout,
                 stderr = sys.stderr,
                 )
-
-    finally:
-        if scuba_args.dry_run:
-            appmsg("Temp files not cleaned up")
-        else:
-            dive.cleanup_tempfiles()
 
 
 def main(argv=None):

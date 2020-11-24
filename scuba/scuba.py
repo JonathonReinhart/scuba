@@ -25,7 +25,7 @@ class ScubaError(Exception):
 
 class ScubaDive:
     def __init__(self, user_command, docker_args=None, env=None, as_root=False, verbose=False,
-            image_override=None, entrypoint=None, shell_override=None):
+            image_override=None, entrypoint=None, shell_override=None, keep_tempfiles=False):
 
         env = env or {}
         if not isinstance(env, Mapping):
@@ -37,6 +37,7 @@ class ScubaDive:
         self.image_override = image_override
         self.entrypoint_override = entrypoint
         self.shell_override = shell_override
+        self.keep_tempfiles = keep_tempfiles
 
         # These will be added to docker run cmdline
         self.env_vars = env
@@ -70,6 +71,13 @@ class ScubaDive:
 
         # Apply environment vars from .scuba.yml
         self.env_vars.update(self.context.environment)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info):
+        if not self.keep_tempfiles:
+            shutil.rmtree(self.__scubadir_hostpath)
 
     def __str__(self):
         s = StringIO()
@@ -108,8 +116,6 @@ class ScubaDive:
         return s.getvalue()
 
 
-    def cleanup_tempfiles(self):
-        shutil.rmtree(self.__scubadir_hostpath)
 
 
     @property
