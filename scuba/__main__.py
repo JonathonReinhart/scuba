@@ -109,7 +109,7 @@ def run_scuba(scuba_args):
             print('$ ' + format_cmdline(run_args))
 
         if scuba_args.dry_run:
-            sys.exit(42)
+            return 0
 
         # Explicitly pass sys.stdin/stdout/stderr so they apply to the
         # child process if overridden (by tests).

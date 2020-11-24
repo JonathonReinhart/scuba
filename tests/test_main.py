@@ -189,7 +189,7 @@ class TestMain:
 
         args = ['--dry-run', '--verbose', '/bin/false']
 
-        _, err = self.run_scuba(args, 42)
+        _, err = self.run_scuba(args)
 
         assert not subproc_call_mock.called
 
