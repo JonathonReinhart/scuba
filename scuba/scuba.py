@@ -47,7 +47,9 @@ class ScubaDive:
         self.workdir = None
 
         self.__locate_scubainit()
-        self.__load_config()
+
+        # .scuba.yml is allowed to be missing if --image was given.
+        self.__load_config(allow_missing=bool(image_override))
 
         # Process any aliases
         self.context = ScubaContext.process_command(
@@ -162,7 +164,7 @@ class ScubaDive:
         if not os.path.isfile(self.scubainit_path):
             raise ScubaError('scubainit not found at "{}"'.format(self.scubainit_path))
 
-    def __load_config(self):
+    def __load_config(self, allow_missing=False):
         '''Find and load .scuba.yml
         '''
 
@@ -173,9 +175,8 @@ class ScubaDive:
         try:
             top_path, top_rel, self.config = find_config()
         except ConfigNotFoundError as cfgerr:
-            # SCUBA_YML can be missing if --image was given.
-            # In this case, we assume a default config
-            if not self.image_override:
+            # If .scuba.yml is allowed to be missing, we assume a default config.
+            if not allow_missing:
                 raise ScubaError(str(cfgerr))
             top_path, top_rel = os.getcwd(), ''
             self.config = ScubaConfig(image=None)
