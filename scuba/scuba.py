@@ -49,6 +49,15 @@ class ScubaDive:
         self.__locate_scubainit()
         self.__load_config()
 
+        # Process any aliases
+        self.context = ScubaContext.process_command(
+                                  cfg = self.config,
+                                  command = self.user_command,
+                                  image = self.image_override,
+                                  shell = self.shell_override,
+                                  )
+
+
 
     def prepare(self):
         '''Prepare to run the docker command'''
@@ -194,19 +203,11 @@ class ScubaDive:
         # with SELinux. See `man docker-run` for more information.
         self.vol_opts = ['z']
 
-        # Process any aliases
-        context = ScubaContext.process_command(
-                                  cfg = self.config,
-                                  command = self.user_command,
-                                  image = self.image_override,
-                                  shell = self.shell_override,
-                                  )
-
         # Pass variables to scubainit
         self.add_env('SCUBAINIT_UMASK', '{:04o}'.format(get_umask()))
 
         # Check if the CLI args specify "run as root", or if the command (alias) does
-        if not self.as_root and not context.as_root:
+        if not self.as_root and not self.context.as_root:
             uid = os.getuid()
             gid = os.getgid()
             self.add_env('SCUBAINIT_UID', uid)
@@ -225,7 +226,7 @@ class ScubaDive:
 
         # Hooks
         for name in ('root', 'user', ):
-            self.__generate_hook_script(name, context.shell)
+            self.__generate_hook_script(name, self.context.shell)
 
         # allocate TTY if scuba's output is going to a terminal
         # and stdin is not redirected
@@ -238,14 +239,14 @@ class ScubaDive:
         default CMD is run. Because we set the entrypiont, scuba must emulate the
         default behavior itself.
         '''
-        if not context.script:
+        if not self.context.script:
             # No user-provided command; we want to run the image's default command
             verbose_msg('No user command; getting command from image')
-            default_cmd = get_image_command(context.image)
+            default_cmd = get_image_command(self.context.image)
             if not default_cmd:
                 raise ScubaError('No command given and no image-specified command')
-            verbose_msg('{} Cmd: "{}"'.format(context.image, default_cmd))
-            context.script = [shell_quote_cmd(default_cmd)]
+            verbose_msg('{} Cmd: "{}"'.format(self.context.image, default_cmd))
+            self.context.script = [shell_quote_cmd(default_cmd)]
 
         # Make scubainit the real entrypoint, and use the defined entrypoint as
         # the docker command (if it exists)
@@ -256,25 +257,22 @@ class ScubaDive:
             # --entrypoint takes precedence
             if self.entrypoint_override != '':
                 self.docker_cmd = [self.entrypoint_override]
-        elif context.entrypoint is not None:
+        elif self.context.entrypoint is not None:
             # then .scuba.yml
-            if context.entrypoint != '':
-                self.docker_cmd = [context.entrypoint]
+            if self.context.entrypoint != '':
+                self.docker_cmd = [self.context.entrypoint]
         else:
-            ep = get_image_entrypoint(context.image)
+            ep = get_image_entrypoint(self.context.image)
             if ep:
                 self.docker_cmd = ep
 
         # The user command is executed via a generated shell script
         with self.open_scubadir_file('command.sh', 'wt') as f:
-            self.docker_cmd += [context.shell, f.container_path]
+            self.docker_cmd += [self.context.shell, f.container_path]
             writeln(f, '# Auto-generated from scuba')
             writeln(f, 'set -e')
-            for cmd in context.script:
+            for cmd in self.context.script:
                 writeln(f, cmd)
-
-        self.context = context
-
 
 
     def open_scubadir_file(self, name, mode):
