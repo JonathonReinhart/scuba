@@ -31,12 +31,9 @@ class ScubaDive:
         if not isinstance(env, Mapping):
             raise ValueError('Argument env must be dict-like')
 
-        self.user_command = user_command
         self.as_root = as_root
         self.verbose = verbose
-        self.image_override = image_override
         self.entrypoint_override = entrypoint
-        self.shell_override = shell_override
         self.keep_tempfiles = keep_tempfiles
 
         # These will be added to docker run cmdline
@@ -54,9 +51,9 @@ class ScubaDive:
         # Process any aliases
         self.context = ScubaContext.process_command(
                                   cfg = self.config,
-                                  command = self.user_command,
-                                  image = self.image_override,
-                                  shell = self.shell_override,
+                                  command = user_command,
+                                  image = image_override,
+                                  shell = shell_override,
                                   )
 
 
@@ -117,7 +114,6 @@ class ScubaDive:
         writelist('volumes', ('{} => {} {}'.format(hp, cp, opt)
                               for hp, cp, opt in self.__get_vol_opts()))
 
-        writescl('user_command', self.user_command)
         writescl('context')
         level += 1
         writescl('script', self.context.script)
