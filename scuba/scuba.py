@@ -85,7 +85,10 @@ class ScubaDive:
         return self
 
     def __exit__(self, *exc_info):
-        if not self.keep_tempfiles:
+        self._cleanup()
+
+    def _cleanup(self):
+        if self.__scubadir_hostpath and not self.keep_tempfiles:
             shutil.rmtree(self.__scubadir_hostpath)
 
     def __str__(self):
