@@ -46,7 +46,6 @@ class ScubaDive:
 
         self.__scubadir_hostpath = None
         self.__scubadir_contpath = None
-        self.scubainit_path = None
         self.config = config
 
 
@@ -60,7 +59,6 @@ class ScubaDive:
 
 
         try:
-            self.__locate_scubainit()
 
             # Process any aliases
             self.context = ScubaContext.process_command(
@@ -173,9 +171,10 @@ class ScubaDive:
         '''
         pkg_path = os.path.dirname(__file__)
 
-        self.scubainit_path = os.path.join(pkg_path, 'scubainit')
-        if not os.path.isfile(self.scubainit_path):
-            raise ScubaError('scubainit not found at "{}"'.format(self.scubainit_path))
+        scubainit_path = os.path.join(pkg_path, 'scubainit')
+        if not os.path.isfile(scubainit_path):
+            raise ScubaError('scubainit not found at "{}"'.format(scubainit_path))
+        return scubainit_path
 
     def __make_scubadir(self):
         '''Make temp directory where all ancillary files are bind-mounted
@@ -209,7 +208,7 @@ class ScubaDive:
         # Copy scubainit into the container
         # We make a copy because Docker 1.13 gets pissed if we try to re-label
         # /usr, and Fedora 28 gives an AVC denial.
-        scubainit_cpath = self.copy_scubadir_file('scubainit', self.scubainit_path)
+        scubainit_cpath = self.copy_scubadir_file('scubainit', self.__locate_scubainit())
 
         # Hooks
         for name in ('root', 'user', ):
