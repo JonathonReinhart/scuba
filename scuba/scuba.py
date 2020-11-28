@@ -15,11 +15,6 @@ from .dockerutil import make_vol_opt
 from .utils import shell_quote_cmd, flatten_list
 
 
-def verbose_msg(fmt, *args):
-    # TODO: remove
-    pass
-
-
 class ScubaError(Exception):
     pass
 
@@ -227,11 +222,9 @@ class ScubaDive:
         '''
         if not self.context.script:
             # No user-provided command; we want to run the image's default command
-            verbose_msg('No user command; getting command from image')
             default_cmd = get_image_command(self.context.image)
             if not default_cmd:
                 raise ScubaError('No command given and no image-specified command')
-            verbose_msg('{} Cmd: "{}"'.format(self.context.image, default_cmd))
             self.context.script = [shell_quote_cmd(default_cmd)]
 
         # Make scubainit the real entrypoint, and use the defined entrypoint as
