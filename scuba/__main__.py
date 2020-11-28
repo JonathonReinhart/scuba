@@ -99,7 +99,6 @@ def run_scuba(scuba_args):
         )
 
     with dive:
-        dive.prepare()
         run_args = dive.get_docker_cmdline()
 
         if g_verbose or scuba_args.dry_run:

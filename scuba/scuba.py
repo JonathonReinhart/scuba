@@ -43,42 +43,47 @@ class ScubaDive:
         self.docker_args = docker_args or []
         self.workdir = None
 
-        self.__locate_scubainit()
+        self.__scubadir_hostpath = None
+        self.__scubadir_contpath = None
+        self.scubainit_path = None
+        self.config = None
 
-        # .scuba.yml is allowed to be missing if --image was given.
-        self.__load_config(allow_missing=bool(image_override))
+        try:
+            self.__locate_scubainit()
 
-        # Process any aliases
-        self.context = ScubaContext.process_command(
-                                  cfg = self.config,
-                                  command = user_command,
-                                  image = image_override,
-                                  shell = shell_override,
-                                  )
+            # .scuba.yml is allowed to be missing if --image was given.
+            self.__load_config(allow_missing=bool(image_override))
 
-        # Apply environment vars from .scuba.yml
-        self.env_vars.update(self.context.environment)
+            # Process any aliases
+            self.context = ScubaContext.process_command(
+                                      cfg = self.config,
+                                      command = user_command,
+                                      image = image_override,
+                                      shell = shell_override,
+                                      )
 
+            # Apply environment vars from .scuba.yml
+            self.env_vars.update(self.context.environment)
 
+            self.__make_scubadir()
 
-    def prepare(self):
-        '''Prepare to run the docker command'''
-        self.__make_scubadir()
+            if self.is_remote_docker:
+                '''
+                Docker is running remotely (e.g. boot2docker on OSX).
+                We don't need to do any user setup whatsoever.
 
-        if self.is_remote_docker:
-            '''
-            Docker is running remotely (e.g. boot2docker on OSX).
-            We don't need to do any user setup whatsoever.
+                TODO: For now, remote instances won't have any .scubainit
 
-            TODO: For now, remote instances won't have any .scubainit
+                See:
+                https://github.com/JonathonReinhart/scuba/issues/17
+                '''
+                raise ScubaError('Remote docker not supported (DOCKER_HOST is set)')
 
-            See:
-            https://github.com/JonathonReinhart/scuba/issues/17
-            '''
-            raise ScubaError('Remote docker not supported (DOCKER_HOST is set)')
-
-        # Docker is running natively
-        self.__setup_native_run()
+            # Docker is running natively
+            self.__setup_native_run()
+        except:
+            self._cleanup()
+            raise
 
 
     def __enter__(self):
