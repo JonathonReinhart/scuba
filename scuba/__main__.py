@@ -3,6 +3,7 @@
 # https://github.com/JonathonReinhart/scuba
 # PYTHON_ARGCOMPLETE_OK
 
+import os
 import sys
 import shlex
 import itertools
@@ -16,7 +17,7 @@ except ImportError:
             pass
 
 from . import dockerutil
-from .config import find_config, ConfigError, ConfigNotFoundError
+from .config import find_config, ScubaConfig, ConfigError, ConfigNotFoundError
 from .dockerutil import DockerError, DockerExecuteError
 from .scuba import ScubaDive, ScubaError
 from .utils import format_cmdline, parse_env_var
@@ -86,8 +87,25 @@ def parse_scuba_args(argv):
 
 
 def run_scuba(scuba_args):
+    # Locate .scuba.yml
+    try:
+        # top_path is where .scuba.yml is found, and becomes the top of our bind mount.
+        # top_rel is the relative path from top_path to the current working directory,
+        # and is where we'll set the working directory in the container (relative to
+        # the bind mount point).
+        top_path, top_rel, config = find_config()
+    except ConfigNotFoundError:
+        # .scuba.yml is allowed to be missing if --image was given.
+        if not scuba_args.image:
+            raise
+        top_path, top_rel, config = os.getcwd(), '', ScubaConfig()
+
+    # Set up scuba Docker invocation
     dive = ScubaDive(
-        scuba_args.command,
+        user_command = scuba_args.command,
+        config = config,
+        top_path = top_path,
+        top_rel = top_rel,
         docker_args = scuba_args.docker_args,
         env = scuba_args.env_vars,
         as_root = scuba_args.root,

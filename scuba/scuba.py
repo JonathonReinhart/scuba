@@ -24,7 +24,8 @@ class ScubaError(Exception):
     pass
 
 class ScubaDive:
-    def __init__(self, user_command, docker_args=None, env=None, as_root=False, verbose=False,
+    def __init__(self, user_command, config, top_path, top_rel,
+            docker_args=None, env=None, as_root=False, verbose=False,
             image_override=None, entrypoint=None, shell_override=None, keep_tempfiles=False):
 
         env = env or {}
@@ -46,13 +47,20 @@ class ScubaDive:
         self.__scubadir_hostpath = None
         self.__scubadir_contpath = None
         self.scubainit_path = None
-        self.config = None
+        self.config = config
+
+
+        # Mount scuba root directory at the same path in the container...
+        self.add_volume(top_path, top_path)
+
+        # ...and set the working dir relative to it
+        self.set_workdir(os.path.join(top_path, top_rel))
+
+        self.add_env('SCUBA_ROOT', top_path)
+
 
         try:
             self.__locate_scubainit()
-
-            # .scuba.yml is allowed to be missing if --image was given.
-            self.__load_config(allow_missing=bool(image_override))
 
             # Process any aliases
             self.context = ScubaContext.process_command(
@@ -168,33 +176,6 @@ class ScubaDive:
         self.scubainit_path = os.path.join(pkg_path, 'scubainit')
         if not os.path.isfile(self.scubainit_path):
             raise ScubaError('scubainit not found at "{}"'.format(self.scubainit_path))
-
-    def __load_config(self, allow_missing=False):
-        '''Find and load .scuba.yml
-        '''
-
-        # top_path is where .scuba.yml is found, and becomes the top of our bind mount.
-        # top_rel is the relative path from top_path to the current working directory,
-        # and is where we'll set the working directory in the container (relative to
-        # the bind mount point).
-        try:
-            top_path, top_rel, self.config = find_config()
-        except ConfigNotFoundError as cfgerr:
-            # If .scuba.yml is allowed to be missing, we assume a default config.
-            if not allow_missing:
-                raise ScubaError(str(cfgerr))
-            top_path, top_rel = os.getcwd(), ''
-            self.config = ScubaConfig(image=None)
-        except ConfigError as cfgerr:
-            raise ScubaError(str(cfgerr))
-
-        # Mount scuba root directory at the same path in the container...
-        self.add_volume(top_path, top_path)
-
-        # ...and set the working dir relative to it
-        self.set_workdir(os.path.join(top_path, top_rel))
-
-        self.add_env('SCUBA_ROOT', top_path)
 
     def __make_scubadir(self):
         '''Make temp directory where all ancillary files are bind-mounted
