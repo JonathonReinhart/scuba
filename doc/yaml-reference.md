@@ -40,6 +40,15 @@ environment:
   - SECRET
 ```
 
+### `docker_args`
+
+The optional `docker_args` node allows additional docker arguments to be
+specified.
+
+Example:
+```yaml
+docker_args: --privileged
+```
 
 ### `aliases`
 
@@ -88,6 +97,16 @@ aliases:
       BAR: "New"
     script:
       - echo $FOO $BAR
+```
+
+Aliases can override the top-level `docker_args`:
+```yaml
+docker_args: -v /tmp/foo:/tmp/foo
+aliases:
+  example:
+    docker_args: -v /tmp/bar:/tmp/bar
+    script:
+      - ls -l /tmp/
 ```
 
 

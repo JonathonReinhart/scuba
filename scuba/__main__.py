@@ -131,7 +131,8 @@ class ScubaDive:
         # These will be added to docker run cmdline
         self.env_vars = env
         self.volumes = []
-        self.options = docker_args or []
+        self.options = []
+        self.docker_args = docker_args or []
         self.workdir = None
 
         self.__locate_scubainit()
@@ -414,6 +415,12 @@ class ScubaDive:
             args += ['-w', self.workdir]
 
         args += self.options
+
+        # Precedence: (1) command-line -d, (2) alias docker_args, (3) top-level docker_args
+        if self.docker_args:
+            args += self.docker_args
+        elif self.context.docker_args is not None:
+            args += self.context.docker_args
 
         # Docker image
         args.append(self.context.image)

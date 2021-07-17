@@ -150,17 +150,15 @@ def _process_environment(node, name):
 
     return result
 
-def _get_entrypoint(data):
+def _get_nullable_str(data, key):
     # N.B. We can't use data.get() here, because that might return
-    # None, leading to ambiguity between entrypoint being absent or set
+    # None, leading to ambiguity between the key being absent or set
     # to a null value.
     #
     # "Note that a null is different from an empty string and that a
     # mapping entry with some key and a null value is valid and
     # different from not having that key in the mapping."
     #   - http://yaml.org/type/null.html
-    key = 'entrypoint'
-
     if not key in data:
         return None
 
@@ -175,9 +173,17 @@ def _get_entrypoint(data):
                 key, type(ep).__name__))
     return ep
 
+def _get_entrypoint(data):
+    return _get_nullable_str(data, 'entrypoint')
+
+def _get_docker_args(data):
+    args = _get_nullable_str(data, 'docker_args')
+    if args is not None:
+        args = shlex.split(args)
+    return args
 
 class ScubaAlias:
-    def __init__(self, name, script, image, entrypoint, environment, shell, as_root):
+    def __init__(self, name, script, image, entrypoint, environment, shell, as_root, docker_args):
         self.name = name
         self.script = script
         self.image = image
@@ -185,6 +191,7 @@ class ScubaAlias:
         self.environment = environment
         self.shell = shell
         self.as_root = as_root
+        self.docker_args = docker_args
 
     @classmethod
     def from_dict(cls, name, node):
@@ -194,9 +201,11 @@ class ScubaAlias:
         environment = None
         shell = None
         as_root = False
+        docker_args = None
 
         if isinstance(node, dict):  # Rich alias
             image = node.get('image')
+            docker_args = _get_docker_args(node)
             entrypoint = _get_entrypoint(node)
             environment = _process_environment(
                     node.get('environment'),
@@ -204,14 +213,14 @@ class ScubaAlias:
             shell = node.get('shell')
             as_root = node.get('root', as_root)
 
-        return cls(name, script, image, entrypoint, environment, shell, as_root)
+        return cls(name, script, image, entrypoint, environment, shell, as_root, docker_args)
 
 class ScubaContext:
     pass
 
 class ScubaConfig:
     def __init__(self, **data):
-        optional_nodes = ('image','aliases','hooks','entrypoint','environment','shell')
+        optional_nodes = ('image','aliases','hooks','entrypoint','environment','shell','docker_args')
 
         # Check for unrecognized nodes
         extra = [n for n in data if not n in optional_nodes]
@@ -222,6 +231,7 @@ class ScubaConfig:
         self._image = data.get('image')
         self._shell = data.get('shell', DEFAULT_SHELL)
         self._entrypoint = _get_entrypoint(data)
+        self._docker_args = _get_docker_args(data)
         self._load_aliases(data)
         self._load_hooks(data)
         self._environment = self._load_environment(data)
@@ -277,6 +287,10 @@ class ScubaConfig:
     def shell(self):
         return self._shell
 
+    @property
+    def docker_args(self):
+        return self._docker_args
+
 
     def process_command(self, command, image=None, shell=None):
         '''Processes a user command using aliases
@@ -297,6 +311,7 @@ class ScubaConfig:
         result.environment = self.environment.copy()
         result.shell = self.shell
         result.as_root = False
+        result.docker_args = self.docker_args
 
         if command:
             alias = self.aliases.get(command[0])
@@ -314,6 +329,8 @@ class ScubaConfig:
                     result.shell = alias.shell
                 if alias.as_root:
                     result.as_root = True
+                if alias.docker_args is not None:
+                    result.docker_args = alias.docker_args
 
                 # Merge/override the environment
                 if alias.environment:
