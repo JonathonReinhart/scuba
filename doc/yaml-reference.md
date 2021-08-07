@@ -47,7 +47,17 @@ specified.
 
 Example:
 ```yaml
-docker_args: --privileged
+docker_args: --privileged -v "/tmp/hello world:/tmp/hello world"
+```
+
+The value of `docker_args` is parsed as shell command line arguments using
+[`shlex.split`](https://docs.python.org/3/library/shlex.html#shlex.split).
+
+The previous example could be equivalently written in YAML's [single-quoted
+style](https://yaml.org/spec/1.2/spec.html#id2788097):
+
+```yaml
+docker_args: '--privileged -v "/tmp/hello world:/tmp/hello world"'
 ```
 
 ### `aliases`
