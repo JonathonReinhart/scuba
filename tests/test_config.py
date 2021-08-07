@@ -488,8 +488,8 @@ class TestConfig:
         result = cfg.process_command([], image=override_image_name)
         assert result.image == override_image_name
 
-    def test_process_command_alias_overrides_docker_args(self):
-        '''aliases can override the docker_args'''
+    def test_process_command_alias_extends_docker_args(self):
+        '''aliases can extend the docker_args'''
         cfg = scuba.config.ScubaConfig(
                 image = 'default',
                 docker_args = '--privileged',
@@ -503,10 +503,9 @@ class TestConfig:
                 ),
             )
         result = cfg.process_command(['apple'])
-        assert result.docker_args == ['-v', '/tmp/:/tmp/']
+        assert result.docker_args == ['--privileged', '-v', '/tmp/:/tmp/']
 
-    @pytest.mark.parametrize('val', (None, ''))
-    def test_process_command_alias_overrides_docker_args_with_empty(self, val):
+    def test_process_command_alias_overrides_docker_args(self):
         '''aliases can override the docker_args'''
         cfg = scuba.config.ScubaConfig(
                 image = 'default',
@@ -516,7 +515,24 @@ class TestConfig:
                         script = [
                             'banana cherry "pie is good"',
                         ],
-                        docker_args = val,
+                        docker_args = scuba.config.OverrideStr('-v /tmp/:/tmp/'),
+                    ),
+                ),
+            )
+        result = cfg.process_command(['apple'])
+        assert result.docker_args == ['-v', '/tmp/:/tmp/']
+
+    def test_process_command_alias_overrides_docker_args_with_empty(self):
+        '''aliases can override the docker_args'''
+        cfg = scuba.config.ScubaConfig(
+                image = 'default',
+                docker_args = '--privileged',
+                aliases = dict(
+                    apple = dict(
+                        script = [
+                            'banana cherry "pie is good"',
+                        ],
+                        docker_args = scuba.config.OverrideStr(''),
                     ),
                 ),
             )
@@ -924,3 +940,77 @@ class TestConfig:
 
         config = scuba.config.load_config('.scuba.yml')
         assert config.aliases['testalias'].docker_args == ['-v', '/tmp/:/tmp/']
+
+    def test_alias_docker_args_override(self):
+        '''docker_args can be tagged for override'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                docker_args: --privileged
+                aliases:
+                  testalias:
+                    docker_args: !override -v /tmp/:/tmp/
+                    script:
+                      - ugh
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+        assert config.aliases['testalias'].docker_args == ['-v', '/tmp/:/tmp/']
+        assert isinstance(config.aliases['testalias'].docker_args, scuba.config.OverrideMixin)
+
+    def test_alias_docker_args_override_implicit_null(self):
+        '''docker_args can be overridden with an implicit null value'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                docker_args: --privileged
+                aliases:
+                  testalias:
+                    docker_args: !override
+                    script:
+                      - ugh
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+        assert config.aliases['testalias'].docker_args == []
+        assert isinstance(config.aliases['testalias'].docker_args, scuba.config.OverrideMixin)
+
+    def test_alias_docker_args_override_from_yaml(self):
+        '''!override tag can be applied before a !from_yaml tag'''
+        with open('args.yml', 'w') as f:
+            f.write('args: -v /tmp/:/tmp/\n')
+
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                docker_args: --privileged
+                aliases:
+                  testalias:
+                    docker_args: !override '!from_yaml args.yml args'
+                    script:
+                      - ugh
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+        assert config.aliases['testalias'].docker_args == ['-v', '/tmp/:/tmp/']
+        assert isinstance(config.aliases['testalias'].docker_args, scuba.config.OverrideMixin)
+
+    def test_alias_docker_args_from_yaml_override(self):
+        '''!override tag can be applied inside of a !from_yaml tag'''
+        with open('args.yml', 'w') as f:
+            f.write('args: !override -v /tmp/:/tmp/\n')
+
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                docker_args: --privileged
+                aliases:
+                  testalias:
+                    docker_args: !from_yaml args.yml args
+                    script:
+                      - ugh
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+        assert config.aliases['testalias'].docker_args == ['-v', '/tmp/:/tmp/']
+        assert isinstance(config.aliases['testalias'].docker_args, scuba.config.OverrideMixin)

@@ -1,3 +1,4 @@
+import collections
 import os
 import yaml
 import re
@@ -12,10 +13,35 @@ class ConfigError(Exception):
 class ConfigNotFoundError(ConfigError):
     pass
 
+class OverrideMixin:
+    '''
+    A mixin class that indicates an instance's value should override something
+
+    This class is mixed into objects loaded from YAML with an !override tag,
+    and any object can be checked if it is an OverrideMixin using isinstance().
+    '''
+    pass
+
+class OverrideNone(OverrideMixin):
+    '''
+    Represents a None value that also has Override behavior
+    '''
+    def __bool__(self):
+        return False
+
+class OverrideList(collections.UserList, OverrideMixin):
+    pass
+
+class OverrideStr(str, OverrideMixin):
+    pass
+
 # http://stackoverflow.com/a/9577670
 class Loader(yaml.SafeLoader):
-    def __init__(self, stream):
-        self._root = os.path.split(stream.name)[0]
+    def __init__(self, stream, root=None):
+        if root is None:
+            self._root = os.path.split(stream.name)[0]
+        else:
+            self._root = root
         self._cache = dict()
         super().__init__(stream)
 
@@ -65,7 +91,31 @@ class Loader(yaml.SafeLoader):
             raise yaml.YAMLError('Key "{}" not found in {}'.format(key, filename))
         return cur
 
+    def override(self, node):
+        '''
+        Implements !override constructor
+        '''
+        # Load the content from the node, as a scalar
+        content = self.construct_scalar(node)
+
+        # Dynamically add an OverrideMixin to the resulting object's type
+        obj = yaml.load(content, lambda s: Loader(s, root=self._root))
+        if obj is None:
+            obj = OverrideNone()
+        else:
+            objtype = type(obj)
+            mixin_type = type('Override' + objtype.__name__, (objtype, OverrideMixin), dict())
+
+            try:
+                obj.__class__ = mixin_type
+            except TypeError:
+                # Primitive classes (e.g., int, str) don't support __class__ assignment
+                obj = mixin_type(obj)
+
+        return obj
+
 Loader.add_constructor('!from_yaml', Loader.from_yaml)
+Loader.add_constructor('!override', Loader.override)
 
 
 def find_config():
@@ -165,7 +215,9 @@ def _get_nullable_str(data, key):
     ep = data[key]
 
     # We represent a null value as an empty string.
-    if ep is None:
+    if isinstance(ep, OverrideNone):
+        ep = OverrideStr('')
+    elif ep is None:
         ep = ''
 
     if not isinstance(ep, str):
@@ -178,8 +230,13 @@ def _get_entrypoint(data):
 
 def _get_docker_args(data):
     args = _get_nullable_str(data, 'docker_args')
+
     if args is not None:
+        override = isinstance(args, OverrideMixin)
         args = shlex.split(args)
+        if override:
+            args = OverrideList(args)
+
     return args
 
 class ScubaAlias:
@@ -329,8 +386,11 @@ class ScubaConfig:
                     result.shell = alias.shell
                 if alias.as_root:
                     result.as_root = True
-                if alias.docker_args is not None:
+
+                if isinstance(alias.docker_args, OverrideMixin) or result.docker_args is None:
                     result.docker_args = alias.docker_args
+                elif alias.docker_args is not None:
+                    result.docker_args.extend(alias.docker_args)
 
                 # Merge/override the environment
                 if alias.environment:
