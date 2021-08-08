@@ -426,10 +426,12 @@ class ScubaDive:
 
         args += self.options
 
-        # Precedence: (1) command-line -d, (2) alias docker_args, (3) top-level docker_args
+        # Command-line -d
         if self.docker_args:
             args += self.docker_args
-        elif self.context.docker_args is not None:
+
+        # .scuba.yml (top-level or alias)
+        if self.context.docker_args is not None:
             args += self.context.docker_args
 
         # Docker image
