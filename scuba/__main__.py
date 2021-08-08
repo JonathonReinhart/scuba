@@ -163,27 +163,37 @@ class ScubaDive:
 
     def __str__(self):
         s = StringIO()
+
+        indent = '  '
+        level = 0
+
+        def writelist(name, vals):
+            writeln(s, '{}{}:'.format(indent*level, name))
+            for val in vals or ():
+                writeln(s, '{}{}'.format(indent*(level+1), val))
+
+        def writescl(name, val=''):
+            writeln(s, '{}{:<14s}{}'.format(indent*level, name+':', val))
+
         writeln(s, 'ScubaDive')
-        writeln(s, '   verbose:      {}'.format(self.verbose))
-        writeln(s, '   as_root:      {}'.format(self.as_root))
-        writeln(s, '   workdir:      {}'.format(self.workdir))
+        level += 1
 
-        writeln(s, '   options:')
-        for a in self.options:
-            writeln(s, '      ' + a)
+        writescl('verbose', self.verbose)
+        writescl('as_root', self.as_root)
+        writescl('workdir', self.workdir)
 
-        writeln(s, '   env_vars:')
-        for k,v in self.env_vars.items():
-            writeln(s, '      {}={}'.format(k, v))
+        writelist('options', self.options)
+        writelist('docker_args', self.docker_args)
+        writelist('env_vars', ('{}={}'.format(*e) for e in self.env_vars.items()))
+        writelist('volumes', ('{} => {} {}'.format(hp, cp, opt)
+                              for hp, cp, opt in self.__get_vol_opts()))
 
-        writeln(s, '   volumes:')
-        for hostpath, contpath, options in self.__get_vol_opts():
-            writeln(s, '      {} => {} {}'.format(hostpath, contpath, options))
-
-        writeln(s, '   user_command: {}'.format(self.user_command))
-        writeln(s, '   context:')
-        writeln(s, '     script: ' + str(self.context.script)) 
-        writeln(s, '     image:  ' + str(self.context.image)) 
+        writescl('user_command', self.user_command)
+        writescl('context')
+        level += 1
+        writescl('script', self.context.script)
+        writescl('image', self.context.image)
+        writelist('docker_args', self.context.docker_args)
 
         return s.getvalue()
 
