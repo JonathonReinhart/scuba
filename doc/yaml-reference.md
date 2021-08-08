@@ -291,7 +291,7 @@ build_py:
 
 **`.scuba.yml`**
 ```yaml
-image: not-specified (see issue #124)
+# Note that 'image' is not necessary if only invoking aliases
 
 aliases
   build_c:
@@ -322,8 +322,6 @@ build_py:
 
 **`.scuba.yml`**
 ```yaml
-image: not-specified (see issue #124)
-
 aliases
   build_c: !from_yaml .gitlab-ci.yml build_c
   build_py: !from_yaml .gitlab-ci.yml build_py
