@@ -40,6 +40,25 @@ environment:
   - SECRET
 ```
 
+### `docker_args`
+
+The optional `docker_args` node allows additional docker arguments to be
+specified.
+
+Example:
+```yaml
+docker_args: --privileged -v "/tmp/hello world:/tmp/hello world"
+```
+
+The value of `docker_args` is parsed as shell command line arguments using
+[`shlex.split`](https://docs.python.org/3/library/shlex.html#shlex.split).
+
+The previous example could be equivalently written in YAML's [single-quoted
+style](https://yaml.org/spec/1.2/spec.html#id2788097):
+
+```yaml
+docker_args: '--privileged -v "/tmp/hello world:/tmp/hello world"'
+```
 
 ### `aliases`
 
@@ -90,6 +109,47 @@ aliases:
       - echo $FOO $BAR
 ```
 
+Aliases can extend the top-level `docker_args`. The following example will
+produce the docker arguments `--privileged -v /tmp/bar:/tmp/bar` when executing
+the `example` alias:
+
+```yaml
+docker_args: --privileged
+aliases:
+  example:
+    docker_args: -v /tmp/bar:/tmp/bar
+    script:
+      - ls -l /tmp/
+```
+
+Aliases can also opt to override the top-level `docker_args`, replacing it with
+a new value. This is achieved with the `!override` tag:
+
+```yaml
+docker_args: -v /tmp/foo:/tmp/foo
+aliases:
+  example:
+    docker_args: !override -v /tmp/bar:/tmp/bar
+    script:
+      - ls -l /tmp/
+```
+
+The content of the `docker_args` key is re-parsed as YAML in order to allow
+combining the `!override` tag with other tags; however, this requires quoting
+the value, since YAML forbids a plain-style scalar from beginning with a `!`
+(see [the spec](https://yaml.org/spec/1.2/spec.html#id2788859)). In the next
+example, the top-level alias is replaced with an explicit `!!null` tag, so
+that no additional arguments are passed to docker when executing the `example`
+alias:
+
+```yaml
+docker_args: -v /tmp/foo:/tmp/foo
+aliases:
+  example:
+    docker_args: !override '!!null'
+    script:
+      - ls -l /tmp/
+```
 
 ### `hooks`
 

@@ -488,6 +488,73 @@ class TestConfig:
         result = cfg.process_command([], image=override_image_name)
         assert result.image == override_image_name
 
+    def test_process_command_alias_extends_docker_args(self):
+        '''aliases can extend the docker_args'''
+        cfg = scuba.config.ScubaConfig(
+                image = 'default',
+                docker_args = '--privileged',
+                aliases = dict(
+                    apple = dict(
+                        script = [
+                            'banana cherry "pie is good"',
+                        ],
+                        docker_args = '-v /tmp/:/tmp/',
+                    ),
+                ),
+            )
+        result = cfg.process_command(['apple'])
+        assert result.docker_args == ['--privileged', '-v', '/tmp/:/tmp/']
+
+    def test_process_command_alias_overrides_docker_args(self):
+        '''aliases can override the docker_args'''
+        cfg = scuba.config.ScubaConfig(
+                image = 'default',
+                docker_args = '--privileged',
+                aliases = dict(
+                    apple = dict(
+                        script = [
+                            'banana cherry "pie is good"',
+                        ],
+                        docker_args = scuba.config.OverrideStr('-v /tmp/:/tmp/'),
+                    ),
+                ),
+            )
+        result = cfg.process_command(['apple'])
+        assert result.docker_args == ['-v', '/tmp/:/tmp/']
+
+    def test_process_command_alias_overrides_docker_args_with_empty(self):
+        '''aliases can override the docker_args'''
+        cfg = scuba.config.ScubaConfig(
+                image = 'default',
+                docker_args = '--privileged',
+                aliases = dict(
+                    apple = dict(
+                        script = [
+                            'banana cherry "pie is good"',
+                        ],
+                        docker_args = scuba.config.OverrideStr(''),
+                    ),
+                ),
+            )
+        result = cfg.process_command(['apple'])
+        assert result.docker_args == []
+
+    def test_process_command_alias_inherits_top_docker_args(self):
+        '''aliases inherit the top-level docker_args if not specified'''
+        cfg = scuba.config.ScubaConfig(
+                image = 'default',
+                docker_args = '--privileged',
+                aliases = dict(
+                    apple = dict(
+                        script = [
+                            'banana cherry "pie is good"',
+                        ],
+                    ),
+                ),
+            )
+        result = cfg.process_command(['apple'])
+        assert result.docker_args == ['--privileged']
+
     ############################################################################
     # Hooks
 
@@ -758,3 +825,192 @@ class TestConfig:
 
         config = scuba.config.load_config('.scuba.yml')
         assert config.aliases['testalias'].entrypoint == 'use_this_ep'
+
+    ############################################################################
+    # docker_args
+
+    def test_docker_args_not_set(self):
+        '''docker_args can be missing'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+        assert config.docker_args is None
+
+    def test_docker_args_invalid(self):
+        '''docker_args of incorrect type raises ConfigError'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                docker_args: 666
+                ''')
+
+        self._invalid_config('must be a string')
+
+    def test_docker_args_null(self):
+        '''docker_args can be set to null'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                docker_args:
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+        assert config.docker_args == []
+
+    def test_docker_args_set_empty_string(self):
+        '''docker_args can be set to empty string'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                docker_args: ''
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+        assert config.docker_args == []  # '' -> [] after shlex.split()
+
+    def test_docker_args_set(self):
+        '''docker_args can be set'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                docker_args: --privileged
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+        assert config.docker_args == ['--privileged']
+
+    def test_docker_args_set_multi(self):
+        '''docker_args can be set to multiple args'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                docker_args: --privileged -v /tmp/:/tmp/
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+        assert config.docker_args == ['--privileged', '-v', '/tmp/:/tmp/']
+
+    def test_alias_docker_args_null(self):
+        '''docker_args can be set to null via alias'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                docker_args: --privileged
+                aliases:
+                  testalias:
+                    docker_args:
+                    script:
+                      - ugh
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+        assert config.aliases['testalias'].docker_args == []
+
+    def test_alias_docker_args_empty_string(self):
+        '''docker_args can be set to empty string via alias'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                docker_args: --privileged
+                aliases:
+                  testalias:
+                    docker_args: ''
+                    script:
+                      - ugh
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+        assert config.aliases['testalias'].docker_args == []
+
+    def test_alias_docker_args_set(self):
+        '''docker_args can be set via alias'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                docker_args: --privileged
+                aliases:
+                  testalias:
+                    docker_args: -v /tmp/:/tmp/
+                    script:
+                      - ugh
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+        assert config.aliases['testalias'].docker_args == ['-v', '/tmp/:/tmp/']
+
+    def test_alias_docker_args_override(self):
+        '''docker_args can be tagged for override'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                docker_args: --privileged
+                aliases:
+                  testalias:
+                    docker_args: !override -v /tmp/:/tmp/
+                    script:
+                      - ugh
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+        assert config.aliases['testalias'].docker_args == ['-v', '/tmp/:/tmp/']
+        assert isinstance(config.aliases['testalias'].docker_args, scuba.config.OverrideMixin)
+
+    def test_alias_docker_args_override_implicit_null(self):
+        '''docker_args can be overridden with an implicit null value'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                docker_args: --privileged
+                aliases:
+                  testalias:
+                    docker_args: !override
+                    script:
+                      - ugh
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+        assert config.aliases['testalias'].docker_args == []
+        assert isinstance(config.aliases['testalias'].docker_args, scuba.config.OverrideMixin)
+
+    def test_alias_docker_args_override_from_yaml(self):
+        '''!override tag can be applied before a !from_yaml tag'''
+        with open('args.yml', 'w') as f:
+            f.write('args: -v /tmp/:/tmp/\n')
+
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                docker_args: --privileged
+                aliases:
+                  testalias:
+                    docker_args: !override '!from_yaml args.yml args'
+                    script:
+                      - ugh
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+        assert config.aliases['testalias'].docker_args == ['-v', '/tmp/:/tmp/']
+        assert isinstance(config.aliases['testalias'].docker_args, scuba.config.OverrideMixin)
+
+    def test_alias_docker_args_from_yaml_override(self):
+        '''!override tag can be applied inside of a !from_yaml tag'''
+        with open('args.yml', 'w') as f:
+            f.write('args: !override -v /tmp/:/tmp/\n')
+
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                docker_args: --privileged
+                aliases:
+                  testalias:
+                    docker_args: !from_yaml args.yml args
+                    script:
+                      - ugh
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+        assert config.aliases['testalias'].docker_args == ['-v', '/tmp/:/tmp/']
+        assert isinstance(config.aliases['testalias'].docker_args, scuba.config.OverrideMixin)

@@ -414,6 +414,29 @@ class TestMain:
 
         assert_str_equalish(out, data)
 
+    def test_arbitrary_docker_args_override_config(self):
+        '''Verify -d overrides any docker arguments in the config'''
+
+        with open('.scuba.yml', 'w') as f:
+            f.write('image: {}\n'.format(DOCKER_IMAGE))
+
+            # If this arg takes effect, the output of ls /lorem/ is no longer just "ipsum"
+            f.write('docker_args: {}\n'.format('-v="/lorem/default:/lorem/default"'))
+
+        data = 'Lorem ipsum dolor sit amet'
+        data_path = '/lorem/ipsum'
+
+        with NamedTemporaryFile(mode='wt') as tempf:
+            tempf.write(data)
+            tempf.flush()
+
+            args = [
+                '-d=-v {}:{}:ro,z'.format(tempf.name, data_path),
+                'ls', '/lorem',
+            ]
+            out, _ = self.run_scuba(args)
+
+        assert_str_equalish(out, 'ipsum')
 
     def test_nested_sript(self):
         '''Verify nested scripts works'''
