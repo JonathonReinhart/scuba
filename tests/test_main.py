@@ -5,6 +5,7 @@ import pytest
 import logging
 import os
 import sys
+from pathlib import Path
 from tempfile import TemporaryFile, NamedTemporaryFile
 import subprocess
 import shlex
@@ -414,29 +415,30 @@ class TestMain:
 
         assert_str_equalish(out, data)
 
-    def test_arbitrary_docker_args_override_config(self):
-        '''Verify -d overrides any docker arguments in the config'''
+    def test_arbitrary_docker_args_merge_config(self):
+        '''Verify -d arguments are merged with docker_args in the config'''
+        dummy = Path('dummy')
+        dummy.touch()
+        expfiles = set()
+        tgtdir = '/tgtdir'
+
+        def mount_dummy(name):
+            assert name not in expfiles
+            expfiles.add(name)
+            return '-v "{}:{}"\n'.format(dummy.absolute(), os.path.join(tgtdir, name))
 
         with open('.scuba.yml', 'w') as f:
             f.write('image: {}\n'.format(DOCKER_IMAGE))
+            f.write('docker_args: ' + mount_dummy('one'))
 
-            # If this arg takes effect, the output of ls /lorem/ is no longer just "ipsum"
-            f.write('docker_args: {}\n'.format('-v="/lorem/default:/lorem/default"'))
+        args = [
+            '-d=' + mount_dummy('two'),
+            'ls', tgtdir,
+        ]
+        out, _ = self.run_scuba(args)
 
-        data = 'Lorem ipsum dolor sit amet'
-        data_path = '/lorem/ipsum'
-
-        with NamedTemporaryFile(mode='wt') as tempf:
-            tempf.write(data)
-            tempf.flush()
-
-            args = [
-                '-d=-v {}:{}:ro,z'.format(tempf.name, data_path),
-                'ls', '/lorem',
-            ]
-            out, _ = self.run_scuba(args)
-
-        assert_str_equalish(out, 'ipsum')
+        files = set(out.splitlines())
+        assert files == expfiles
 
     def test_nested_sript(self):
         '''Verify nested scripts works'''
