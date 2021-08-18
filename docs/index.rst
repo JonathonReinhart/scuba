@@ -1,20 +1,14 @@
-.. Scuba documentation master file, created by
-   sphinx-quickstart on Tue Aug 17 22:36:02 2021.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+Scuba
+=====
 
-Welcome to Scuba's documentation!
-=================================
+Local builds made easy, using Docker.
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :maxdepth: 1
+   :glob:
 
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   introduction
+   installation
+   configuration
+   bash_completion
+   environment
