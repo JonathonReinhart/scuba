@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+### Added
+- Add ability to specify additional docker arguments in `.scuba.yml` (#177)
+
+### Changed
+- Switched testing framework from from `nose` to `pytest`
+
+
 ## [2.7.0] - 2020-06-08
 ### Changed
 - Switched to using `argcomplete` to provide Bash command line completion (#162)
