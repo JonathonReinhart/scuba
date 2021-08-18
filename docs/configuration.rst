@@ -45,6 +45,8 @@ The ``image`` node is usually necessary but, as of scuba 2.5, can be omitted
 for ``.scuba.yml`` files in which only the ``aliases`` are intended to be used.
 
 
+.. _conf_environment:
+
 `environment`
 -------------
 
@@ -65,6 +67,9 @@ Examples:
     environment:
       - FOO=This is foo
       - SECRET
+
+
+.. _conf_docker_args:
 
 `docker_args`
 -------------
@@ -88,6 +93,8 @@ style <https://yaml.org/spec/1.2/spec.html#id2788097>`_:
 
     docker_args: '--privileged -v "/tmp/hello world:/tmp/hello world"'
 
+
+.. _conf_aliases:
 
 `aliases`
 ---------

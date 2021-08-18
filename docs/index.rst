@@ -10,5 +10,6 @@ Local builds made easy, using Docker.
    introduction
    installation
    configuration
+   cli
    bash_completion
    environment
