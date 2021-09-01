@@ -6,7 +6,6 @@ import logging
 import os
 from os.path import join
 from shutil import rmtree
-import shlex
 
 import scuba.config
 
@@ -284,276 +283,6 @@ class TestConfig:
 
         self.__test_load_config_safe('.external.yml')
 
-    ######################################################################
-    # process_command
-
-    def test_process_command_image(self):
-        '''process_command returns the image and entrypoint'''
-        image_name = 'test_image'
-        entrypoint = 'test_entrypoint'
-
-        cfg = scuba.config.ScubaConfig(
-                image = image_name,
-                entrypoint = entrypoint,
-                )
-        result = cfg.process_command([])
-        assert result.image == image_name
-        assert result.entrypoint == entrypoint
-
-    def test_process_command_empty(self):
-        '''process_command handles no aliases and an empty command'''
-        cfg = scuba.config.ScubaConfig(
-                image = 'na',
-                )
-        result = cfg.process_command([])
-        assert result.script == None
-
-
-    def test_process_command_no_aliases(self):
-        '''process_command handles no aliases'''
-        cfg = scuba.config.ScubaConfig(
-                image = 'na',
-                )
-        result = cfg.process_command(['cmd', 'arg1', 'arg2'])
-        assert [shlex.split(s) for s in result.script] == [
-            ['cmd', 'arg1', 'arg2'],
-        ]
-
-    def test_process_command_aliases_unused(self):
-        '''process_command handles unused aliases'''
-        cfg = scuba.config.ScubaConfig(
-                image = 'na',
-                aliases = dict(
-                    apple = 'banana',
-                    cat = 'dog',
-                    ),
-                )
-        result = cfg.process_command(['cmd', 'arg1', 'arg2'])
-        assert [shlex.split(s) for s in result.script] == [
-            ['cmd', 'arg1', 'arg2'],
-        ]
-
-    def test_process_command_aliases_used_noargs(self):
-        '''process_command handles aliases with no args'''
-        cfg = scuba.config.ScubaConfig(
-                image = 'na',
-                aliases = dict(
-                    apple = 'banana',
-                    cat = 'dog',
-                    ),
-                )
-        result = cfg.process_command(['apple', 'arg1', 'arg2'])
-        assert [shlex.split(s) for s in result.script] == [
-            ['banana', 'arg1', 'arg2'],
-        ]
-
-    def test_process_command_aliases_used_withargs(self):
-        '''process_command handles aliases with args'''
-        cfg = scuba.config.ScubaConfig(
-                image = 'na',
-                aliases = dict(
-                    apple = 'banana cherry "pie is good"',
-                    cat = 'dog',
-                    ),
-                )
-        result = cfg.process_command(['apple', 'arg1', 'arg2 with spaces'])
-        assert [shlex.split(s) for s in result.script] == [
-            ['banana', 'cherry', 'pie is good', 'arg1', 'arg2 with spaces'],
-        ]
-
-    def test_process_command_multiline_aliases_used(self):
-        '''process_command handles multiline aliases'''
-        cfg = scuba.config.ScubaConfig(
-                image = 'na',
-                aliases = dict(
-                    apple = dict(script=[
-                        'banana cherry "pie is good"',
-                        'so is peach',
-                    ]),
-                    cat = 'dog',
-                    ),
-                )
-        result = cfg.process_command(['apple'])
-        assert [shlex.split(s) for s in result.script] == [
-            ['banana', 'cherry', 'pie is good'],
-            ['so', 'is', 'peach'],
-        ]
-
-    def test_process_command_multiline_aliases_forbid_user_args(self):
-        '''process_command raises ConfigError when args are specified with multiline aliases'''
-        cfg = scuba.config.ScubaConfig(
-                image = 'na',
-                aliases = dict(
-                    apple = dict(script=[
-                        'banana cherry "pie is good"',
-                        'so is peach',
-                    ]),
-                    cat = 'dog',
-                    ),
-                )
-        with pytest.raises(scuba.config.ConfigError):
-            cfg.process_command(['apple', 'ARGS', 'NOT ALLOWED'])
-
-    def test_process_command_alias_overrides_image(self):
-        '''aliases can override the image'''
-        cfg = scuba.config.ScubaConfig(
-                image = 'default',
-                aliases = dict(
-                    apple = dict(
-                        script = [
-                            'banana cherry "pie is good"',
-                            'so is peach',
-                        ],
-                        image = 'overridden',
-                    ),
-                ),
-            )
-        result = cfg.process_command(['apple'])
-        assert result.image == 'overridden'
-
-    def test_process_command_alias_overrides_image_and_entrypoint(self):
-        '''aliases can override the image and entrypoint'''
-        cfg = scuba.config.ScubaConfig(
-                image = 'default',
-                entrypoint = 'default_entrypoint',
-                aliases = dict(
-                    apple = dict(
-                        script = [
-                            'banana cherry "pie is good"',
-                            'so is peach',
-                        ],
-                        image = 'overridden',
-                        entrypoint = 'overridden_entrypoint',
-                    ),
-                ),
-            )
-        result = cfg.process_command(['apple'])
-        assert result.image == 'overridden'
-        assert result.entrypoint == 'overridden_entrypoint'
-
-    def test_process_command_alias_overrides_image_and_empty_entrypoint(self):
-        '''aliases can override the image and empty/null entrypoint'''
-        cfg = scuba.config.ScubaConfig(
-                image = 'default',
-                entrypoint = 'default_entrypoint',
-                aliases = dict(
-                    apple = dict(
-                        script = [
-                            'banana cherry "pie is good"',
-                            'so is peach',
-                        ],
-                        image = 'overridden',
-                        entrypoint = '',
-                    ),
-                ),
-            )
-        result = cfg.process_command(['apple'])
-        assert result.image == 'overridden'
-        assert result.entrypoint == ''
-
-
-    def test_process_command_image_override(self):
-        '''process_command allows image to be overridden when provided'''
-        override_image_name = 'override_image'
-
-        cfg = scuba.config.ScubaConfig(
-                image = 'test_image',
-                )
-        result = cfg.process_command([], image=override_image_name)
-        assert result.image == override_image_name
-
-    def test_process_command_image_override_missing(self):
-        '''process_command allows image to be overridden when not provided'''
-        override_image_name = 'override_image'
-
-        cfg = scuba.config.ScubaConfig()
-        result = cfg.process_command([], image=override_image_name)
-        assert result.image == override_image_name
-
-    def test_process_command_image_override_alias(self):
-        '''process_command allows image to be overridden when provided by alias'''
-        override_image_name = 'override_image'
-
-        cfg = scuba.config.ScubaConfig(
-                aliases = dict(
-                    apple = dict(
-                        script = [
-                            'banana cherry "pie is good"',
-                            'so is peach',
-                        ],
-                        image = 'apple_image',
-                    ),
-                )
-            )
-        result = cfg.process_command([], image=override_image_name)
-        assert result.image == override_image_name
-
-    def test_process_command_alias_extends_docker_args(self):
-        '''aliases can extend the docker_args'''
-        cfg = scuba.config.ScubaConfig(
-                image = 'default',
-                docker_args = '--privileged',
-                aliases = dict(
-                    apple = dict(
-                        script = [
-                            'banana cherry "pie is good"',
-                        ],
-                        docker_args = '-v /tmp/:/tmp/',
-                    ),
-                ),
-            )
-        result = cfg.process_command(['apple'])
-        assert result.docker_args == ['--privileged', '-v', '/tmp/:/tmp/']
-
-    def test_process_command_alias_overrides_docker_args(self):
-        '''aliases can override the docker_args'''
-        cfg = scuba.config.ScubaConfig(
-                image = 'default',
-                docker_args = '--privileged',
-                aliases = dict(
-                    apple = dict(
-                        script = [
-                            'banana cherry "pie is good"',
-                        ],
-                        docker_args = scuba.config.OverrideStr('-v /tmp/:/tmp/'),
-                    ),
-                ),
-            )
-        result = cfg.process_command(['apple'])
-        assert result.docker_args == ['-v', '/tmp/:/tmp/']
-
-    def test_process_command_alias_overrides_docker_args_with_empty(self):
-        '''aliases can override the docker_args'''
-        cfg = scuba.config.ScubaConfig(
-                image = 'default',
-                docker_args = '--privileged',
-                aliases = dict(
-                    apple = dict(
-                        script = [
-                            'banana cherry "pie is good"',
-                        ],
-                        docker_args = scuba.config.OverrideStr(''),
-                    ),
-                ),
-            )
-        result = cfg.process_command(['apple'])
-        assert result.docker_args == []
-
-    def test_process_command_alias_inherits_top_docker_args(self):
-        '''aliases inherit the top-level docker_args if not specified'''
-        cfg = scuba.config.ScubaConfig(
-                image = 'default',
-                docker_args = '--privileged',
-                aliases = dict(
-                    apple = dict(
-                        script = [
-                            'banana cherry "pie is good"',
-                        ],
-                    ),
-                ),
-            )
-        result = cfg.process_command(['apple'])
-        assert result.docker_args == ['--privileged']
 
     ############################################################################
     # Hooks
@@ -685,13 +414,10 @@ class TestConfig:
 
 
     def test_env_alias(self):
-        '''Alias can have environment which overrides top-level'''
+        '''Alias can have environment'''
         with open('.scuba.yml', 'w') as f:
             f.write(r'''
                 image: na
-                environment:
-                  FOO: Top-level
-                  BAR: 42
                 aliases:
                   al:
                     script: Don't care
@@ -702,22 +428,8 @@ class TestConfig:
 
         config = scuba.config.load_config('.scuba.yml')
 
-        assert config.environment == dict(
-                FOO = "Top-level",
-                BAR = "42",
-            )
-
         assert config.aliases['al'].environment == dict(
                 FOO = "Overridden",
-                MORE = "Hello world",
-            )
-
-        # Does the environment get overridden / merged?
-        ctx = config.process_command(['al'])
-
-        assert ctx.environment == dict(
-                FOO = "Overridden",
-                BAR = "42",
                 MORE = "Hello world",
             )
 

@@ -122,7 +122,7 @@ class TestMain:
 
         # http://alexmarandon.com/articles/python_mock_gotchas/#patching-in-the-wrong-place
         # http://www.voidspace.org.uk/python/mock/patch.html#where-to-patch
-        with mock.patch('scuba.__main__.get_image_command', side_effect=mocked_gic):
+        with mock.patch('scuba.scuba.get_image_command', side_effect=mocked_gic):
             # DockerError -> exit(128)
             self.run_scuba([], 128)
 
@@ -189,7 +189,7 @@ class TestMain:
 
         args = ['--dry-run', '--verbose', '/bin/false']
 
-        _, err = self.run_scuba(args, 42)
+        _, err = self.run_scuba(args)
 
         assert not subproc_call_mock.called
 
@@ -773,8 +773,8 @@ class TestMain:
                 BAZ = "From the command line",
             )
 
-    def test_builtin_env__SCUBA_DIR(self, in_tmp_path):
-        '''Verify SCUBA_DIR is set in container'''
+    def test_builtin_env__SCUBA_ROOT(self, in_tmp_path):
+        '''Verify SCUBA_ROOT is set in container'''
         with open('.scuba.yml', 'w') as f:
             f.write('image: {}\n'.format(DOCKER_IMAGE))
 
