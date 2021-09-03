@@ -298,3 +298,63 @@ class TestScubaContext:
             )
         result = ScubaContext.process_command(cfg, ['apple'])
         assert result.docker_args == ['--privileged']
+
+
+    ############################################################################
+    # volumes
+
+    def test_process_command_alias_extends_volumes(self):
+        '''aliases can extend the volumes'''
+        cfg = ScubaConfig(
+                image = 'default',
+                volumes = {
+                    '/foo': '/host/foo',
+                },
+                aliases = dict(
+                    apple = dict(
+                        script = [
+                            'banana cherry "pie is good"',
+                        ],
+                        volumes = {
+                            '/bar': '/host/bar',
+                        },
+                    ),
+                ),
+            )
+        result = ScubaContext.process_command(cfg, ['apple'])
+        vols = result.volumes
+        assert len(vols) == 2
+
+        v = vols['/foo']
+        assert v.container_path == '/foo'
+        assert v.host_path == '/host/foo'
+
+        v = vols['/bar']
+        assert v.container_path == '/bar'
+        assert v.host_path == '/host/bar'
+
+    def test_process_command_alias_updates_volumes(self):
+        '''aliases can extend the volumes'''
+        cfg = ScubaConfig(
+                image = 'default',
+                volumes = {
+                    '/foo': '/host/foo',
+                },
+                aliases = dict(
+                    apple = dict(
+                        script = [
+                            'banana cherry "pie is good"',
+                        ],
+                        volumes = {
+                            '/foo': '/alternate/foo',
+                        },
+                    ),
+                ),
+            )
+        result = ScubaContext.process_command(cfg, ['apple'])
+        vols = result.volumes
+        assert len(vols) == 1
+
+        v = vols['/foo']
+        assert v.container_path == '/foo'
+        assert v.host_path == '/alternate/foo'

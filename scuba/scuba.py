@@ -129,6 +129,7 @@ class ScubaDive:
         writescl('script', self.context.script)
         writescl('image', self.context.image)
         writelist('docker_args', self.context.docker_args)
+        writelist('volumes', self.context.volumes)
 
         return s.getvalue()
 
@@ -318,6 +319,9 @@ class ScubaDive:
         for hostpath, contpath, options in self.__get_vol_opts():
             args.append(make_vol_opt(hostpath, contpath, options))
 
+        for _, vol in self.context.volumes.items():
+            args.append(vol.get_vol_opt())
+
         if self.workdir:
             args += ['-w', self.workdir]
 
@@ -341,7 +345,7 @@ class ScubaDive:
 
 
 class ScubaContext:
-    def __init__(self, image=None, script=None, entrypoint=None, environment=None, shell=None, docker_args=None):
+    def __init__(self, image=None, script=None, entrypoint=None, environment=None, shell=None, docker_args=None, volumes=None):
         self.image = image
         self.script = script
         self.as_root = False
@@ -349,6 +353,7 @@ class ScubaContext:
         self.environment = environment
         self.shell = shell
         self.docker_args = docker_args
+        self.volumes = volumes or {}
 
     @classmethod
     def process_command(cls, cfg, command, image=None, shell=None):
@@ -369,6 +374,7 @@ class ScubaContext:
                 environment = cfg.environment.copy(),
                 shell = cfg.shell,
                 docker_args = cfg.docker_args,
+                volumes = cfg.volumes,
                 )
 
         if command:
@@ -392,6 +398,9 @@ class ScubaContext:
                     result.docker_args = alias.docker_args
                 elif alias.docker_args is not None:
                     result.docker_args.extend(alias.docker_args)
+
+                if alias.volumes is not None:
+                    result.volumes.update(alias.volumes)
 
                 # Merge/override the environment
                 if alias.environment:
