@@ -240,37 +240,36 @@ def _get_docker_args(data):
     return args
 
 class ScubaAlias:
-    def __init__(self, name, script, image, entrypoint, environment, shell, as_root, docker_args):
+    def __init__(self, name, script, image=None, entrypoint=None,
+            environment=None, shell=None, as_root=None, docker_args=None):
         self.name = name
         self.script = script
         self.image = image
         self.entrypoint = entrypoint
         self.environment = environment
         self.shell = shell
-        self.as_root = as_root
+        self.as_root = bool(as_root)
         self.docker_args = docker_args
 
     @classmethod
     def from_dict(cls, name, node):
         script = _process_script_node(node, name)
-        image = None
-        entrypoint = None
-        environment = None
-        shell = None
-        as_root = False
-        docker_args = None
 
         if isinstance(node, dict):  # Rich alias
-            image = node.get('image')
-            docker_args = _get_docker_args(node)
-            entrypoint = _get_entrypoint(node)
-            environment = _process_environment(
-                    node.get('environment'),
-                    '{}.{}'.format(name, 'environment'))
-            shell = node.get('shell')
-            as_root = node.get('root', as_root)
+            return cls(
+                name = name,
+                script = script,
+                image = node.get('image'),
+                entrypoint = _get_entrypoint(node),
+                environment = _process_environment(
+                        node.get('environment'),
+                        '{}.{}'.format(name, 'environment')),
+                shell = node.get('shell'),
+                as_root = node.get('root'),
+                docker_args = _get_docker_args(node),
+                )
 
-        return cls(name, script, image, entrypoint, environment, shell, as_root, docker_args)
+        return cls(name=name, script=script)
 
 
 class ScubaConfig:
