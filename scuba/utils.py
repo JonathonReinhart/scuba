@@ -75,3 +75,7 @@ def get_umask():
     val = os.umask(0o22)
     os.umask(val)
     return val
+
+
+def writeln(f, line):
+    f.write(line + '\n')

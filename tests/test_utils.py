@@ -1,6 +1,7 @@
 import shlex
 from itertools import chain
 import os
+import io
 
 from .utils import *
 import pytest
@@ -121,3 +122,9 @@ def test_get_umask():
         assert scuba.utils.get_umask() == testval
     finally:
         os.umask(orig)
+
+def test_writeln():
+    with io.StringIO() as s:
+        scuba.utils.writeln(s, 'hello')
+        scuba.utils.writeln(s, 'goodbye')
+        assert s.getvalue() == 'hello\ngoodbye\n'

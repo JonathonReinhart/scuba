@@ -12,7 +12,7 @@ from .config import ConfigError, ConfigNotFoundError
 from .dockerutil import get_image_command
 from .dockerutil import get_image_entrypoint
 from .dockerutil import make_vol_opt
-from .utils import shell_quote_cmd, flatten_list, get_umask
+from .utils import shell_quote_cmd, flatten_list, get_umask, writeln
 
 
 class ScubaError(Exception):
@@ -427,7 +427,3 @@ class ScubaContext:
             result.image = cfg.image
 
         return result
-
-
-def writeln(f, line):
-    f.write(line + '\n')
