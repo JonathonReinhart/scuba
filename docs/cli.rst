@@ -4,7 +4,7 @@ Command-Line Interface
 .. code-block::
 
    scuba [-h]
-         [-d DOCKER_ARGS] [-e ENV_VARS] [--entrypoint ENTRYPOINT]
+         [-d DOCKER_ARG] [-e ENV_VAR] [--entrypoint ENTRYPOINT]
          [--image IMAGE] [--shell SHELL] [-n] [-r] [-v] [-V]
          COMMAND... | ALIAS...
 
@@ -18,18 +18,27 @@ Positional Arguments:
 
 Options:
   -h, --help            Show help message and exit
-  -d DOCKER_ARGS, --docker-arg DOCKER_ARGS
+  -d DOCKER_ARG, --docker-arg DOCKER_ARG
                         Pass additional arguments to ``docker run``.
                         These are appended to any :ref:`conf_docker_args` from
                         ``.scuba.yml``.
 
-                        Note that the ``-`` in the docker arg can confuse scuba.
-                        The solution is to use an equal sign: ``-d='--cpus=2'``
+                        *DOCKER_ARG* is the full argument to ``docker run``.
+                        *Note:* The ``-`` in the *DOCKER_ARG* can confuse scuba's
+                        argument parsing. The solution is to use an equal sign:
+                        ``-d='--cpus=2'``
 
-  -e ENV_VARS, --env ENV_VARS
+                        This argument can be given multiple times.
+
+  -e ENV_VAR, --env ENV_VAR
                         Environment variables to pass to docker.
                         These are merged with (and override) any
                         :ref:`conf_environment` variables from ``.scuba.yml``.
+
+                        *ENV_VAR* is given as ``KEY=value``.
+
+                        This argument can be given multiple times.
+
   --entrypoint ENTRYPOINT
                         Override the default ``ENTRYPOINT`` of the image
   --image IMAGE         Override Docker image specified in ``.scuba.yml``
