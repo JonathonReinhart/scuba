@@ -22,6 +22,10 @@ Options:
                         Pass additional arguments to ``docker run``.
                         These are appended to any :ref:`conf_docker_args` from
                         ``.scuba.yml``.
+
+                        Note that the ``-`` in the docker arg can confuse scuba.
+                        The solution is to use an equal sign: ``-d='--cpus=2'``
+
   -e ENV_VARS, --env ENV_VARS
                         Environment variables to pass to docker.
                         These are merged with (and override) any
