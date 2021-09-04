@@ -240,37 +240,36 @@ def _get_docker_args(data):
     return args
 
 class ScubaAlias:
-    def __init__(self, name, script, image, entrypoint, environment, shell, as_root, docker_args):
+    def __init__(self, name, script, image=None, entrypoint=None,
+            environment=None, shell=None, as_root=None, docker_args=None):
         self.name = name
         self.script = script
         self.image = image
         self.entrypoint = entrypoint
         self.environment = environment
         self.shell = shell
-        self.as_root = as_root
+        self.as_root = bool(as_root)
         self.docker_args = docker_args
 
     @classmethod
     def from_dict(cls, name, node):
         script = _process_script_node(node, name)
-        image = None
-        entrypoint = None
-        environment = None
-        shell = None
-        as_root = False
-        docker_args = None
 
         if isinstance(node, dict):  # Rich alias
-            image = node.get('image')
-            docker_args = _get_docker_args(node)
-            entrypoint = _get_entrypoint(node)
-            environment = _process_environment(
-                    node.get('environment'),
-                    '{}.{}'.format(name, 'environment'))
-            shell = node.get('shell')
-            as_root = node.get('root', as_root)
+            return cls(
+                name = name,
+                script = script,
+                image = node.get('image'),
+                entrypoint = _get_entrypoint(node),
+                environment = _process_environment(
+                        node.get('environment'),
+                        '{}.{}'.format(name, 'environment')),
+                shell = node.get('shell'),
+                as_root = node.get('root'),
+                docker_args = _get_docker_args(node),
+                )
 
-        return cls(name, script, image, entrypoint, environment, shell, as_root, docker_args)
+        return cls(name=name, script=script)
 
 
 class ScubaConfig:
@@ -284,36 +283,33 @@ class ScubaConfig:
                     's' if len(extra) > 1 else '', ', '.join(extra)))
 
         self._image = data.get('image')
-        self._shell = data.get('shell', DEFAULT_SHELL)
-        self._entrypoint = _get_entrypoint(data)
-        self._docker_args = _get_docker_args(data)
+        self.shell = data.get('shell', DEFAULT_SHELL)
+        self.entrypoint = _get_entrypoint(data)
+        self.docker_args = _get_docker_args(data)
         self._load_aliases(data)
         self._load_hooks(data)
-        self._environment = self._load_environment(data)
-
-
+        self._load_environment(data)
 
 
     def _load_aliases(self, data):
-        self._aliases = {}
+        self.aliases = {}
 
         for name, node in data.get('aliases', {}).items():
             if ' ' in name:
                 raise ConfigError('Alias names cannot contain spaces')
-            self._aliases[name] = ScubaAlias.from_dict(name, node)
-
+            self.aliases[name] = ScubaAlias.from_dict(name, node)
 
     def _load_hooks(self, data):
-        self._hooks = {}
+        self.hooks = {}
 
         for name in ('user', 'root',):
             node = data.get('hooks', {}).get(name)
             if node:
                 hook = _process_script_node(node, name)
-                self._hooks[name] = hook
+                self.hooks[name] = hook
 
     def _load_environment(self, data):
-         return _process_environment(data.get('environment'), 'environment')
+        self.environment = _process_environment(data.get('environment'), 'environment')
 
 
     @property
@@ -322,29 +318,6 @@ class ScubaConfig:
             raise ConfigError("Top-level 'image' not set")
         return self._image
 
-    @property
-    def entrypoint(self):
-        return self._entrypoint
-
-    @property
-    def aliases(self):
-        return self._aliases
-
-    @property
-    def hooks(self):
-        return self._hooks
-
-    @property
-    def environment(self):
-        return self._environment
-
-    @property
-    def shell(self):
-        return self._shell
-
-    @property
-    def docker_args(self):
-        return self._docker_args
 
 
 def load_config(path):

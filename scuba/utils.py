@@ -68,3 +68,14 @@ def flatten_list(x):
         else:
             result.append(i)
     return result
+
+
+def get_umask():
+    # Same logic as bash/builtins/umask.def
+    val = os.umask(0o22)
+    os.umask(val)
+    return val
+
+
+def writeln(f, line):
+    f.write(line + '\n')

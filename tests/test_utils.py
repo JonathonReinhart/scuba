@@ -1,5 +1,7 @@
 import shlex
 from itertools import chain
+import os
+import io
 
 from .utils import *
 import pytest
@@ -105,3 +107,24 @@ def test_flatten_list__nested_many():
     exp = range(1, 18+1)
     result = scuba.utils.flatten_list(sample)
     assert_seq_equal(result, exp)
+
+def test_get_umask():
+    testval = 0o123     # unlikely default
+    orig = os.umask(testval)
+    try:
+        # Ensure our test is valid
+        assert orig != testval
+
+        # Make sure it works
+        assert scuba.utils.get_umask() == testval
+
+        # Make sure it had no effect
+        assert scuba.utils.get_umask() == testval
+    finally:
+        os.umask(orig)
+
+def test_writeln():
+    with io.StringIO() as s:
+        scuba.utils.writeln(s, 'hello')
+        scuba.utils.writeln(s, 'goodbye')
+        assert s.getvalue() == 'hello\ngoodbye\n'
