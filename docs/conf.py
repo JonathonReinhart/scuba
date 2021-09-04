@@ -35,6 +35,7 @@ version = scuba.version.__version__
 # ones.
 extensions = [
     'sphinx.ext.autosectionlabel',
+    'myst_parser',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
