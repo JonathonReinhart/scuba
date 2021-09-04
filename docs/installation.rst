@@ -10,7 +10,7 @@ To install::
 
     $ sudo pip install scuba
 
-To install with ``argcomplete`` (for :ref:`Bash completion` support)::
+To install with ``argcomplete`` (for :doc:`bash_completion` support)::
 
     $ sudo pip install scuba[argcomplete]
 
