@@ -104,7 +104,7 @@ where each key is an alias, and each value is the command that will be run when
 that alias is specified as the *user command* during scuba invocation. The
 command is parsed like a shell command-line, and additional user arguments from
 the command line are appended to the alias arguments. Aliases follow the
-:ref:`common script schema`.
+:ref:`common script schema<conf_common_script_schema>`.
 
 Example:
 
@@ -196,7 +196,7 @@ alias:
 
 The optional ``hooks`` node is a mapping (dictionary) of "hook" scripts that run
 as part of ``scubainit`` before running the user command. They use the
-:ref:`common script schema`. The following hooks exist:
+:ref:`common script schema<conf_common_script_schema>`. The following hooks exist:
 
 - ``root`` - Runs just before ``scubainit`` switches from ``root`` to ``scubauser``
 - ``user`` - Runs just before ``scubainit`` executes the user command
@@ -260,6 +260,7 @@ should be run as root:
           - echo "I am UID $(id -u)"
           - cat /etc/shadow
 
+.. _conf_common_script_schema:
 
 Common script schema
 ~~~~~~~~~~~~~~~~~~~~
