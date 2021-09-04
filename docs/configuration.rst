@@ -29,8 +29,8 @@ keys.
 Top-level keys
 ~~~~~~~~~~~~~~
 
-`image`
--------
+``image``
+---------
 
 The ``image`` node defines the Docker image from which Scuba containers are
 created.
@@ -47,8 +47,8 @@ for ``.scuba.yml`` files in which only the ``aliases`` are intended to be used.
 
 .. _conf_environment:
 
-`environment`
--------------
+``environment``
+---------------
 
 The optional ``environment`` node allows environment variables to be specified.
 This can be either a mapping (dictionary), or a list of ``KEY=VALUE`` pairs.
@@ -71,8 +71,8 @@ Examples:
 
 .. _conf_docker_args:
 
-`docker_args`
--------------
+``docker_args``
+---------------
 
 The optional ``docker_args`` node allows additional docker arguments to be
 specified.
@@ -96,8 +96,8 @@ style <https://yaml.org/spec/1.2/spec.html#id2788097>`_:
 
 .. _conf_aliases:
 
-`aliases`
----------
+``aliases``
+-----------
 
 The optional ``aliases`` node is a mapping (dictionary) of bash-like aliases,
 where each key is an alias, and each value is the command that will be run when
@@ -191,8 +191,8 @@ alias:
         script:
           - ls -l /tmp/
 
-`hooks`
--------
+``hooks``
+---------
 
 The optional ``hooks`` node is a mapping (dictionary) of "hook" scripts that run
 as part of ``scubainit`` before running the user command. They use the
@@ -213,8 +213,8 @@ Example:
       user: 'echo "HOOK: After switching users, uid=$(id -u) gid=$(id -g)"'
 
 
-`shell`
--------
+``shell``
+---------
 
 The optional ``shell`` node allows the default shell that Scuba uses in the 
 container (``/bin/sh``) to be overridden by another shell. This is useful for
@@ -244,8 +244,8 @@ the ``.scuba.yml`` file:
 Alias-level keys
 ~~~~~~~~~~~~~~~~
 
-`root`
-------
+``root``
+--------
 
 The optional ``root`` node allows an alias to specify whether its container
 should be run as root:
