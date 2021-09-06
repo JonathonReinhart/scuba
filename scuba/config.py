@@ -6,6 +6,7 @@ import shlex
 
 from .constants import *
 from .utils import *
+from .dockerutil import make_vol_opt
 
 class ConfigError(Exception):
     pass
@@ -239,9 +240,78 @@ def _get_docker_args(data):
 
     return args
 
+def _get_typed_val(data, key, type_):
+    v = data.get(key)
+    if v is not None and not isinstance(v, type_):
+        raise ConfigError("'{}' must be a {}, not {}".format(
+                key, type_.__name__, type(v).__name__))
+    return v
+
+def _get_dict(data, key):
+    return _get_typed_val(data, key, dict)
+
+def _get_delimited_str_list(data, key, sep):
+    s = _get_typed_val(data, key, str)
+    return s.split(sep) if s else []
+
+def _get_volumes(data):
+    voldata = _get_dict(data, 'volumes')
+    if voldata is None:
+        return None
+
+    vols = {}
+    for cpath, v in voldata.items():
+        vols[cpath] = ScubaVolume.from_dict(cpath, v)
+    return vols
+
+class ScubaVolume:
+    def __init__(self, container_path, host_path=None, options=None):
+        self.container_path = container_path
+        self.host_path = host_path
+        self.options = options or []
+
+    @classmethod
+    def from_dict(cls, cpath, node):
+        # Treat a null node as an empty dict
+        if node is None:
+            node = {}
+
+        # Simple form:
+        # volumes:
+        #   /foo: /host/foo
+        if isinstance(node, str):
+            return cls(
+                container_path = cpath,
+                host_path = node,
+                )
+
+        # Complex form
+        # volumes:
+        #   /foo:
+        #     hostpath: /host/foo
+        #     options: ro,z
+        if isinstance(node, dict):
+            hpath = node.get('hostpath')
+            if hpath is None:
+                raise ConfigError("Volume {} must have a 'hostpath' subkey".format(cpath))
+            return cls(
+                container_path = cpath,
+                host_path = hpath,
+                options = _get_delimited_str_list(node, 'options', ','),
+                )
+
+        raise ConfigError("{}: must be string or dict".format(cpath))
+
+    def get_vol_opt(self):
+        if not self.host_path:
+            raise NotImplementedError("No anonymous volumes for now")
+        return make_vol_opt(self.host_path, self.container_path, self.options)
+
+
 class ScubaAlias:
     def __init__(self, name, script, image=None, entrypoint=None,
-            environment=None, shell=None, as_root=None, docker_args=None):
+            environment=None, shell=None, as_root=None, docker_args=None,
+            volumes=None):
         self.name = name
         self.script = script
         self.image = image
@@ -250,6 +320,7 @@ class ScubaAlias:
         self.shell = shell
         self.as_root = bool(as_root)
         self.docker_args = docker_args
+        self.volumes = volumes
 
     @classmethod
     def from_dict(cls, name, node):
@@ -267,6 +338,7 @@ class ScubaAlias:
                 shell = node.get('shell'),
                 as_root = node.get('root'),
                 docker_args = _get_docker_args(node),
+                volumes = _get_volumes(node),
                 )
 
         return cls(name=name, script=script)
@@ -274,7 +346,10 @@ class ScubaAlias:
 
 class ScubaConfig:
     def __init__(self, **data):
-        optional_nodes = ('image','aliases','hooks','entrypoint','environment','shell','docker_args')
+        optional_nodes = (
+            'image', 'aliases', 'hooks', 'entrypoint', 'environment', 'shell',
+            'docker_args', 'volumes',
+        )
 
         # Check for unrecognized nodes
         extra = [n for n in data if not n in optional_nodes]
@@ -286,6 +361,7 @@ class ScubaConfig:
         self.shell = data.get('shell', DEFAULT_SHELL)
         self.entrypoint = _get_entrypoint(data)
         self.docker_args = _get_docker_args(data)
+        self.volumes = _get_volumes(data)
         self._load_aliases(data)
         self._load_hooks(data)
         self._load_environment(data)

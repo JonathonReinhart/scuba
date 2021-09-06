@@ -726,3 +726,160 @@ class TestConfig:
         config = scuba.config.load_config('.scuba.yml')
         assert config.aliases['testalias'].docker_args == ['-v', '/tmp/:/tmp/']
         assert isinstance(config.aliases['testalias'].docker_args, scuba.config.OverrideMixin)
+
+    ############################################################################
+    # volumes
+
+    def test_volumes_not_set(self):
+        '''volumes can be missing'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+        assert config.volumes is None
+
+    def test_volumes_null(self):
+        '''volumes can be set to null'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                volumes:
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+        assert config.volumes == None
+
+    def test_volumes_invalid(self):
+        '''volumes of incorrect type raises ConfigError'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                volumes: 666
+                ''')
+
+        self._invalid_config('must be a dict')
+
+    def test_volumes_invalid_volume_type(self):
+        '''volume of incorrect type (list) raises ConfigError'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                volumes:
+                  /foo:
+                    - a list makes no sense
+                ''')
+
+        self._invalid_config('must be string or dict')
+
+    def test_volumes_null_volume_type(self):
+        '''volume of None type raises ConfigError'''
+        # NOTE: In the future, we might want to support this as a volume
+        #       (non-bindmount, e.g. '-v /somedata'), or as tmpfs
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                volumes:
+                  /bar:
+                ''')
+
+        self._invalid_config('hostpath')
+
+    def test_volume_as_dict_missing_hostpath(self):
+        '''volume of incorrect type raises ConfigError'''
+        # NOTE: In the future, we might want to support this as a volume
+        #       (non-bindmount, e.g. '-v /somedata'), or as tmpfs
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                volumes:
+                  /bar:
+                    options: hostpath,is,missing
+                ''')
+
+        self._invalid_config('hostpath')
+
+    def test_volumes_simple_volume(self):
+        '''volumes can be set using the simple form'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                volumes:
+                  /cpath: /hpath
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+        assert len(config.volumes) == 1
+
+        v = config.volumes['/cpath']
+        assert v.container_path == '/cpath'
+        assert v.host_path == '/hpath'
+
+    def test_volumes_complex(self):
+        '''volumes can be set using the complex form'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                volumes:
+                  /foo: /host/foo
+                  /bar:
+                    hostpath: /host/bar
+                  /snap:
+                    hostpath: /host/snap
+                    options: z,ro
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+        vols = config.volumes
+        assert len(vols) == 3
+
+        v = vols['/foo']
+        assert isinstance(v, scuba.config.ScubaVolume)
+        assert v.container_path == '/foo'
+        assert v.host_path == '/host/foo'
+        assert v.options == []
+
+        v = vols['/bar']
+        assert isinstance(v, scuba.config.ScubaVolume)
+        assert v.container_path == '/bar'
+        assert v.host_path == '/host/bar'
+        assert v.options == []
+
+        v = vols['/snap']
+        assert isinstance(v, scuba.config.ScubaVolume)
+        assert v.container_path == '/snap'
+        assert v.host_path == '/host/snap'
+        assert v.options == ['z', 'ro']
+
+    def test_alias_volumes_set(self):
+        '''docker_args can be set via alias'''
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                aliases:
+                  testalias:
+                    script:
+                      - ugh
+                    volumes:
+                      /foo: /host/foo
+                      /bar:
+                        hostpath: /host/bar
+                        options: z,ro
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+        vols = config.aliases['testalias'].volumes
+        assert len(vols) == 2
+
+        v = vols['/foo']
+        assert isinstance(v, scuba.config.ScubaVolume)
+        assert v.container_path == '/foo'
+        assert v.host_path == '/host/foo'
+        assert v.options == []
+
+        v = vols['/bar']
+        assert isinstance(v, scuba.config.ScubaVolume)
+        assert v.container_path == '/bar'
+        assert v.host_path == '/host/bar'
+        assert v.options == ['z', 'ro']

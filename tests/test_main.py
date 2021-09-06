@@ -875,3 +875,75 @@ class TestMain:
                 '''.format(image=DOCKER_IMAGE))
         out, _ = self.run_scuba(['--shell', '/bin/bash', 'shell_check'])
         assert_str_equalish("/bin/bash", out)
+
+    ############################################################################
+    # Volumes
+
+    def test_volumes_basic(self):
+        '''Verify volumes can be added at top-level and alias'''
+
+        # Create some temporary directories with a file in each
+        topdata = Path('./topdata')
+        topdata.mkdir()
+        (topdata / "thing").write_text("from the top\n")
+
+        aliasdata = Path('./aliasdata')
+        aliasdata.mkdir()
+        (aliasdata / "thing").write_text("from the alias\n")
+
+        with open('.scuba.yml', 'w') as f:
+            f.write('''
+                image: {image}
+                volumes:
+                  /topdata: {topdata_dir}
+                aliases:
+                  doit:
+                    volumes:
+                      /aliasdata: {aliasdata_dir}
+                    script: "cat /topdata/thing /aliasdata/thing"
+                '''.format(image = DOCKER_IMAGE,
+                           topdata_dir = topdata.absolute(),
+                           aliasdata_dir = aliasdata.absolute(),
+                           ))
+
+        out, _ = self.run_scuba(['doit'])
+        out = out.splitlines()
+        assert out == ["from the top", "from the alias"]
+
+
+    def test_volumes_alias_override(self):
+        '''Verify volumes can be overridden by an alias'''
+
+        # Create some temporary directories with a file in each
+        topdata = Path('./topdata')
+        topdata.mkdir()
+        (topdata / "thing").write_text("from the top\n")
+
+        aliasdata = Path('./aliasdata')
+        aliasdata.mkdir()
+        (aliasdata / "thing").write_text("from the alias\n")
+
+        with open('.scuba.yml', 'w') as f:
+            f.write('''
+                image: {image}
+                volumes:
+                  /data: {topdata_dir}
+                aliases:
+                  doit:
+                    volumes:
+                      /data: {aliasdata_dir}
+                    script: "cat /data/thing"
+                '''.format(image = DOCKER_IMAGE,
+                           topdata_dir = topdata.absolute(),
+                           aliasdata_dir = aliasdata.absolute(),
+                           ))
+
+        # Run a non-alias command
+        out, _ = self.run_scuba(['cat', '/data/thing'])
+        out = out.splitlines()
+        assert out == ["from the top"]
+
+        # Run the alias
+        out, _ = self.run_scuba(['doit'])
+        out = out.splitlines()
+        assert out == ["from the alias"]

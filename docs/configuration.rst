@@ -93,6 +93,30 @@ style <https://yaml.org/spec/1.2/spec.html#id2788097>`_:
 
     docker_args: '--privileged -v "/tmp/hello world:/tmp/hello world"'
 
+``volumes``
+-----------
+The optional ``volumes`` node allows additional `volumes
+<https://docs.docker.com/storage/volumes/>`_ or bind-mounts to be specified.
+``volumes`` is a mapping (dictionary) where each key is the container-path.
+In the simple form, the value is a string, the host-path to be bind-mounted:
+
+.. code-block:: yaml
+
+    volumes:
+      /var/lib/foo: /host/foo
+
+In the complex form, the value is a mapping which must contain a ``hostpath``
+subkey. It can also contain an ``options`` subkey with a comma-separated list
+of volume options:
+
+.. code-block:: yaml
+
+    volumes:
+      /var/lib/foo:
+        hostpath: /host/foo
+        options: ro,cached
+
+
 
 .. _conf_aliases:
 
@@ -190,6 +214,23 @@ alias:
         docker_args: !override '!!null'
         script:
           - ls -l /tmp/
+
+
+Aliases can extend or override the top-level ``volumes``:
+
+.. code-block:: yaml
+
+    volumes:
+      /var/lib/foo: /host/foo
+    aliases:
+      example:
+        volumes:
+          /var/lib/foo: /example/foo
+          /var/lib/bar: /example/bar
+        script:
+          - ls -l /var/lib/foo /var/lib/bar
+
+
 
 ``hooks``
 ---------

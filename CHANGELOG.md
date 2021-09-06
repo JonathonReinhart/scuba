@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+### Added
+- Add ability to specify volumes in `.scuba.yml` (#186)
+
+
 ## [2.8.0] - 2021-08-18
 ### Added
 - Add ability to specify additional docker arguments in `.scuba.yml` (#177)
