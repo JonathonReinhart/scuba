@@ -50,9 +50,10 @@ for ``.scuba.yml`` files in which only the ``aliases`` are intended to be used.
 ``environment``
 ---------------
 
-The optional ``environment`` node allows environment variables to be specified.
-This can be either a mapping (dictionary), or a list of ``KEY=VALUE`` pairs.
-If a value is not specified, the value is taken from the external environment.
+The optional ``environment`` node *(added in v2.3.0)* allows environment
+variables to be specified. This can be either a mapping (dictionary), or a
+list of ``KEY=VALUE`` pairs. If a value is not specified, the value is taken
+from the external environment.
 
 Examples:
 
@@ -73,9 +74,8 @@ Examples:
 
 ``docker_args``
 ---------------
-
-The optional ``docker_args`` node allows additional docker arguments to be
-specified.
+The optional ``docker_args`` node *(added in v2.8.0)* allows additional docker
+arguments to be specified.
 
 Example:
 
@@ -95,7 +95,8 @@ style <https://yaml.org/spec/1.2/spec.html#id2788097>`_:
 
 ``volumes``
 -----------
-The optional ``volumes`` node allows additional `volumes
+
+The optional ``volumes`` node *(added in v2.9.0)* allows additional `volumes
 <https://docs.docker.com/storage/volumes/>`_ or bind-mounts to be specified.
 ``volumes`` is a mapping (dictionary) where each key is the container-path.
 In the simple form, the value is a string, the host-path to be bind-mounted:
@@ -257,9 +258,9 @@ Example:
 ``shell``
 ---------
 
-The optional ``shell`` node allows the default shell that Scuba uses in the 
-container (``/bin/sh``) to be overridden by another shell. This is useful for
-images that do not have a shell located at ``/bin/sh``.
+The optional ``shell`` node *(added in v2.6.0)* allows the default shell that
+Scuba uses in the container (``/bin/sh``) to be overridden by another shell.
+This is useful for images that do not have a shell located at ``/bin/sh``.
 
 Example:
 
@@ -288,8 +289,8 @@ Alias-level keys
 ``root``
 --------
 
-The optional ``root`` node allows an alias to specify whether its container
-should be run as root:
+The optional ``root`` node *(added in v2.6.0)* allows an alias to specify
+whether its container should be run as root:
 
 .. code-block:: yaml
 
