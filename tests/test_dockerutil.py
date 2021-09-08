@@ -3,12 +3,13 @@ from unittest import mock
 import pytest
 
 import subprocess
+from .const import *
 
 import scuba.dockerutil as uut
 
 def test_get_image_command_success():
     '''get_image_command works'''
-    assert uut.get_image_command('debian:8.2')
+    assert uut.get_image_command(DOCKER_IMAGE)
 
 def test_get_image_command_bad_image():
     '''get_image_command raises an exception for a bad image name'''
@@ -47,23 +48,23 @@ def test_get_images_success__no_images():
 def test_get_images_success__multiple_images():
     '''get_images works when many images are present'''
     output = '''\
-busybox
-busybox:latest
-debian
-debian:buster
-debian:latest
-scuba/scratch
-scuba/scratch:latest
+foo
+foo:latest
+bar
+bar:snap
+bar:latest
+dummy/crackle
+dummy/crackle:pop
 '''
     images = _test_get_images(output)
     assert images == [
-                'busybox',
-                'busybox:latest',
-                'debian',
-                'debian:buster',
-                'debian:latest',
-                'scuba/scratch',
-                'scuba/scratch:latest',
+                'foo',
+                'foo:latest',
+                'bar',
+                'bar:snap',
+                'bar:latest',
+                'dummy/crackle',
+                'dummy/crackle:pop',
             ]
 
 def test_get_images__failure():
@@ -74,7 +75,7 @@ def test_get_images__failure():
 
 def test__get_image_command__pulls_image_if_missing():
     '''get_image_command pulls an image if missing'''
-    image = 'busybox:latest'
+    image = ALT_DOCKER_IMAGE
 
     # First remove the image
     subprocess.call(['docker', 'rmi', image])
@@ -92,7 +93,7 @@ def test_get_image_entrypoint():
 
 def test_get_image_entrypoint__none():
     '''get_image_entrypoint works for image with no entrypoint'''
-    result = uut.get_image_entrypoint('debian')
+    result = uut.get_image_entrypoint(DOCKER_IMAGE)
     assert result is None
 
 

@@ -3,8 +3,11 @@ set -e
 
 topdir=$(cd $(dirname $0)/.. && pwd)
 
-# Pull this image ahead of time, so it's there for the unit tests
-docker pull debian:8.2
+# Load test constants
+eval $(cd $topdir && python3 -m tests.const)
+
+# Pull this image ahead of time, so it's there for the tests
+docker pull "$DOCKER_IMAGE"
 
 # Build docker images for local testing
 $topdir/test-docker-images/build_all.sh

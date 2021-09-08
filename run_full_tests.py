@@ -5,6 +5,8 @@ import subprocess
 import tempfile
 import shutil
 
+from tests.const import DOCKER_IMAGE
+
 
 class InTempDir:
     def __init__(self, suffix='', prefix='tmp', delete=True):
@@ -25,7 +27,7 @@ class InTempDir:
 def test1():
     with InTempDir(prefix='scuba-systest'):
         with open('.scuba.yml', 'w+t') as f:
-            f.write('image: debian:8.2\n')
+            f.write('image: {}\n'.format(DOCKER_IMAGE))
 
         in_data = 'success'
 
