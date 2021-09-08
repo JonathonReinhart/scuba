@@ -7,7 +7,7 @@
 # Requirements:
 # - Must contain /bin/bash (TestMain::test_*shell_override*)
 #
-DOCKER_IMAGE = 'debian:8.2'
+DOCKER_IMAGE = 'debian:10'
 
 # Alternate Docker image
 # This image is used for alternate tests (e.g. pulling) and should be small.
