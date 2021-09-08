@@ -18,7 +18,8 @@ import scuba.dockerutil
 import scuba
 import re
 
-DOCKER_IMAGE = 'debian:8.2'
+from .const import DOCKER_IMAGE
+
 SCUBAINIT_EXIT_FAIL = 99
 
 @pytest.mark.usefixtures("in_tmp_path")
