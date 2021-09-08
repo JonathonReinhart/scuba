@@ -47,23 +47,23 @@ def test_get_images_success__no_images():
 def test_get_images_success__multiple_images():
     '''get_images works when many images are present'''
     output = '''\
-busybox
-busybox:latest
-debian
-debian:buster
-debian:latest
-scuba/scratch
-scuba/scratch:latest
+foo
+foo:latest
+bar
+bar:snap
+bar:latest
+dummy/crackle
+dummy/crackle:pop
 '''
     images = _test_get_images(output)
     assert images == [
-                'busybox',
-                'busybox:latest',
-                'debian',
-                'debian:buster',
-                'debian:latest',
-                'scuba/scratch',
-                'scuba/scratch:latest',
+                'foo',
+                'foo:latest',
+                'bar',
+                'bar:snap',
+                'bar:latest',
+                'dummy/crackle',
+                'dummy/crackle:pop',
             ]
 
 def test_get_images__failure():

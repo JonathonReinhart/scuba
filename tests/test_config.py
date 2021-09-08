@@ -58,7 +58,7 @@ class TestConfig:
     def test_find_config_cur_dir(self, in_tmp_path):
         '''find_config can find the config in the current directory'''
         with open('.scuba.yml', 'w') as f:
-            f.write('image: busybox\n')
+            f.write('image: bosybux\n')
 
         path, rel, _ = scuba.config.find_config()
         assert_paths_equal(path, in_tmp_path)
@@ -68,7 +68,7 @@ class TestConfig:
     def test_find_config_parent_dir(self, in_tmp_path):
         '''find_config cuba can find the config in the parent directory'''
         with open('.scuba.yml', 'w') as f:
-            f.write('image: busybox\n')
+            f.write('image: bosybux\n')
 
         os.mkdir('subdir')
         os.chdir('subdir')
@@ -83,7 +83,7 @@ class TestConfig:
     def test_find_config_way_up(self, in_tmp_path):
         '''find_config can find the config way up the directory hierarchy'''
         with open('.scuba.yml', 'w') as f:
-            f.write('image: busybox\n')
+            f.write('image: bosybux\n')
 
         subdirs = ['foo', 'bar', 'snap', 'crackle', 'pop']
 
@@ -122,7 +122,7 @@ class TestConfig:
     def test_load_unexpected_node(self):
         '''load_config raises ConfigError on unexpected config node'''
         with open('.scuba.yml', 'w') as f:
-            f.write('image: busybox\n')
+            f.write('image: bosybux\n')
             f.write('unexpected_node_123456: value\n')
 
         self._invalid_config()
@@ -130,21 +130,21 @@ class TestConfig:
     def test_load_config_minimal(self):
         '''load_config loads a minimal config'''
         with open('.scuba.yml', 'w') as f:
-            f.write('image: busybox\n')
+            f.write('image: bosybux\n')
 
         config = scuba.config.load_config('.scuba.yml')
-        assert config.image == 'busybox'
+        assert config.image == 'bosybux'
 
     def test_load_config_with_aliases(self):
         '''load_config loads a config with aliases'''
         with open('.scuba.yml', 'w') as f:
-            f.write('image: busybox\n')
+            f.write('image: bosybux\n')
             f.write('aliases:\n')
             f.write('  foo: bar\n')
             f.write('  snap: crackle pop\n')
 
         config = scuba.config.load_config('.scuba.yml')
-        assert config.image == 'busybox'
+        assert config.image == 'bosybux'
         assert len(config.aliases) == 2
         assert config.aliases['foo'].script == ['bar']
         assert config.aliases['snap'].script == ['crackle pop']
@@ -152,7 +152,7 @@ class TestConfig:
     def test_load_config__no_spaces_in_aliases(self):
         '''load_config refuses spaces in aliases'''
         with open('.scuba.yml', 'w') as f:
-            f.write('image: busybox\n')
+            f.write('image: bosybux\n')
             f.write('aliases:\n')
             f.write('  this has spaces: whatever\n')
 
@@ -161,46 +161,46 @@ class TestConfig:
     def test_load_config_image_from_yaml(self):
         '''load_config loads a config using !from_yaml'''
         with open('.gitlab.yml', 'w') as f:
-            f.write('image: debian:8.2\n')
+            f.write('image: dummian:8.2\n')
 
         with open('.scuba.yml', 'w') as f:
             f.write('image: !from_yaml .gitlab.yml image\n')
 
         config = scuba.config.load_config('.scuba.yml')
-        assert config.image == 'debian:8.2'
+        assert config.image == 'dummian:8.2'
 
     def test_load_config_image_from_yaml_nested_keys(self):
         '''load_config loads a config using !from_yaml with nested keys'''
         with open('.gitlab.yml', 'w') as f:
             f.write('somewhere:\n')
             f.write('  down:\n')
-            f.write('    here: debian:8.2\n')
+            f.write('    here: dummian:8.2\n')
 
         with open('.scuba.yml', 'w') as f:
             f.write('image: !from_yaml .gitlab.yml somewhere.down.here\n')
 
         config = scuba.config.load_config('.scuba.yml')
-        assert config.image == 'debian:8.2'
+        assert config.image == 'dummian:8.2'
 
     def test_load_config_image_from_yaml_nested_keys_with_escaped_characters(self):
         '''load_config loads a config using !from_yaml with nested keys containing escaped '.' characters'''
         with open('.gitlab.yml', 'w') as f:
             f.write('.its:\n')
             f.write('  somewhere.down:\n')
-            f.write('    here: debian:8.2\n')
+            f.write('    here: dummian:8.2\n')
 
         with open('.scuba.yml', 'w') as f:
             f.write('image: !from_yaml .gitlab.yml "\\.its.somewhere\\.down.here"\n')
 
         config = scuba.config.load_config('.scuba.yml')
-        assert config.image == 'debian:8.2'
+        assert config.image == 'dummian:8.2'
 
     def test_load_config_from_yaml_cached_file(self):
         '''load_config loads a config using !from_yaml from cached version'''
         with open('.gitlab.yml', 'w') as f:
-            f.write('one: debian:8.2\n')
-            f.write('two: debian:9.3\n')
-            f.write('three: debian:10.1\n')
+            f.write('one: dummian:8.2\n')
+            f.write('two: dummian:9.3\n')
+            f.write('three: dummian:10.1\n')
 
         with open('.scuba.yml', 'w') as f:
             f.write('image: !from_yaml .gitlab.yml one\n')
@@ -254,7 +254,7 @@ class TestConfig:
     def test_load_config_image_from_yaml_missing_arg(self):
         '''load_config raises ConfigError when !from_yaml has missing args'''
         with open('.gitlab.yml', 'w') as f:
-            f.write('image: debian:8.2\n')
+            f.write('image: dummian:8.2\n')
 
         with open('.scuba.yml', 'w') as f:
             f.write('image: !from_yaml .gitlab.yml\n')
