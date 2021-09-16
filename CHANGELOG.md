@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [2.9.0] - 2021-09-15
 ### Added
 - Add ability to specify volumes in `.scuba.yml` (#186)
 
@@ -236,7 +236,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 First versioned release
 
 
-[Unreleased]: https://github.com/JonathonReinhart/scuba/compare/v2.8.0...HEAD
+[Unreleased]: https://github.com/JonathonReinhart/scuba/compare/v2.9.0...HEAD
+[2.9.0]: https://github.com/JonathonReinhart/scuba/compare/v2.8.0...v2.9.0
 [2.8.0]: https://github.com/JonathonReinhart/scuba/compare/v2.7.0...v2.8.0
 [2.7.0]: https://github.com/JonathonReinhart/scuba/compare/v2.6.1...v2.7.0
 [2.6.1]: https://github.com/JonathonReinhart/scuba/compare/v2.6.0...v2.6.1
