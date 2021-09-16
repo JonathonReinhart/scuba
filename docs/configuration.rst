@@ -236,6 +236,35 @@ Example:
 Alias-level keys
 ~~~~~~~~~~~~~~~~
 
+.. list-table::
+   :widths: 20 20 60
+   :header-rows: 1
+
+   * - Key
+     - Scuba Version
+     - Description
+   * - :ref:`conf_alias_image`
+     - 1.1.0
+     - Override Docker image to run
+   * - :ref:`conf_alias_environment`
+     - 2.3.0
+     - Extend / override environment variables
+   * - :ref:`conf_alias_docker_args`
+     - 2.8.0
+     - Extend / override additional arguments to ``docker run``
+   * - :ref:`conf_alias_volumes`
+     - 2.9.0
+     - Extend / override additional volumes to mount
+   * - :ref:`conf_alias_shell`
+     - 2.6.0
+     - Override container shell path
+   * - :ref:`conf_alias_root`
+     - 2.6.0
+     - Run container as root
+
+
+.. _conf_alias_image:
+
 ``image``
 ---------
 Aliases can override the global ``image``, allowing aliases to use different
@@ -257,6 +286,8 @@ images. Example:
           - cat /etc/os-release
 
 
+.. _conf_alias_environment:
+
 ``environment``
 ---------------
 Aliases can add to the top-level ``environment`` and override its values using
@@ -274,6 +305,8 @@ the same syntax:
         script:
           - echo $FOO $BAR
 
+
+.. _conf_alias_docker_args:
 
 ``docker_args``
 ---------------
@@ -320,6 +353,8 @@ alias:
           - ls -l /tmp/
 
 
+.. _conf_alias_volumes:
+
 ``volumes``
 -----------
 Aliases can extend or override the top-level ``volumes``:
@@ -336,6 +371,8 @@ Aliases can extend or override the top-level ``volumes``:
         script:
           - ls -l /var/lib/foo /var/lib/bar
 
+
+.. _conf_alias_shell:
 
 ``shell``
 ---------
@@ -354,6 +391,8 @@ the ``.scuba.yml`` file:
           - echo "This is executing in scuba's default shell"
 
 
+.. _conf_alias_root:
+
 ``root``
 --------
 
@@ -369,6 +408,9 @@ whether its container should be run as root:
           - echo 'Only root can do this!'
           - echo "I am UID $(id -u)"
           - cat /etc/shadow
+
+
+
 
 .. _conf_common_script_schema:
 
