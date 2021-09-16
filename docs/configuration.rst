@@ -550,7 +550,7 @@ to jobs defined by ``.gitlab-ci.yml``:
 
     # Note that 'image' is not necessary if only invoking aliases
 
-    aliases
+    aliases:
       build_c:
         image: !from_yaml .gitlab-ci.yml build_c.image
         script: !from_yaml .gitlab-ci.yml build_c.script
@@ -564,7 +564,7 @@ definition. This works becaue Scuba ignores unrecognized keys in an ``alias``:
 .. code-block:: yaml
     :caption: .scuba.yml
 
-    aliases
+    aliases:
       build_c: !from_yaml .gitlab-ci.yml build_c
       build_py: !from_yaml .gitlab-ci.yml build_py
 
@@ -589,7 +589,7 @@ including two elements that are lists.
 
     image: !from_yaml .gitlab-ci.yml image
 
-    aliases
+    aliases:
       all_parts:
         script:
           - !from_yaml .gitlab-ci.yml part1.script
@@ -618,7 +618,7 @@ containing a ``.`` character:
 
     image: !from_yaml .gitlab-ci.yml image
 
-    aliases
+    aliases:
       build_part1: !from_yaml .gitlab-ci.yml "\\.part1.script"
       build_part2: !from_yaml .gitlab-ci.yml "\\.part2.script"
 
