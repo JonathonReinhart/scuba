@@ -65,6 +65,10 @@ Top-level keys
      - 2.6.0
      - Override container shell path
      - Can override
+   * - :ref:`conf_entrypoint`
+     - 2.4.0
+     - Override container ENTRYPOINT path
+     - Can override
 
 
 
@@ -230,6 +234,26 @@ Example:
     shell: /busybox/sh
 
 
+.. _conf_entrypoint:
+
+``entrypoint``
+--------------
+
+The optional ``entrypoint`` node *(added in v2.4.0)* allows the `ENTRYPOINT`_
+of the Docker image to be overridden:
+
+.. code-block:: yaml
+
+    entrypoint: /another/script
+
+The entrypoint can also be set to null, which is useful when an image's
+entrypoint is not suitable:
+
+.. code-block:: yaml
+
+    entrypoint:
+
+
 
 .. _conf_alias_level_keys:
 
@@ -258,6 +282,9 @@ Alias-level keys
    * - :ref:`conf_alias_shell`
      - 2.6.0
      - Override container shell path
+   * - :ref:`conf_alias_entrypoint`
+     - 2.4.0
+     - Override container ENTRYPOINT path
    * - :ref:`conf_alias_root`
      - 2.6.0
      - Run container as root
@@ -389,6 +416,22 @@ the ``.scuba.yml`` file:
       busybox_shell:
         script:
           - echo "This is executing in scuba's default shell"
+
+
+.. _conf_alias_entrypoint:
+
+``entrypoint``
+--------------
+
+An alias can override the image-default or top-level ``.scuba.yml`` entrypoint,
+which is most useful when an alias defines a special image.
+
+.. code-block:: yaml
+
+    aliases:
+      build:
+        image: build/image:1.2
+        entrypoint:
 
 
 .. _conf_alias_root:
@@ -586,3 +629,4 @@ Additional examples can be found in the ``example`` directory.
 
 .. _YAML: http://yaml.org/
 .. _.gitlab-ci.yml: http://doc.gitlab.com/ce/ci/yaml/README.html
+.. _ENTRYPOINT: https://docs.docker.com/engine/reference/run/#entrypoint-default-command-to-execute-at-runtime
