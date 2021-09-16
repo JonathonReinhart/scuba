@@ -46,7 +46,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Allow top-level `image` to be omitted in `.scuba.yml` (#158)
 
 ### Fixed
-- Fixed deprecation error with collections.Mapping (#156)
+- Fixed deprecation error with `collections.Mapping` (#156)
 
 ### Removed
 - Drop support for Python 2 (#154)
@@ -157,7 +157,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Add `-r` option to run container as root
 - Add automated testing (both unit and system tests)
 - Add support for Python 2.6 - 3.5
-- Added to PyPi
+- Added to PyPI
 
 ### Changed
 - Scuba is now a package, and setup.py installs it as such, including an

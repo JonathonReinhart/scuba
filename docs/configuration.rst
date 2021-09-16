@@ -29,6 +29,51 @@ keys.
 Top-level keys
 ~~~~~~~~~~~~~~
 
+.. list-table::
+   :widths: 20 20 40 20
+   :header-rows: 1
+
+   * - Key
+     - Scuba Version
+     - Description
+     - Alias
+   * - :ref:`conf_image`
+     - (all)
+     - Docker image to run
+     - Can override
+   * - :ref:`conf_environment`
+     - 2.3.0
+     - Environment variables
+     - Can extend or override
+   * - :ref:`conf_docker_args`
+     - 2.8.0
+     - Additional arguments to ``docker run``
+     - Can extend or override
+   * - :ref:`conf_volumes`
+     - 2.9.0
+     - Additional volumes to mount
+     - Can extend or override
+   * - :ref:`conf_aliases`
+     - 1.1.0
+     - Command/script aliases
+     -
+   * - :ref:`conf_hooks`
+     - 1.7.0
+     - Hook scripts run during startup
+     -
+   * - :ref:`conf_shell`
+     - 2.6.0
+     - Override container shell path
+     - Can override
+   * - :ref:`conf_entrypoint`
+     - 2.4.0
+     - Override container ENTRYPOINT path
+     - Can override
+
+
+
+.. _conf_image:
+
 ``image``
 ---------
 
@@ -50,9 +95,10 @@ for ``.scuba.yml`` files in which only the ``aliases`` are intended to be used.
 ``environment``
 ---------------
 
-The optional ``environment`` node allows environment variables to be specified.
-This can be either a mapping (dictionary), or a list of ``KEY=VALUE`` pairs.
-If a value is not specified, the value is taken from the external environment.
+The optional ``environment`` node *(added in v2.3.0)* allows environment
+variables to be specified. This can be either a mapping (dictionary), or a
+list of ``KEY=VALUE`` pairs. If a value is not specified, the value is taken
+from the external environment.
 
 Examples:
 
@@ -73,9 +119,8 @@ Examples:
 
 ``docker_args``
 ---------------
-
-The optional ``docker_args`` node allows additional docker arguments to be
-specified.
+The optional ``docker_args`` node *(added in v2.8.0)* allows additional docker
+arguments to be specified.
 
 Example:
 
@@ -93,9 +138,14 @@ style <https://yaml.org/spec/1.2/spec.html#id2788097>`_:
 
     docker_args: '--privileged -v "/tmp/hello world:/tmp/hello world"'
 
+
+
+.. _conf_volumes:
+
 ``volumes``
 -----------
-The optional ``volumes`` node allows additional `volumes
+
+The optional ``volumes`` node *(added in v2.9.0)* allows additional `volumes
 <https://docs.docker.com/storage/volumes/>`_ or bind-mounts to be specified.
 ``volumes`` is a mapping (dictionary) where each key is the container-path.
 In the simple form, the value is a string, the host-path to be bind-mounted:
@@ -140,7 +190,111 @@ Example:
 In this example, ``$ scuba build foo`` would execute ``make -j4 foo`` in the
 container.
 
-Aliases can also override the global ``image``, allowing aliases to use different
+Aliases can also extend/override various top-level keys.
+See :ref:`conf_alias_level_keys`.
+
+
+.. _conf_hooks:
+
+``hooks``
+---------
+
+The optional ``hooks`` node is a mapping (dictionary) of "hook" scripts that run
+as part of ``scubainit`` before running the user command. They use the
+:ref:`common script schema<conf_common_script_schema>`. The following hooks exist:
+
+- ``root`` - Runs just before ``scubainit`` switches from ``root`` to ``scubauser``
+- ``user`` - Runs just before ``scubainit`` executes the user command
+
+Example:
+
+.. code-block:: yaml
+
+    hooks:
+      root:
+        script:
+          - 'echo "HOOK: This runs before we switch users"'
+          - id
+      user: 'echo "HOOK: After switching users, uid=$(id -u) gid=$(id -g)"'
+
+
+.. _conf_shell:
+
+``shell``
+---------
+
+The optional ``shell`` node *(added in v2.6.0)* allows the default shell that
+Scuba uses in the container (``/bin/sh``) to be overridden by another shell.
+This is useful for images that do not have a shell located at ``/bin/sh``.
+
+Example:
+
+.. code-block:: yaml
+
+    shell: /busybox/sh
+
+
+.. _conf_entrypoint:
+
+``entrypoint``
+--------------
+
+The optional ``entrypoint`` node *(added in v2.4.0)* allows the `ENTRYPOINT`_
+of the Docker image to be overridden:
+
+.. code-block:: yaml
+
+    entrypoint: /another/script
+
+The entrypoint can also be set to null, which is useful when an image's
+entrypoint is not suitable:
+
+.. code-block:: yaml
+
+    entrypoint:
+
+
+
+.. _conf_alias_level_keys:
+
+Alias-level keys
+~~~~~~~~~~~~~~~~
+
+.. list-table::
+   :widths: 20 20 60
+   :header-rows: 1
+
+   * - Key
+     - Scuba Version
+     - Description
+   * - :ref:`conf_alias_image`
+     - 1.1.0
+     - Override Docker image to run
+   * - :ref:`conf_alias_environment`
+     - 2.3.0
+     - Extend / override environment variables
+   * - :ref:`conf_alias_docker_args`
+     - 2.8.0
+     - Extend / override additional arguments to ``docker run``
+   * - :ref:`conf_alias_volumes`
+     - 2.9.0
+     - Extend / override additional volumes to mount
+   * - :ref:`conf_alias_shell`
+     - 2.6.0
+     - Override container shell path
+   * - :ref:`conf_alias_entrypoint`
+     - 2.4.0
+     - Override container ENTRYPOINT path
+   * - :ref:`conf_alias_root`
+     - 2.6.0
+     - Run container as root
+
+
+.. _conf_alias_image:
+
+``image``
+---------
+Aliases can override the global ``image``, allowing aliases to use different
 images. Example:
 
 .. code-block:: yaml
@@ -158,6 +312,11 @@ images. Example:
         script:
           - cat /etc/os-release
 
+
+.. _conf_alias_environment:
+
+``environment``
+---------------
 Aliases can add to the top-level ``environment`` and override its values using
 the same syntax:
 
@@ -173,6 +332,11 @@ the same syntax:
         script:
           - echo $FOO $BAR
 
+
+.. _conf_alias_docker_args:
+
+``docker_args``
+---------------
 Aliases can extend the top-level ``docker_args``. The following example will
 produce the docker arguments ``--privileged -v /tmp/bar:/tmp/bar`` when
 executing the ``example`` alias:
@@ -216,6 +380,10 @@ alias:
           - ls -l /tmp/
 
 
+.. _conf_alias_volumes:
+
+``volumes``
+-----------
 Aliases can extend or override the top-level ``volumes``:
 
 .. code-block:: yaml
@@ -231,43 +399,11 @@ Aliases can extend or override the top-level ``volumes``:
           - ls -l /var/lib/foo /var/lib/bar
 
 
-
-``hooks``
----------
-
-The optional ``hooks`` node is a mapping (dictionary) of "hook" scripts that run
-as part of ``scubainit`` before running the user command. They use the
-:ref:`common script schema<conf_common_script_schema>`. The following hooks exist:
-
-- ``root`` - Runs just before ``scubainit`` switches from ``root`` to ``scubauser``
-- ``user`` - Runs just before ``scubainit`` executes the user command
-
-Example:
-
-.. code-block:: yaml
-
-    hooks:
-      root:
-        script:
-          - 'echo "HOOK: This runs before we switch users"'
-          - id
-      user: 'echo "HOOK: After switching users, uid=$(id -u) gid=$(id -g)"'
-
+.. _conf_alias_shell:
 
 ``shell``
 ---------
-
-The optional ``shell`` node allows the default shell that Scuba uses in the 
-container (``/bin/sh``) to be overridden by another shell. This is useful for
-images that do not have a shell located at ``/bin/sh``.
-
-Example:
-
-.. code-block:: yaml
-
-    shell: /busybox/sh
-
-Aliases can also override the shell from the default or the top-level of
+Aliases can override the shell from the default or the top-level of
 the ``.scuba.yml`` file:
 
 .. code-block:: yaml
@@ -282,14 +418,29 @@ the ``.scuba.yml`` file:
           - echo "This is executing in scuba's default shell"
 
 
-Alias-level keys
-~~~~~~~~~~~~~~~~
+.. _conf_alias_entrypoint:
+
+``entrypoint``
+--------------
+
+An alias can override the image-default or top-level ``.scuba.yml`` entrypoint,
+which is most useful when an alias defines a special image.
+
+.. code-block:: yaml
+
+    aliases:
+      build:
+        image: build/image:1.2
+        entrypoint:
+
+
+.. _conf_alias_root:
 
 ``root``
 --------
 
-The optional ``root`` node allows an alias to specify whether its container
-should be run as root:
+The optional ``root`` node *(added in v2.6.0)* allows an alias to specify
+whether its container should be run as root:
 
 .. code-block:: yaml
 
@@ -300,6 +451,9 @@ should be run as root:
           - echo 'Only root can do this!'
           - echo "I am UID $(id -u)"
           - cat /etc/shadow
+
+
+
 
 .. _conf_common_script_schema:
 
@@ -343,9 +497,10 @@ always safer to include quotes.
 
 Accessing external YAML content
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-In addition to normal `YAML`_ synax, an additional constructor, ``!from_yaml``,
-is available for use in ``.scuba.yml`` which allows a value to be retrieved
-from an external YAML file. It has the following syntax:
+
+In addition to normal `YAML`_ syntax, an additional constructor, ``!from_yaml``,
+*(added in v1.2.0)* is available for use in ``.scuba.yml`` which allows a value
+to be retrieved from an external YAML file. It has the following syntax:
 
 .. code-block:: yaml
 
@@ -395,7 +550,7 @@ to jobs defined by ``.gitlab-ci.yml``:
 
     # Note that 'image' is not necessary if only invoking aliases
 
-    aliases
+    aliases:
       build_c:
         image: !from_yaml .gitlab-ci.yml build_c.image
         script: !from_yaml .gitlab-ci.yml build_c.script
@@ -409,7 +564,7 @@ definition. This works becaue Scuba ignores unrecognized keys in an ``alias``:
 .. code-block:: yaml
     :caption: .scuba.yml
 
-    aliases
+    aliases:
       build_c: !from_yaml .gitlab-ci.yml build_c
       build_py: !from_yaml .gitlab-ci.yml build_py
 
@@ -434,7 +589,7 @@ including two elements that are lists.
 
     image: !from_yaml .gitlab-ci.yml image
 
-    aliases
+    aliases:
       all_parts:
         script:
           - !from_yaml .gitlab-ci.yml part1.script
@@ -463,7 +618,7 @@ containing a ``.`` character:
 
     image: !from_yaml .gitlab-ci.yml image
 
-    aliases
+    aliases:
       build_part1: !from_yaml .gitlab-ci.yml "\\.part1.script"
       build_part2: !from_yaml .gitlab-ci.yml "\\.part2.script"
 
@@ -474,3 +629,4 @@ Additional examples can be found in the ``example`` directory.
 
 .. _YAML: http://yaml.org/
 .. _.gitlab-ci.yml: http://doc.gitlab.com/ce/ci/yaml/README.html
+.. _ENTRYPOINT: https://docs.docker.com/engine/reference/run/#entrypoint-default-command-to-execute-at-runtime
