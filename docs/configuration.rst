@@ -29,6 +29,47 @@ keys.
 Top-level keys
 ~~~~~~~~~~~~~~
 
+.. list-table::
+   :widths: 20 20 40 20
+   :header-rows: 1
+
+   * - Key
+     - Scuba Version
+     - Description
+     - Alias
+   * - :ref:`conf_image`
+     - (all)
+     - Docker image to run
+     - Can override
+   * - :ref:`conf_environment`
+     - 2.3.0
+     - Environment variables
+     - Can extend or override
+   * - :ref:`conf_docker_args`
+     - 2.8.0
+     - Additional arguments to ``docker run``
+     - Can extend or override
+   * - :ref:`conf_volumes`
+     - 2.9.0
+     - Additional volumes to mount
+     - Can extend or override
+   * - :ref:`conf_aliases`
+     - 1.1.0
+     - Command/script aliases
+     -
+   * - :ref:`conf_hooks`
+     - 1.7.0
+     - Hook scripts run during startup
+     -
+   * - :ref:`conf_shell`
+     - 2.6.0
+     - Override container shell path
+     - Can override
+
+
+
+.. _conf_image:
+
 ``image``
 ---------
 
@@ -92,6 +133,10 @@ style <https://yaml.org/spec/1.2/spec.html#id2788097>`_:
 .. code-block:: yaml
 
     docker_args: '--privileged -v "/tmp/hello world:/tmp/hello world"'
+
+
+
+.. _conf_volumes:
 
 ``volumes``
 -----------
@@ -233,6 +278,8 @@ Aliases can extend or override the top-level ``volumes``:
 
 
 
+.. _conf_hooks:
+
 ``hooks``
 ---------
 
@@ -254,6 +301,8 @@ Example:
           - id
       user: 'echo "HOOK: After switching users, uid=$(id -u) gid=$(id -g)"'
 
+
+.. _conf_shell:
 
 ``shell``
 ---------
