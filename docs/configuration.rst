@@ -454,9 +454,10 @@ always safer to include quotes.
 
 Accessing external YAML content
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-In addition to normal `YAML`_ synax, an additional constructor, ``!from_yaml``,
-is available for use in ``.scuba.yml`` which allows a value to be retrieved
-from an external YAML file. It has the following syntax:
+
+In addition to normal `YAML`_ syntax, an additional constructor, ``!from_yaml``,
+*(added in v1.2.0)* is available for use in ``.scuba.yml`` which allows a value
+to be retrieved from an external YAML file. It has the following syntax:
 
 .. code-block:: yaml
 
