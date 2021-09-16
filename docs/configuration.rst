@@ -186,7 +186,59 @@ Example:
 In this example, ``$ scuba build foo`` would execute ``make -j4 foo`` in the
 container.
 
-Aliases can also override the global ``image``, allowing aliases to use different
+Aliases can also extend/override various top-level keys.
+See :ref:`conf_alias_level_keys`.
+
+
+.. _conf_hooks:
+
+``hooks``
+---------
+
+The optional ``hooks`` node is a mapping (dictionary) of "hook" scripts that run
+as part of ``scubainit`` before running the user command. They use the
+:ref:`common script schema<conf_common_script_schema>`. The following hooks exist:
+
+- ``root`` - Runs just before ``scubainit`` switches from ``root`` to ``scubauser``
+- ``user`` - Runs just before ``scubainit`` executes the user command
+
+Example:
+
+.. code-block:: yaml
+
+    hooks:
+      root:
+        script:
+          - 'echo "HOOK: This runs before we switch users"'
+          - id
+      user: 'echo "HOOK: After switching users, uid=$(id -u) gid=$(id -g)"'
+
+
+.. _conf_shell:
+
+``shell``
+---------
+
+The optional ``shell`` node *(added in v2.6.0)* allows the default shell that
+Scuba uses in the container (``/bin/sh``) to be overridden by another shell.
+This is useful for images that do not have a shell located at ``/bin/sh``.
+
+Example:
+
+.. code-block:: yaml
+
+    shell: /busybox/sh
+
+
+
+.. _conf_alias_level_keys:
+
+Alias-level keys
+~~~~~~~~~~~~~~~~
+
+``image``
+---------
+Aliases can override the global ``image``, allowing aliases to use different
 images. Example:
 
 .. code-block:: yaml
@@ -204,6 +256,9 @@ images. Example:
         script:
           - cat /etc/os-release
 
+
+``environment``
+---------------
 Aliases can add to the top-level ``environment`` and override its values using
 the same syntax:
 
@@ -219,6 +274,9 @@ the same syntax:
         script:
           - echo $FOO $BAR
 
+
+``docker_args``
+---------------
 Aliases can extend the top-level ``docker_args``. The following example will
 produce the docker arguments ``--privileged -v /tmp/bar:/tmp/bar`` when
 executing the ``example`` alias:
@@ -262,6 +320,8 @@ alias:
           - ls -l /tmp/
 
 
+``volumes``
+-----------
 Aliases can extend or override the top-level ``volumes``:
 
 .. code-block:: yaml
@@ -277,47 +337,9 @@ Aliases can extend or override the top-level ``volumes``:
           - ls -l /var/lib/foo /var/lib/bar
 
 
-
-.. _conf_hooks:
-
-``hooks``
----------
-
-The optional ``hooks`` node is a mapping (dictionary) of "hook" scripts that run
-as part of ``scubainit`` before running the user command. They use the
-:ref:`common script schema<conf_common_script_schema>`. The following hooks exist:
-
-- ``root`` - Runs just before ``scubainit`` switches from ``root`` to ``scubauser``
-- ``user`` - Runs just before ``scubainit`` executes the user command
-
-Example:
-
-.. code-block:: yaml
-
-    hooks:
-      root:
-        script:
-          - 'echo "HOOK: This runs before we switch users"'
-          - id
-      user: 'echo "HOOK: After switching users, uid=$(id -u) gid=$(id -g)"'
-
-
-.. _conf_shell:
-
 ``shell``
 ---------
-
-The optional ``shell`` node *(added in v2.6.0)* allows the default shell that
-Scuba uses in the container (``/bin/sh``) to be overridden by another shell.
-This is useful for images that do not have a shell located at ``/bin/sh``.
-
-Example:
-
-.. code-block:: yaml
-
-    shell: /busybox/sh
-
-Aliases can also override the shell from the default or the top-level of
+Aliases can override the shell from the default or the top-level of
 the ``.scuba.yml`` file:
 
 .. code-block:: yaml
@@ -331,9 +353,6 @@ the ``.scuba.yml`` file:
         script:
           - echo "This is executing in scuba's default shell"
 
-
-Alias-level keys
-~~~~~~~~~~~~~~~~
 
 ``root``
 --------
