@@ -261,6 +261,7 @@ def _get_volumes(data):
 
     vols = {}
     for cpath, v in voldata.items():
+        cpath = os.path.expandvars(cpath)
         vols[cpath] = ScubaVolume.from_dict(cpath, v)
     return vols
 
@@ -282,7 +283,7 @@ class ScubaVolume:
         if isinstance(node, str):
             return cls(
                 container_path = cpath,
-                host_path = node,
+                host_path = os.path.expandvars(node),
                 )
 
         # Complex form
@@ -296,7 +297,7 @@ class ScubaVolume:
                 raise ConfigError("Volume {} must have a 'hostpath' subkey".format(cpath))
             return cls(
                 container_path = cpath,
-                host_path = hpath,
+                host_path = os.path.expandvars(hpath),
                 options = _get_delimited_str_list(node, 'options', ','),
                 )
 

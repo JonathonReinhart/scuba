@@ -883,3 +883,64 @@ class TestConfig:
         assert v.container_path == '/bar'
         assert v.host_path == '/host/bar'
         assert v.options == ['z', 'ro']
+
+    def test_volumes_with_env_vars_simple(self):
+        '''volume definitions can contain environmental variables'''
+        os.environ["TEST_VOL_PATH"] = "/bar/baz"
+        os.environ["TEST_VOL_PATH2"] = "/moo/doo"
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                volumes:
+                  $TEST_VOL_PATH/foo: ${TEST_VOL_PATH2}/foo
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+        vols = config.volumes
+        assert len(vols) == 1
+
+        v = list(vols.values())[0]
+        assert isinstance(v, scuba.config.ScubaVolume)
+        assert v.container_path == '/bar/baz/foo'
+        assert v.host_path == '/moo/doo/foo'
+        assert v.options == []
+
+    def test_volumes_with_env_vars_complex(self):
+        '''complex volume definitions can contain environmental variables'''
+        os.environ["TEST_HOME"] = "/home/testuser"
+        os.environ["TEST_TMP"] = "/tmp"
+        os.environ["TEST_MAIL"] = "/var/spool/mail/testuser"
+
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                volumes:
+                  $TEST_HOME/.config: ${TEST_HOME}/.config
+                  $TEST_TMP/:
+                    hostpath: $TEST_HOME/scuba/myproject/tmp
+                  /var/spool/mail/container:
+                    hostpath: $TEST_MAIL
+                    options: z,ro
+                ''')
+
+        config = scuba.config.load_config('.scuba.yml')
+        vols = config.volumes
+        assert len(vols) == 3
+
+        v = vols['/home/testuser/.config']
+        assert isinstance(v, scuba.config.ScubaVolume)
+        assert v.container_path == '/home/testuser/.config'
+        assert v.host_path == '/home/testuser/.config'
+        assert v.options == []
+
+        v = vols['/tmp/']
+        assert isinstance(v, scuba.config.ScubaVolume)
+        assert v.container_path == '/tmp/'
+        assert v.host_path == '/home/testuser/scuba/myproject/tmp'
+        assert v.options == []
+
+        v = vols['/var/spool/mail/container']
+        assert isinstance(v, scuba.config.ScubaVolume)
+        assert v.container_path == '/var/spool/mail/container'
+        assert v.host_path == "/var/spool/mail/testuser"
+        assert v.options == ['z', 'ro']
