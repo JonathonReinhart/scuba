@@ -944,3 +944,15 @@ class TestConfig:
         assert v.container_path == '/var/spool/mail/container'
         assert v.host_path == "/var/spool/mail/testuser"
         assert v.options == ['z', 'ro']
+
+    def test_volumes_with_invalid_env_vars(self):
+        '''Volume definitions cannot include unset env vars'''
+        # Ensure that the entry does not exist in the environment
+        os.environ.pop("TEST_VAR1", None)
+        with open('.scuba.yml', 'w') as f:
+            f.write(r'''
+                image: na
+                volumes:
+                  $TEST_VAR1/foo: /host/foo
+                ''')
+        self._invalid_config('TEST_VAR1')
