@@ -884,10 +884,10 @@ class TestConfig:
         assert v.host_path == '/host/bar'
         assert v.options == ['z', 'ro']
 
-    def test_volumes_with_env_vars_simple(self):
+    def test_volumes_with_env_vars_simple(self, monkeypatch):
         '''volume definitions can contain environment variables'''
-        os.environ["TEST_VOL_PATH"] = "/bar/baz"
-        os.environ["TEST_VOL_PATH2"] = "/moo/doo"
+        monkeypatch.setenv("TEST_VOL_PATH", "/bar/baz")
+        monkeypatch.setenv("TEST_VOL_PATH2", "/moo/doo")
         with open('.scuba.yml', 'w') as f:
             f.write(r'''
                 image: na
@@ -905,11 +905,11 @@ class TestConfig:
         assert v.host_path == '/moo/doo/foo'
         assert v.options == []
 
-    def test_volumes_with_env_vars_complex(self):
+    def test_volumes_with_env_vars_complex(self, monkeypatch):
         '''complex volume definitions can contain environment variables'''
-        os.environ["TEST_HOME"] = "/home/testuser"
-        os.environ["TEST_TMP"] = "/tmp"
-        os.environ["TEST_MAIL"] = "/var/spool/mail/testuser"
+        monkeypatch.setenv("TEST_HOME", "/home/testuser")
+        monkeypatch.setenv("TEST_TMP", "/tmp")
+        monkeypatch.setenv("TEST_MAIL", "/var/spool/mail/testuser")
 
         with open('.scuba.yml', 'w') as f:
             f.write(r'''
@@ -945,10 +945,10 @@ class TestConfig:
         assert v.host_path == "/var/spool/mail/testuser"
         assert v.options == ['z', 'ro']
 
-    def test_volumes_with_invalid_env_vars(self):
+    def test_volumes_with_invalid_env_vars(self, monkeypatch):
         '''Volume definitions cannot include unset env vars'''
         # Ensure that the entry does not exist in the environment
-        os.environ.pop("TEST_VAR1", None)
+        monkeypatch.delenv("TEST_VAR1", raising=False)
         with open('.scuba.yml', 'w') as f:
             f.write(r'''
                 image: na
