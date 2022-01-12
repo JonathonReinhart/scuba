@@ -128,3 +128,26 @@ def test_writeln():
         scuba.utils.writeln(s, 'hello')
         scuba.utils.writeln(s, 'goodbye')
         assert s.getvalue() == 'hello\ngoodbye\n'
+
+def test_expand_env_vars(monkeypatch):
+    monkeypatch.setenv("MY_VAR", "my favorite variable")
+    assert scuba.utils.expand_env_vars("This is $MY_VAR") == \
+            "This is my favorite variable"
+    assert scuba.utils.expand_env_vars("What is ${MY_VAR}?") == \
+            "What is my favorite variable?"
+
+def test_expand_missing_env_vars(monkeypatch):
+    monkeypatch.delenv("MY_VAR", raising=False)
+    # Verify that a KeyError is raised for unset env variables
+    with pytest.raises(KeyError) as kerr:
+        scuba.utils.expand_env_vars("Where is ${MY_VAR}?")
+    assert kerr.value.args[0] == "MY_VAR"
+
+
+def test_expand_env_vars_dollars():
+    # Verify that a ValueError is raised for bare, unescaped '$' characters
+    with pytest.raises(ValueError):
+        scuba.utils.expand_env_vars("Just a lonely $")
+
+    # Verify that it is possible to get '$' characters in an expanded string
+    assert scuba.utils.expand_env_vars(r"Just a lonely $$") == "Just a lonely $"

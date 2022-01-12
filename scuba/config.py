@@ -261,8 +261,21 @@ def _get_volumes(data):
 
     vols = {}
     for cpath, v in voldata.items():
+        cpath = _expand_path(cpath)
         vols[cpath] = ScubaVolume.from_dict(cpath, v)
     return vols
+
+def _expand_path(in_str):
+    try:
+        output = expand_env_vars(in_str)
+    except KeyError as ke:
+        # pylint: disable=raise-missing-from
+        raise ConfigError("Unset environment variable '{}' used in '{}'".format(ke.args[0], in_str))
+    except ValueError as ve:
+        raise ConfigError("Unable to expand string '{}' due to parsing "
+                "errors".format(in_str)) from ve
+
+    return output
 
 class ScubaVolume:
     def __init__(self, container_path, host_path=None, options=None):
@@ -282,7 +295,7 @@ class ScubaVolume:
         if isinstance(node, str):
             return cls(
                 container_path = cpath,
-                host_path = node,
+                host_path = _expand_path(node),
                 )
 
         # Complex form
@@ -296,7 +309,7 @@ class ScubaVolume:
                 raise ConfigError("Volume {} must have a 'hostpath' subkey".format(cpath))
             return cls(
                 container_path = cpath,
-                host_path = hpath,
+                host_path = _expand_path(hpath),
                 options = _get_delimited_str_list(node, 'options', ','),
                 )
 

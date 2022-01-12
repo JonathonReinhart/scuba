@@ -1,6 +1,7 @@
 import errno
 import os
 from shlex import quote as shell_quote
+import string
 
 
 def shell_quote_cmd(cmdlist):
@@ -79,3 +80,10 @@ def get_umask():
 
 def writeln(f, line):
     f.write(line + '\n')
+
+def expand_env_vars(in_str):
+    """Expand environment variables in a string
+
+    Can raise `KeyError` if a variable is referenced but not defined, similar to
+    bash's nounset (set -u) option"""
+    return string.Template(in_str).substitute(os.environ)

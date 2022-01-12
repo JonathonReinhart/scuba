@@ -166,6 +166,19 @@ of volume options:
         hostpath: /host/foo
         options: ro,cached
 
+The keys used in volume mappings can contain environment variables **that are
+expanded in the host environment**. For example, this configuration would map
+the user's ``/home/username/.config/application1`` directory into the container
+at the same path.
+
+.. code-block:: yaml
+
+    volumes:
+      $TEST_HOME/.config/application1: $TEST_HOME/.config/application1
+
+Note that because variable expansion is now applied to all volume keys, if one
+desires to have a key with an explicit ``$`` character, it must be written as
+``$$``.
 
 
 .. _conf_aliases:
