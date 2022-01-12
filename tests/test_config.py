@@ -885,7 +885,7 @@ class TestConfig:
         assert v.options == ['z', 'ro']
 
     def test_volumes_with_env_vars_simple(self):
-        '''volume definitions can contain environmental variables'''
+        '''volume definitions can contain environment variables'''
         os.environ["TEST_VOL_PATH"] = "/bar/baz"
         os.environ["TEST_VOL_PATH2"] = "/moo/doo"
         with open('.scuba.yml', 'w') as f:
@@ -906,7 +906,7 @@ class TestConfig:
         assert v.options == []
 
     def test_volumes_with_env_vars_complex(self):
-        '''complex volume definitions can contain environmental variables'''
+        '''complex volume definitions can contain environment variables'''
         os.environ["TEST_HOME"] = "/home/testuser"
         os.environ["TEST_TMP"] = "/tmp"
         os.environ["TEST_MAIL"] = "/var/spool/mail/testuser"

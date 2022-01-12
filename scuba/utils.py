@@ -82,7 +82,7 @@ def writeln(f, line):
     f.write(line + '\n')
 
 def expand_env_vars(in_str):
-    """Expand environmental variables in a string
+    """Expand environment variables in a string
 
     Can raise `KeyError` if a variable is referenced but not defined, similar to
     bash's nounset (set -u) option"""

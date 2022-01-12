@@ -268,9 +268,13 @@ def _get_volumes(data):
 def _expand_path(in_str):
     try:
         output = expand_env_vars(in_str)
-    except (KeyError, ValueError):
+    except KeyError as ke:
         # pylint: disable=raise-missing-from
-        raise ConfigError("Unset environmental variable used in '{}'".format(in_str))
+        raise ConfigError("Unset environment variable '{}' used in '{}'".format(ke.args[0], in_str))
+    except ValueError as ve:
+        raise ConfigError("Unable to expand string '{}' due to parsing "
+                "errors".format(in_str)) from ve
+
     return output
 
 class ScubaVolume:
