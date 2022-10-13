@@ -8,6 +8,8 @@ Scuba makes it easier to use Docker containers in everyday development. It is
 intended to allow a developer to commit an environment setup where the entire
 build environment is encapsulated in a Docker container.
 
+![demo](https://user-images.githubusercontent.com/5616068/195481514-a1bdf66b-531b-42b1-b149-efe7b83108b8.gif)
+
 For more information, [Read the Docs](https://scuba.readthedocs.io/).
 
 ## License
