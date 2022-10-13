@@ -1,9 +1,8 @@
 Introduction
 ============
-Scuba makes it easier to use Docker containers in everyday development.  It is
-intended to be used by developers in ``make`` or ``scons``-based build
-environments, where the entire build environment is encapsulated in a Docker
-container.
+Scuba makes it easier to use Docker containers in everyday development. It is
+intended to allow a developer to commit an environment setup where the entire
+build environment is encapsulated in a Docker container.
 
 Its purpose is to lower the barrier to using Docker for everyday builds. Scuba
 keeps you from having to remember a complex ``docker run`` command line, and
