@@ -49,6 +49,8 @@ def parse_scuba_args(argv):
     ap.add_argument('-d', '--docker-arg', dest='docker_args', action='append',
             type=lambda x: shlex.split(x), default=[],
             help="Pass additional arguments to 'docker run'")
+    ap.add_argument('-i', '--init', dest='init', action='store_true',
+            help="Initialize a new .scuba.yml in the current directory")
     ap.add_argument('-e', '--env', dest='env_vars', action='append',
             type=parse_env_var, default=[],
             help='Environment variables to pass to docker')
@@ -87,6 +89,11 @@ def parse_scuba_args(argv):
 
 
 def run_scuba(scuba_args):
+    # if init, create a new .scuba.yml
+    if scuba_args.init:
+        ScubaConfig.create_default()
+        return 0
+
     # Locate .scuba.yml
     try:
         # top_path is where .scuba.yml is found, and becomes the top of our bind mount.

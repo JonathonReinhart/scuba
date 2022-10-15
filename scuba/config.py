@@ -407,6 +407,25 @@ class ScubaConfig:
             raise ConfigError("Top-level 'image' not set")
         return self._image
 
+    def create_default():
+        default_config = {
+            'image': 'debian:latest',
+            'shell': DEFAULT_SHELL,
+            'entrypoint': None,
+            'aliases': {
+                'build': {
+                    'script': [
+                        'mkdir -p build',
+                        'cd build',
+                        'cmake ..',
+                        'make',                        
+                    ]
+                }
+            },
+        }
+        # write config to yml
+        with open(SCUBA_YML, 'w') as f:
+            yaml.dump(default_config, f, default_flow_style=False)
 
 
 def load_config(path):
