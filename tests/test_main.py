@@ -949,3 +949,83 @@ class TestMain:
         out, _ = self.run_scuba(['doit'])
         out = out.splitlines()
         assert out == ["from the alias"]
+
+    def test_volumes_host_path_create(self):
+        '''Missing host paths should be created before starting Docker'''
+
+        userdir = Path('./user')
+        testfile = userdir / 'test.txt'
+
+        with open('.scuba.yml', 'w') as f:
+            f.write('''
+                image: {image}
+                volumes:
+                  /userdir: {user_dir}
+                '''.format(image = DOCKER_IMAGE,
+                           user_dir = userdir.absolute(),
+                           ))
+
+        self.run_scuba(['touch', '/userdir/test.txt'])
+
+        assert testfile.exists(), "Test file was not created"
+
+        info = userdir.stat()
+        assert info.st_uid != 0, "Directory is owned by root"
+        assert info.st_gid != 0, "Directory group is root"
+
+    def test_volumes_host_path_permissions(self):
+        '''Host path permission errors should be ignored'''
+
+        rootdir = Path('./root')
+        userdir = rootdir / 'user'
+        testfile = userdir / 'test.txt'
+
+        rootdir.mkdir()
+
+        with open('.scuba.yml', 'w') as f:
+            f.write('''
+                image: {image}
+                volumes:
+                  /userdir: {user_dir}
+                aliases:
+                   doit:
+                      root: true
+                      script: "touch /userdir/test.txt"
+                '''.format(image = DOCKER_IMAGE,
+                           user_dir = userdir.absolute(),
+                           ))
+
+        try:
+            # Prevent current user from creating directory
+            rootdir.chmod(0o555)
+            self.run_scuba(['doit'])
+        finally:
+            # Restore permissions to allow deletion
+            rootdir.chmod(0o755)
+
+        assert testfile.exists(), "Test file was not created"
+
+        info = userdir.stat()
+        assert info.st_uid == 0, "Directory is owned by root"
+        assert info.st_gid == 0, "Directory group is root"
+
+    def test_volumes_host_path_failure(self):
+        '''Host path failures due to OS errors prevent Docker run'''
+
+        rootdir = Path('./root')
+        userdir = rootdir / 'user'
+        testfile = userdir / 'test.txt'
+
+        # rootdir is not a dir, it's a file
+        rootdir.write_text("lied about the dir")
+
+        with open('.scuba.yml', 'w') as f:
+            f.write('''
+                image: {image}
+                volumes:
+                  /userdir: {user_dir}
+                '''.format(image = DOCKER_IMAGE,
+                           user_dir = userdir.absolute(),
+                           ))
+
+        self.run_scuba(['touch', '/userdir/test.txt'], 128)

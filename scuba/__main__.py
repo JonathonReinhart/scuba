@@ -130,6 +130,9 @@ def run_scuba(scuba_args):
             appmsg("Temp files not cleaned up")
             return 0
 
+        # Create volume host paths as current user
+        dive.try_create_volumes()
+
         # Explicitly pass sys.stdin/stdout/stderr so they apply to the
         # child process if overridden (by tests).
         return dockerutil.call(

@@ -154,6 +154,30 @@ class ScubaDive:
             options = []
         self.volumes.append((hostpath, contpath, options))
 
+    def try_create_volumes(self):
+        '''Try to create non-existent host paths prior to docker run invocation
+
+        This only creates user-defined volumes from configuration. The scubadir
+        and the initial working directory either exist or are created as root by
+        Docker.
+        '''
+        # Cannot create local directories for a remote host
+        if self.is_remote_docker:
+            return
+
+        for vol in self.context.volumes.values():
+            if os.path.exists(vol.host_path):
+                continue
+
+            try:
+                # Create directories all the way to the target
+                os.makedirs(vol.host_path, exist_ok=True)
+            except PermissionError:
+                # Docker will create this path later as root
+                pass
+            except OSError as err:
+                raise ScubaError('Error creating volume host path: {}'.format(err)) from err
+
     def add_option(self, option):
         '''Add another option to the docker run invocation
         '''
