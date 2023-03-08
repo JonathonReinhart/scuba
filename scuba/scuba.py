@@ -104,12 +104,12 @@ class ScubaDive:
         level = 0
 
         def writelist(name, vals):
-            writeln(s, '{}{}:'.format(indent*level, name))
+            writeln(s, f'{indent * level}{name}:')
             for val in vals or ():
-                writeln(s, '{}{}'.format(indent*(level+1), val))
+                writeln(s, f'{indent * (level + 1)}{val}')
 
         def writescl(name, val=''):
-            writeln(s, '{}{:<14s}{}'.format(indent*level, name+':', val))
+            writeln(s, f"{indent * level}{name + ':':<14s}{val}")
 
         writeln(s, 'ScubaDive')
         level += 1
@@ -120,8 +120,8 @@ class ScubaDive:
 
         writelist('options', self.options)
         writelist('docker_args', self.docker_args)
-        writelist('env_vars', ('{}={}'.format(*e) for e in self.env_vars.items()))
-        writelist('volumes', ('{} => {} {}'.format(hp, cp, opt)
+        writelist('env_vars', (f'{name}={val}' for name, val in self.env_vars.items()))
+        writelist('volumes', (f'{hp} => {cp} {opt}'
                               for hp, cp, opt in self.__get_vol_opts()))
 
         writescl('context')
@@ -176,7 +176,7 @@ class ScubaDive:
                 # Docker will create this path later as root
                 pass
             except OSError as err:
-                raise ScubaError('Error creating volume host path: {}'.format(err)) from err
+                raise ScubaError(f'Error creating volume host path: {err}') from err
 
     def add_option(self, option):
         '''Add another option to the docker run invocation
@@ -193,7 +193,7 @@ class ScubaDive:
 
         scubainit_path = os.path.join(pkg_path, 'scubainit')
         if not os.path.isfile(scubainit_path):
-            raise ScubaError('scubainit not found at "{}"'.format(scubainit_path))
+            raise ScubaError(f'scubainit not found at {scubainit_path!r}')
         return scubainit_path
 
     def __make_scubadir(self):
@@ -210,7 +210,7 @@ class ScubaDive:
         self.vol_opts = ['z']
 
         # Pass variables to scubainit
-        self.add_env('SCUBAINIT_UMASK', '{:04o}'.format(get_umask()))
+        self.add_env('SCUBAINIT_UMASK', f'{get_umask():04o}')
 
         # Check if the CLI args specify "run as root", or if the command (alias) does
         if not self.as_root and not self.context.as_root:
@@ -254,7 +254,7 @@ class ScubaDive:
 
         # Make scubainit the real entrypoint, and use the defined entrypoint as
         # the docker command (if it exists)
-        self.add_option('--entrypoint={}'.format(scubainit_cpath))
+        self.add_option(f'--entrypoint={scubainit_cpath}')
 
         self.docker_cmd = []
         if self.entrypoint_override is not None:
@@ -314,11 +314,11 @@ class ScubaDive:
             return
 
         # Generate the hook script, mount it into the container, and tell scubainit
-        with self.open_scubadir_file('hooks/{}.sh'.format(name), 'wt') as f:
+        with self.open_scubadir_file(f'hooks/{name}.sh', 'wt') as f:
 
-            self.add_env('SCUBAINIT_HOOK_{}'.format(name.upper()), f.container_path)
+            self.add_env(f'SCUBAINIT_HOOK_{name.upper()}', f.container_path)
 
-            writeln(f, '#!{}'.format(shell))
+            writeln(f, f'#!{shell}')
             writeln(f, '# Auto-generated from .scuba.yml')
             writeln(f, 'set -e')
             for cmd in script:
@@ -338,7 +338,7 @@ class ScubaDive:
         ]
 
         for name,val in self.env_vars.items():
-            args.append('--env={}={}'.format(name, val))
+            args.append(f'--env={name}={val}')
 
         for hostpath, contpath, options in self.__get_vol_opts():
             args.append(make_vol_opt(hostpath, contpath, options))

@@ -38,7 +38,7 @@ def get_version():
     # If CI_VERSION_BUILD_NUMBER is set, append that to the base version
     build_num = os.getenv('CI_VERSION_BUILD_NUMBER')
     if build_num:
-        return '{}.{}'.format(scuba.version.BASE_VERSION, build_num)
+        return f'{scuba.version.BASE_VERSION}.{build_num}'
 
     # Otherwise, use the auto-versioning
     return scuba.version.__version__

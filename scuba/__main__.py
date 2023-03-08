@@ -24,8 +24,8 @@ from .utils import format_cmdline, parse_env_var
 from .version import __version__
 
 
-def appmsg(fmt, *args):
-    print('scuba: ' + fmt.format(*args), file=sys.stderr)
+def appmsg(msg):
+    print('scuba: ' + msg, file=sys.stderr)
 
 
 def parse_scuba_args(argv):
@@ -76,7 +76,7 @@ def parse_scuba_args(argv):
     env = dict()
     for k,v in args.env_vars:
         if k in env:
-            ap.error("Duplicate env var {}".format(k))
+            ap.error(f"Duplicate env var {k!r}")
         env[k] = v
     args.env_vars = env
 
@@ -120,11 +120,8 @@ def run_scuba(scuba_args):
         run_args = dive.get_docker_cmdline()
 
         if g_verbose or scuba_args.dry_run:
-            print(str(dive))
-            print()
-
-            appmsg('Docker command line:')
-            print('$ ' + format_cmdline(run_args))
+            appmsg(str(dive) + "\n")
+            appmsg("Docker command line:\n$ " + format_cmdline(run_args))
 
         if scuba_args.dry_run:
             appmsg("Temp files not cleaned up")
@@ -150,10 +147,10 @@ def main(argv=None):
         rc = run_scuba(scuba_args) or 0
         sys.exit(rc)
     except ConfigError as e:
-        appmsg("Config error: " + str(e))
+        appmsg(f"Config error: {e}")
         sys.exit(128)
     except DockerExecuteError as e:
-        appmsg(str(e))
+        appmsg(f"{e}")
         sys.exit(2)
     except (ScubaError, DockerError) as e:
         appmsg(str(e))
