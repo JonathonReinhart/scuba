@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [2.10.1] - 2023-03-07
 ### Fixed
 - Create directories for volumes as invoking user rather than root. (#201)
 
@@ -246,7 +246,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 First versioned release
 
 
-[Unreleased]: https://github.com/JonathonReinhart/scuba/compare/v2.10.0...HEAD
+[Unreleased]: https://github.com/JonathonReinhart/scuba/compare/v2.10.1...HEAD
+[2.10.1]: https://github.com/JonathonReinhart/scuba/compare/v2.10.0...v2.10.1
 [2.10.0]: https://github.com/JonathonReinhart/scuba/compare/v2.9.0...v2.10.0
 [2.9.0]: https://github.com/JonathonReinhart/scuba/compare/v2.8.0...v2.9.0
 [2.8.0]: https://github.com/JonathonReinhart/scuba/compare/v2.7.0...v2.8.0
