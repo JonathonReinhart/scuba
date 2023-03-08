@@ -89,7 +89,7 @@ class Loader(yaml.SafeLoader):
             for k in re.split(r'(?<!\\)\.', key):
                 cur = cur[k.replace('\\.', '.')]  # Be sure to replace any escaped '.' characters with *just* the '.'
         except KeyError:
-            raise yaml.YAMLError('Key "{}" not found in {}'.format(key, filename))
+            raise yaml.YAMLError(f'Key {key!r} not found in {filename}')
         return cur
 
     def override(self, node):
@@ -138,14 +138,14 @@ def find_config():
             return path, rel, load_config(cfg_path)
 
         if not cross_fs and os.path.ismount(path):
-            msg = '{} not found here or any parent up to mount point {}'.format(SCUBA_YML, path) \
+            msg = f'{SCUBA_YML} not found here or any parent up to mount point {path}' \
                    + '\nStopping at filesystem boundary (SCUBA_DISCOVERY_ACROSS_FILESYSTEM not set).'
             raise ConfigNotFoundError(msg)
 
         # Traverse up directory hierarchy
         path, rest = os.path.split(path)
         if not rest:
-            raise ConfigNotFoundError('{} not found here or any parent directories'.format(SCUBA_YML))
+            raise ConfigNotFoundError(f'{SCUBA_YML} not found here or any parent directories')
 
         # Accumulate the relative path back to where we started
         rel = os.path.join(rest, rel)
@@ -166,7 +166,7 @@ def _process_script_node(node, name):
         # There must be a "script" key, which must be a list of strings
         script = node.get('script')
         if not script:
-            raise ConfigError("{}: must have a 'script' subkey".format(name))
+            raise ConfigError(f"{name}: must have a 'script' subkey")
 
         if isinstance(script, list):
             return script
@@ -174,9 +174,9 @@ def _process_script_node(node, name):
         if isinstance(script, str):
             return [script]
 
-        raise ConfigError("{}.script: must be a string or list".format(name))
+        raise ConfigError(f"{name}.script: must be a string or list")
 
-    raise ConfigError("{}: must be string or dict".format(name))
+    raise ConfigError(f"{name}: must be string or dict")
 
 
 def _process_environment(node, name):
@@ -196,8 +196,7 @@ def _process_environment(node, name):
             k, v = parse_env_var(e)
             result[k] = v
     else:
-        raise ConfigError("'{}' must be list or mapping, not {}".format(
-                name, type(node).__name__))
+        raise ConfigError(f"'{name}' must be list or mapping, not {type(node).__name__}")
 
     return result
 
@@ -222,8 +221,7 @@ def _get_nullable_str(data, key):
         ep = ''
 
     if not isinstance(ep, str):
-        raise ConfigError("'{}' must be a string, not {}".format(
-                key, type(ep).__name__))
+        raise ConfigError(f"{key!r} must be a string, not {type(ep).__name__}")
     return ep
 
 def _get_entrypoint(data):
@@ -243,8 +241,7 @@ def _get_docker_args(data):
 def _get_typed_val(data, key, type_):
     v = data.get(key)
     if v is not None and not isinstance(v, type_):
-        raise ConfigError("'{}' must be a {}, not {}".format(
-                key, type_.__name__, type(v).__name__))
+        raise ConfigError(f"{key!r} must be a {type_.__name__}, not {type(v).__name__}")
     return v
 
 def _get_dict(data, key):
@@ -270,10 +267,9 @@ def _expand_path(in_str):
         output = expand_env_vars(in_str)
     except KeyError as ke:
         # pylint: disable=raise-missing-from
-        raise ConfigError("Unset environment variable '{}' used in '{}'".format(ke.args[0], in_str))
+        raise ConfigError(f"Unset environment variable {ke.args[0]!r} used in {in_str!r}")
     except ValueError as ve:
-        raise ConfigError("Unable to expand string '{}' due to parsing "
-                "errors".format(in_str)) from ve
+        raise ConfigError(f"Unable to expand string '{in_str}' due to parsing errors") from ve
 
     return output
 
@@ -306,14 +302,14 @@ class ScubaVolume:
         if isinstance(node, dict):
             hpath = node.get('hostpath')
             if hpath is None:
-                raise ConfigError("Volume {} must have a 'hostpath' subkey".format(cpath))
+                raise ConfigError(f"Volume {cpath} must have a 'hostpath' subkey")
             return cls(
                 container_path = cpath,
                 host_path = _expand_path(hpath),
                 options = _get_delimited_str_list(node, 'options', ','),
                 )
 
-        raise ConfigError("{}: must be string or dict".format(cpath))
+        raise ConfigError(f"{cpath}: must be string or dict")
 
     def get_vol_opt(self):
         if not self.host_path:
@@ -347,7 +343,7 @@ class ScubaAlias:
                 entrypoint = _get_entrypoint(node),
                 environment = _process_environment(
                         node.get('environment'),
-                        '{}.{}'.format(name, 'environment')),
+                        f"{name}.environment"),
                 shell = node.get('shell'),
                 as_root = node.get('root'),
                 docker_args = _get_docker_args(node),
@@ -367,8 +363,9 @@ class ScubaConfig:
         # Check for unrecognized nodes
         extra = [n for n in data if not n in optional_nodes]
         if extra:
-            raise ConfigError('{}: Unrecognized node{}: {}'.format(SCUBA_YML,
-                    's' if len(extra) > 1 else '', ', '.join(extra)))
+            raise ConfigError(
+                f"{SCUBA_YML}: Unrecognized node{'s' if len(extra) > 1 else ''}:"
+                + ', '.join(extra))
 
         self._image = data.get('image')
         self.shell = data.get('shell', DEFAULT_SHELL)
@@ -414,8 +411,8 @@ def load_config(path):
         with open(path, 'r') as f:
             data = yaml.load(f, Loader)
     except IOError as e:
-        raise ConfigError('Error opening {}: {}'.format(SCUBA_YML, e))
+        raise ConfigError(f'Error opening {SCUBA_YML}: {e}')
     except yaml.YAMLError as e:
-        raise ConfigError('Error loading {}: {}'.format(SCUBA_YML, e))
+        raise ConfigError(f'Error loading {SCUBA_YML}: {e}')
 
     return ScubaConfig(**(data or {}))
