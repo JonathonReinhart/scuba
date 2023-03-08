@@ -31,14 +31,9 @@ call = __wrap_docker_exec(subprocess.call)
 def _run_docker(*args, capture=False):
     '''Run docker and raise DockerExecuteError on ENOENT'''
     args = ['docker'] + list(args)
-    kw = dict(
-            universal_newlines=True,    # TODO: Use 'text' in Python 3.7+
-            )
+    kw = dict(text=True)
     if capture:
-        kw.update(
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                )
+        kw.update(capture_output=True)
 
     return __wrap_docker_exec(subprocess.run)(args, **kw)
 
