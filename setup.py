@@ -48,7 +48,7 @@ def get_version():
 setup(
     name = 'scuba',
     version = get_version(),
-    python_requires='>=3.5',
+    python_requires='>=3.7',
     description = 'Simplify use of Docker containers for building software',
     long_description = read_project_file('README.md'),
     long_description_content_type = 'text/markdown',
