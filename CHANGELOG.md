@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+### Fixed
+- Create directories for volumes as invoking user rather than root. (#201)
+
+
 ## [2.10.0] - 2022-01-12
 ### Added
 - Add ability to use environment variables in volume paths (#192)
