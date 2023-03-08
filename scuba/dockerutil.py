@@ -13,7 +13,7 @@ class NoSuchImageError(DockerError):
         self.image = image
 
     def __str__(self):
-        return 'No such image: {}'.format(self.image)
+        return f'No such image: {self.image}'
 
 
 def __wrap_docker_exec(func):
@@ -53,7 +53,7 @@ def docker_inspect(image):
     if not cp.returncode == 0:
         if 'no such image' in cp.stderr.lower():
             raise NoSuchImageError(image)
-        raise DockerError('Failed to inspect image: {}'.format(cp.stderr.strip()))
+        raise DockerError(f'Failed to inspect image: {cp.stderr.strip()}')
 
     return json.loads(cp.stdout)[0]
 
@@ -62,7 +62,7 @@ def docker_pull(image):
     # If this fails, the default docker stdout/stderr looks good to the user.
     cp = _run_docker('pull', image)
     if cp.returncode != 0:
-        raise DockerError('Failed to pull image "{}"'.format(image))
+        raise DockerError(f'Failed to pull image: {image}')
 
 def docker_inspect_or_pull(image):
     '''Inspects a docker image, pulling it if it doesn't exist'''
@@ -91,7 +91,7 @@ def get_images():
     )
 
     if not cp.returncode == 0:
-        raise DockerError('Failed to retrieve images: {}'.format(cp.stderr.strip()))
+        raise DockerError(f'Failed to retrieve images: {cp.stderr.strip()}')
 
     return cp.stdout.splitlines()
 
@@ -102,7 +102,7 @@ def get_image_command(image):
     try:
         return info['Config']['Cmd']
     except KeyError as ke:
-        raise DockerError('Failed to inspect image: JSON result missing key {}'.format(ke))
+        raise DockerError(f'Failed to inspect image: JSON result missing key {ke}')
 
 def get_image_entrypoint(image):
     '''Gets the image entrypoint'''
@@ -110,12 +110,12 @@ def get_image_entrypoint(image):
     try:
         return info['Config']['Entrypoint']
     except KeyError as ke:
-        raise DockerError('Failed to inspect image: JSON result missing key {}'.format(ke))
+        raise DockerError(f'Failed to inspect image: JSON result missing key {ke}')
 
 
 def make_vol_opt(hostdir, contdir, options=None):
     '''Generate a docker volume option'''
-    vol = '--volume={}:{}'.format(hostdir, contdir)
+    vol = f'--volume={hostdir}:{contdir}'
     if options != None:
         if isinstance(options, str):
             options = (options,)
