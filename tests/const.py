@@ -19,4 +19,4 @@ if __name__ == '__main__':
     for name, val in dict(vars()).items():
         if name.startswith('_'):
             continue
-        print('{}="{}"'.format(name, val))
+        print(f'{name}="{val}"')
