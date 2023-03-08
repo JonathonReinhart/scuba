@@ -180,6 +180,8 @@ Note that because variable expansion is now applied to all volume keys, if one
 desires to have a key with an explicit ``$`` character, it must be written as
 ``$$``.
 
+Volume host directories which do not already exist are created as the current
+user before creating the container.
 
 .. _conf_aliases:
 
