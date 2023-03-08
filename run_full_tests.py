@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import os
 import sys
 import subprocess
@@ -27,7 +27,7 @@ class InTempDir:
 def test1():
     with InTempDir(prefix='scuba-systest'):
         with open('.scuba.yml', 'w+t') as f:
-            f.write('image: {}\n'.format(DOCKER_IMAGE))
+            f.write(f'image: {DOCKER_IMAGE}\n')
 
         in_data = 'success'
 
