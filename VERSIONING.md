@@ -27,11 +27,11 @@ versioning scheme. Consider a base version of `1.2.3`:
    base version.
 
 2. **Test PyPI** - Scuba is automatically deployed (via Travis-CI) to the
-   [PyPI Testing Site](testpypi.python.org) upon each push to the `master`
+   [PyPI Testing Site](testpypi.python.org) upon each push to the `main`
    branch. PyPI requires non-local [PEP 440](https://www.python.org/dev/peps/pep-0440)
    -compliant versions. Because of this, the Travis CI build number is appended
    to the base version, excluding any Git information, e.g. `1.2.3.456` where
-   `456` is the build number. This ensures that the latest build on `master`
+   `456` is the build number. This ensures that the latest build on `main`
    will always be deployed to PyPI testing as the newest version.
 
 3. **Git clone** - Scuba can be run from a local Git repository.
