@@ -1,10 +1,10 @@
 name: Upload to Test PyPI
 
-# On every push to master, push to Test PyPI
+# On every push to main, push to Test PyPI
 on:
   push:
     branches:
-      - master
+      - main
 
 # TODO: De-duplicate with python-publish-release.yml
 
