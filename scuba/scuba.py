@@ -18,14 +18,26 @@ from .utils import shell_quote_cmd, flatten_list, get_umask, writeln
 class ScubaError(Exception):
     pass
 
-class ScubaDive:
-    def __init__(self, user_command, config, top_path, top_rel,
-            docker_args=None, env=None, as_root=False, verbose=False,
-            image_override=None, entrypoint=None, shell_override=None, keep_tempfiles=False):
 
+class ScubaDive:
+    def __init__(
+        self,
+        user_command,
+        config,
+        top_path,
+        top_rel,
+        docker_args=None,
+        env=None,
+        as_root=False,
+        verbose=False,
+        image_override=None,
+        entrypoint=None,
+        shell_override=None,
+        keep_tempfiles=False,
+    ):
         env = env or {}
         if not isinstance(env, Mapping):
-            raise ValueError('Argument env must be dict-like')
+            raise ValueError("Argument env must be dict-like")
 
         self.as_root = as_root
         self.verbose = verbose
@@ -43,25 +55,22 @@ class ScubaDive:
         self.__scubadir_contpath = None
         self.config = config
 
-
         # Mount scuba root directory at the same path in the container...
         self.add_volume(top_path, top_path)
 
         # ...and set the working dir relative to it
         self.set_workdir(os.path.join(top_path, top_rel))
 
-        self.add_env('SCUBA_ROOT', top_path)
-
+        self.add_env("SCUBA_ROOT", top_path)
 
         try:
-
             # Process any aliases
             self.context = ScubaContext.process_command(
-                                      cfg = self.config,
-                                      command = user_command,
-                                      image = image_override,
-                                      shell = shell_override,
-                                      )
+                cfg=self.config,
+                command=user_command,
+                image=image_override,
+                shell=shell_override,
+            )
 
             # Apply environment vars from .scuba.yml
             self.env_vars.update(self.context.environment)
@@ -69,7 +78,7 @@ class ScubaDive:
             self.__make_scubadir()
 
             if self.is_remote_docker:
-                '''
+                """
                 Docker is running remotely (e.g. boot2docker on OSX).
                 We don't need to do any user setup whatsoever.
 
@@ -77,15 +86,14 @@ class ScubaDive:
 
                 See:
                 https://github.com/JonathonReinhart/scuba/issues/17
-                '''
-                raise ScubaError('Remote docker not supported (DOCKER_HOST is set)')
+                """
+                raise ScubaError("Remote docker not supported (DOCKER_HOST is set)")
 
             # Docker is running natively
             self.__setup_native_run()
         except:
             self._cleanup()
             raise
-
 
     def __enter__(self):
         return self
@@ -100,67 +108,63 @@ class ScubaDive:
     def __str__(self):
         s = StringIO()
 
-        indent = '  '
+        indent = "  "
         level = 0
 
         def writelist(name, vals):
-            writeln(s, f'{indent * level}{name}:')
+            writeln(s, f"{indent * level}{name}:")
             for val in vals or ():
-                writeln(s, f'{indent * (level + 1)}{val}')
+                writeln(s, f"{indent * (level + 1)}{val}")
 
-        def writescl(name, val=''):
+        def writescl(name, val=""):
             writeln(s, f"{indent * level}{name + ':':<14s}{val}")
 
-        writeln(s, 'ScubaDive')
+        writeln(s, "ScubaDive")
         level += 1
 
-        writescl('verbose', self.verbose)
-        writescl('as_root', self.as_root)
-        writescl('workdir', self.workdir)
+        writescl("verbose", self.verbose)
+        writescl("as_root", self.as_root)
+        writescl("workdir", self.workdir)
 
-        writelist('options', self.options)
-        writelist('docker_args', self.docker_args)
-        writelist('env_vars', (f'{name}={val}' for name, val in self.env_vars.items()))
-        writelist('volumes', (f'{hp} => {cp} {opt}'
-                              for hp, cp, opt in self.__get_vol_opts()))
+        writelist("options", self.options)
+        writelist("docker_args", self.docker_args)
+        writelist("env_vars", (f"{name}={val}" for name, val in self.env_vars.items()))
+        writelist(
+            "volumes", (f"{hp} => {cp} {opt}" for hp, cp, opt in self.__get_vol_opts())
+        )
 
-        writescl('context')
+        writescl("context")
         level += 1
-        writescl('script', self.context.script)
-        writescl('image', self.context.image)
-        writelist('docker_args', self.context.docker_args)
-        writelist('volumes', self.context.volumes)
+        writescl("script", self.context.script)
+        writescl("image", self.context.image)
+        writelist("docker_args", self.context.docker_args)
+        writelist("volumes", self.context.volumes)
 
         return s.getvalue()
 
-
-
-
     @property
     def is_remote_docker(self):
-        return 'DOCKER_HOST' in os.environ
+        return "DOCKER_HOST" in os.environ
 
     def add_env(self, name, val):
-        '''Add an environment variable to the docker run invocation
-        '''
+        """Add an environment variable to the docker run invocation"""
         if name in self.env_vars:
             raise KeyError(name)
         self.env_vars[name] = val
 
     def add_volume(self, hostpath, contpath, options=None):
-        '''Add a volume (bind-mount) to the docker run invocation
-        '''
+        """Add a volume (bind-mount) to the docker run invocation"""
         if options is None:
             options = []
         self.volumes.append((hostpath, contpath, options))
 
     def try_create_volumes(self):
-        '''Try to create non-existent host paths prior to docker run invocation
+        """Try to create non-existent host paths prior to docker run invocation
 
         This only creates user-defined volumes from configuration. The scubadir
         and the initial working directory either exist or are created as root by
         Docker.
-        '''
+        """
         # Cannot create local directories for a remote host
         if self.is_remote_docker:
             return
@@ -176,94 +180,94 @@ class ScubaDive:
                 # Docker will create this path later as root
                 pass
             except OSError as err:
-                raise ScubaError(f'Error creating volume host path: {err}') from err
+                raise ScubaError(f"Error creating volume host path: {err}") from err
 
     def add_option(self, option):
-        '''Add another option to the docker run invocation
-        '''
+        """Add another option to the docker run invocation"""
         self.options.append(option)
 
     def set_workdir(self, workdir):
         self.workdir = workdir
 
     def __locate_scubainit(self):
-        '''Determine path to scubainit binary
-        '''
+        """Determine path to scubainit binary"""
         pkg_path = os.path.dirname(__file__)
 
-        scubainit_path = os.path.join(pkg_path, 'scubainit')
+        scubainit_path = os.path.join(pkg_path, "scubainit")
         if not os.path.isfile(scubainit_path):
-            raise ScubaError(f'scubainit not found at {scubainit_path!r}')
+            raise ScubaError(f"scubainit not found at {scubainit_path!r}")
         return scubainit_path
 
     def __make_scubadir(self):
-        '''Make temp directory where all ancillary files are bind-mounted
-        '''
-        self.__scubadir_hostpath = tempfile.mkdtemp(prefix='scubadir')
-        self.__scubadir_contpath = '/.scuba'
+        """Make temp directory where all ancillary files are bind-mounted"""
+        self.__scubadir_hostpath = tempfile.mkdtemp(prefix="scubadir")
+        self.__scubadir_contpath = "/.scuba"
         self.add_volume(self.__scubadir_hostpath, self.__scubadir_contpath)
 
     def __setup_native_run(self):
         # These options are appended to mounted volume arguments
         # NOTE: This tells Docker to re-label the directory for compatibility
         # with SELinux. See `man docker-run` for more information.
-        self.vol_opts = ['z']
+        self.vol_opts = ["z"]
 
         # Pass variables to scubainit
-        self.add_env('SCUBAINIT_UMASK', f'{get_umask():04o}')
+        self.add_env("SCUBAINIT_UMASK", f"{get_umask():04o}")
 
         # Check if the CLI args specify "run as root", or if the command (alias) does
         if not self.as_root and not self.context.as_root:
             uid = os.getuid()
             gid = os.getgid()
-            self.add_env('SCUBAINIT_UID', uid)
-            self.add_env('SCUBAINIT_GID', gid)
-            self.add_env('SCUBAINIT_USER', getpwuid(uid).pw_name)
-            self.add_env('SCUBAINIT_GROUP', getgrgid(gid).gr_name)
+            self.add_env("SCUBAINIT_UID", uid)
+            self.add_env("SCUBAINIT_GID", gid)
+            self.add_env("SCUBAINIT_USER", getpwuid(uid).pw_name)
+            self.add_env("SCUBAINIT_GROUP", getgrgid(gid).gr_name)
 
         if self.verbose:
-            self.add_env('SCUBAINIT_VERBOSE', 1)
-
+            self.add_env("SCUBAINIT_VERBOSE", 1)
 
         # Copy scubainit into the container
         # We make a copy because Docker 1.13 gets pissed if we try to re-label
         # /usr, and Fedora 28 gives an AVC denial.
-        scubainit_cpath = self.copy_scubadir_file('scubainit', self.__locate_scubainit())
+        scubainit_cpath = self.copy_scubadir_file(
+            "scubainit", self.__locate_scubainit()
+        )
 
         # Hooks
-        for name in ('root', 'user', ):
+        for name in (
+            "root",
+            "user",
+        ):
             self.__generate_hook_script(name, self.context.shell)
 
         # allocate TTY if scuba's output is going to a terminal
         # and stdin is not redirected
         if sys.stdout.isatty() and sys.stdin.isatty():
-            self.add_option('--tty')
+            self.add_option("--tty")
 
-
-        '''
+        """
         Normally, if the user provides no command to "docker run", the image's
         default CMD is run. Because we set the entrypiont, scuba must emulate the
         default behavior itself.
-        '''
+        """
         if not self.context.script:
             # No user-provided command; we want to run the image's default command
             default_cmd = get_image_command(self.context.image)
             if not default_cmd:
-                raise ScubaError('No command given and no image-specified command')
+                raise ScubaError("No command given and no image-specified command")
             self.context.script = [shell_quote_cmd(default_cmd)]
 
         # Make scubainit the real entrypoint, and use the defined entrypoint as
         # the docker command (if it exists)
-        self.add_option(f'--entrypoint={scubainit_cpath}')
+        self.add_option(f"--entrypoint={scubainit_cpath}")
 
         self.docker_cmd = []
         if self.entrypoint_override is not None:
             # --entrypoint takes precedence
-            if self.entrypoint_override != '':
+            if self.entrypoint_override != "":
                 self.docker_cmd = [self.entrypoint_override]
         elif self.context.entrypoint is not None:
             # then .scuba.yml
-            if self.context.entrypoint != '':
+            if self.context.entrypoint != "":
                 self.docker_cmd = [self.context.entrypoint]
         else:
             ep = get_image_entrypoint(self.context.image)
@@ -271,20 +275,19 @@ class ScubaDive:
                 self.docker_cmd = ep
 
         # The user command is executed via a generated shell script
-        with self.open_scubadir_file('command.sh', 'wt') as f:
+        with self.open_scubadir_file("command.sh", "wt") as f:
             self.docker_cmd += [self.context.shell, f.container_path]
-            writeln(f, '# Auto-generated from scuba')
-            writeln(f, 'set -e')
+            writeln(f, "# Auto-generated from scuba")
+            writeln(f, "set -e")
             for cmd in self.context.script:
                 writeln(f, cmd)
 
-
     def open_scubadir_file(self, name, mode):
-        '''Opens a file in the 'scubadir'
+        """Opens a file in the 'scubadir'
 
         This file will automatically be bind-mounted into the container,
         at a path given by the 'container_path' property on the returned file object.
-        '''
+        """
         path = os.path.join(self.__scubadir_hostpath, name)
         assert not os.path.exists(path)
 
@@ -295,18 +298,16 @@ class ScubaDive:
         f.container_path = os.path.join(self.__scubadir_contpath, name)
         return f
 
-
     def copy_scubadir_file(self, name, source):
-        '''Copies source into the scubadir
+        """Copies source into the scubadir
 
         Returns the container-path of the copied file
-        '''
+        """
         dest = os.path.join(self.__scubadir_hostpath, name)
         assert not os.path.exists(dest)
         shutil.copy2(source, dest)
 
         return os.path.join(self.__scubadir_contpath, name)
-
 
     def __generate_hook_script(self, name, shell):
         script = self.config.hooks.get(name)
@@ -314,13 +315,12 @@ class ScubaDive:
             return
 
         # Generate the hook script, mount it into the container, and tell scubainit
-        with self.open_scubadir_file(f'hooks/{name}.sh', 'wt') as f:
+        with self.open_scubadir_file(f"hooks/{name}.sh", "wt") as f:
+            self.add_env(f"SCUBAINIT_HOOK_{name.upper()}", f.container_path)
 
-            self.add_env(f'SCUBAINIT_HOOK_{name.upper()}', f.container_path)
-
-            writeln(f, f'#!{shell}')
-            writeln(f, '# Auto-generated from .scuba.yml')
-            writeln(f, 'set -e')
+            writeln(f, f"#!{shell}")
+            writeln(f, "# Auto-generated from .scuba.yml")
+            writeln(f, "set -e")
             for cmd in script:
                 writeln(f, cmd)
 
@@ -329,16 +329,17 @@ class ScubaDive:
             yield hostpath, contpath, options + self.vol_opts
 
     def get_docker_cmdline(self):
-        args = ['docker', 'run',
+        args = [
+            "docker",
+            "run",
             # interactive: keep STDIN open
-            '-i',
-
+            "-i",
             # remove container after exit
-            '--rm',
+            "--rm",
         ]
 
-        for name,val in self.env_vars.items():
-            args.append(f'--env={name}={val}')
+        for name, val in self.env_vars.items():
+            args.append(f"--env={name}={val}")
 
         for hostpath, contpath, options in self.__get_vol_opts():
             args.append(make_vol_opt(hostpath, contpath, options))
@@ -347,7 +348,7 @@ class ScubaDive:
             args.append(vol.get_vol_opt())
 
         if self.workdir:
-            args += ['-w', self.workdir]
+            args += ["-w", self.workdir]
 
         args += self.options
 
@@ -369,7 +370,16 @@ class ScubaDive:
 
 
 class ScubaContext:
-    def __init__(self, image=None, script=None, entrypoint=None, environment=None, shell=None, docker_args=None, volumes=None):
+    def __init__(
+        self,
+        image=None,
+        script=None,
+        entrypoint=None,
+        environment=None,
+        shell=None,
+        docker_args=None,
+        volumes=None,
+    ):
         self.image = image
         self.script = script
         self.as_root = False
@@ -381,7 +391,7 @@ class ScubaContext:
 
     @classmethod
     def process_command(cls, cfg, command, image=None, shell=None):
-        '''Processes a user command using aliases
+        """Processes a user command using aliases
 
         Arguments:
             cfg         ScubaConfig object
@@ -392,14 +402,14 @@ class ScubaContext:
         Returns: A ScubaContext object with the following attributes:
             script: a list of command line strings
             image: the docker image name to use
-        '''
+        """
         result = cls(
-                entrypoint = cfg.entrypoint,
-                environment = cfg.environment.copy(),
-                shell = cfg.shell,
-                docker_args = cfg.docker_args,
-                volumes = cfg.volumes,
-                )
+            entrypoint=cfg.entrypoint,
+            environment=cfg.environment.copy(),
+            shell=cfg.shell,
+            docker_args=cfg.docker_args,
+            volumes=cfg.volumes,
+        )
 
         if command:
             alias = cfg.aliases.get(command[0])
@@ -418,7 +428,10 @@ class ScubaContext:
                 if alias.as_root:
                     result.as_root = True
 
-                if isinstance(alias.docker_args, OverrideMixin) or result.docker_args is None:
+                if (
+                    isinstance(alias.docker_args, OverrideMixin)
+                    or result.docker_args is None
+                ):
                     result.docker_args = alias.docker_args
                 elif alias.docker_args is not None:
                     result.docker_args.extend(alias.docker_args)
@@ -434,14 +447,16 @@ class ScubaContext:
                     # Alias is a multiline script; no additional
                     # arguments are allowed in the scuba invocation.
                     if len(command) > 1:
-                        raise ConfigError('Additional arguments not allowed with multi-line aliases')
+                        raise ConfigError(
+                            "Additional arguments not allowed with multi-line aliases"
+                        )
                     result.script = alias.script
 
                 else:
                     # Alias is a single-line script; perform substituion
                     # and add user arguments.
                     command.pop(0)
-                    result.script = [alias.script[0] + ' ' + shell_quote_cmd(command)]
+                    result.script = [alias.script[0] + " " + shell_quote_cmd(command)]
 
             result.script = flatten_list(result.script)
 

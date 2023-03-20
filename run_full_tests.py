@@ -9,7 +9,7 @@ from tests.const import DOCKER_IMAGE
 
 
 class InTempDir:
-    def __init__(self, suffix='', prefix='tmp', delete=True):
+    def __init__(self, suffix="", prefix="tmp", delete=True):
         self.delete = delete
         self.temp_path = tempfile.mkdtemp(suffix=suffix, prefix=prefix)
 
@@ -24,26 +24,29 @@ class InTempDir:
         if self.delete:
             shutil.rmtree(self.temp_path)
 
+
 def test1():
-    with InTempDir(prefix='scuba-systest'):
-        with open('.scuba.yml', 'w+t') as f:
-            f.write(f'image: {DOCKER_IMAGE}\n')
+    with InTempDir(prefix="scuba-systest"):
+        with open(".scuba.yml", "w+t") as f:
+            f.write(f"image: {DOCKER_IMAGE}\n")
 
-        in_data = 'success'
+        in_data = "success"
 
-        with open('file.in', 'w+t') as f:
+        with open("file.in", "w+t") as f:
             f.write(in_data)
 
-        subprocess.check_call(['scuba', '/bin/sh', '-c', 'cat file.in >> file.out'])
+        subprocess.check_call(["scuba", "/bin/sh", "-c", "cat file.in >> file.out"])
 
-        with open('file.out', 'rt') as f:
+        with open("file.out", "rt") as f:
             out_data = f.read()
 
         assert in_data == out_data
 
+
 def main():
     test1()
-    print('All is good.')
+    print("All is good.")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
