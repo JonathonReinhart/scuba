@@ -11,47 +11,55 @@ from unittest import mock
 def assert_seq_equal(a, b):
     assert list(a) == list(b)
 
+
 def assert_paths_equal(a, b):
     # TODO: normpath() updatd to handle Path in Python 3.6
     a = str(a)
     b = str(b)
     assert normpath(a) == normpath(b)
 
+
 def assert_str_equalish(exp, act):
     exp = str(exp).strip()
     act = str(act).strip()
     assert exp == act
 
+
 def make_executable(path):
     mode = os.stat(path).st_mode
-    mode |= (mode & 0o444) >> 2    # copy R bits to X
+    mode |= (mode & 0o444) >> 2  # copy R bits to X
     os.chmod(path, mode)
+
 
 def mock_open():
     real_open = open
+
     def mocked_open(*args, **kwargs):
         return real_open(*args, **kwargs)
 
-    return mock.patch('builtins.open', side_effect=mocked_open)
+    return mock.patch("builtins.open", side_effect=mocked_open)
 
 
 # http://stackoverflow.com/a/8389373/119527
 class PseudoTTY:
     def __init__(self, underlying):
         self.__underlying = underlying
+
     def __getattr__(self, name):
         return getattr(self.__underlying, name)
+
     def isatty(self):
         return True
 
 
 def skipUnlessTty():
-    return unittest.skipUnless(sys.stdin.isatty(),
-            "Can't test docker tty if not connected to a terminal")
+    return unittest.skipUnless(
+        sys.stdin.isatty(), "Can't test docker tty if not connected to a terminal"
+    )
 
 
 class InTempDir:
-    def __init__(self, suffix='', prefix='tmp', dir=None, delete=True):
+    def __init__(self, suffix="", prefix="tmp", dir=None, delete=True):
         self.delete = delete
         self.temp_path = tempfile.mkdtemp(suffix=suffix, prefix=prefix, dir=dir)
 

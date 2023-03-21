@@ -11,13 +11,13 @@ import scuba.utils
 
 def _parse_cmdline(cmdline):
     # Strip the formatting and whitespace
-    lines = [l.rstrip('\\').strip() for l in cmdline.splitlines()]
+    lines = [l.rstrip("\\").strip() for l in cmdline.splitlines()]
 
     # Split each line, and return a flattened list of arguments
     return chain.from_iterable(map(shlex.split, lines))
 
-def _test_format_cmdline(args):
 
+def _test_format_cmdline(args):
     # Call the unit-under-test to get the formatted command line
     result = scuba.utils.format_cmdline(args)
 
@@ -29,23 +29,32 @@ def _test_format_cmdline(args):
 
 
 def test_format_cmdline():
-    '''format_cmdline works as expected'''
+    """format_cmdline works as expected"""
 
-    _test_format_cmdline([
-        'something',
-        '-a',
-        '-b',
-        '--long', 'option text',
-        '-s', 'hort',
-        'a very long argument here that will end up on its own line because it is so wide and nothing else will fit at the default width',
-        'and now',
-        'some', 'more', 'stuff',
-        'and even more stuff',
-    ])
+    _test_format_cmdline(
+        [
+            "something",
+            "-a",
+            "-b",
+            "--long",
+            "option text",
+            "-s",
+            "hort",
+            (
+                "a very long argument here that will end up on its own line because it"
+                " is so wide and nothing else will fit at the default width"
+            ),
+            "and now",
+            "some",
+            "more",
+            "stuff",
+            "and even more stuff",
+        ]
+    )
 
 
 def test_shell_quote_cmd():
-    args = ['foo', 'bar pop', '"tee ball"']
+    args = ["foo", "bar pop", '"tee ball"']
 
     result = scuba.utils.shell_quote_cmd(args)
 
@@ -55,35 +64,41 @@ def test_shell_quote_cmd():
 
 
 def test_parse_env_var():
-    '''parse_env_var returns a key, value pair'''
-    result = scuba.utils.parse_env_var('KEY=value')
-    assert result == ('KEY', 'value')
+    """parse_env_var returns a key, value pair"""
+    result = scuba.utils.parse_env_var("KEY=value")
+    assert result == ("KEY", "value")
+
 
 def test_parse_env_var_more_equals():
-    '''parse_env_var handles multiple equals signs'''
-    result = scuba.utils.parse_env_var('KEY=anotherkey=value')
-    assert result == ('KEY', 'anotherkey=value')
+    """parse_env_var handles multiple equals signs"""
+    result = scuba.utils.parse_env_var("KEY=anotherkey=value")
+    assert result == ("KEY", "anotherkey=value")
+
 
 def test_parse_env_var_no_equals(monkeypatch):
-    '''parse_env_var handles no equals and gets value from environment'''
-    monkeypatch.setenv('KEY', 'mockedvalue')
-    result = scuba.utils.parse_env_var('KEY')
-    assert result == ('KEY', 'mockedvalue')
+    """parse_env_var handles no equals and gets value from environment"""
+    monkeypatch.setenv("KEY", "mockedvalue")
+    result = scuba.utils.parse_env_var("KEY")
+    assert result == ("KEY", "mockedvalue")
+
 
 def test_parse_env_var_not_set(monkeypatch):
-    '''parse_env_var returns an empty string if not set'''
-    monkeypatch.delenv('NOTSET', raising=False)
-    result = scuba.utils.parse_env_var('NOTSET')
-    assert result == ('NOTSET', '')
+    """parse_env_var returns an empty string if not set"""
+    monkeypatch.delenv("NOTSET", raising=False)
+    result = scuba.utils.parse_env_var("NOTSET")
+    assert result == ("NOTSET", "")
+
 
 def test_flatten_list__not_list():
     with pytest.raises(ValueError):
-        scuba.utils.flatten_list('abc')
+        scuba.utils.flatten_list("abc")
+
 
 def test_flatten_list__not_nested():
     sample = [1, 2, 3, 4]
     result = scuba.utils.flatten_list(sample)
     assert result == sample
+
 
 def test_flatten_list__nested_1():
     sample = [
@@ -92,24 +107,27 @@ def test_flatten_list__nested_1():
         4,
         [5, 6, 7],
     ]
-    exp = range(1, 7+1)
+    exp = range(1, 7 + 1)
     result = scuba.utils.flatten_list(sample)
     assert_seq_equal(result, exp)
+
 
 def test_flatten_list__nested_many():
     sample = [
         1,
         [2, 3],
         [4, 5, [6, 7, 8]],
-        9, 10,
+        9,
+        10,
         [11, [12, [13, [14, [15, [16, 17, 18]]]]]],
     ]
-    exp = range(1, 18+1)
+    exp = range(1, 18 + 1)
     result = scuba.utils.flatten_list(sample)
     assert_seq_equal(result, exp)
 
+
 def test_get_umask():
-    testval = 0o123     # unlikely default
+    testval = 0o123  # unlikely default
     orig = os.umask(testval)
     try:
         # Ensure our test is valid
@@ -123,18 +141,24 @@ def test_get_umask():
     finally:
         os.umask(orig)
 
+
 def test_writeln():
     with io.StringIO() as s:
-        scuba.utils.writeln(s, 'hello')
-        scuba.utils.writeln(s, 'goodbye')
-        assert s.getvalue() == 'hello\ngoodbye\n'
+        scuba.utils.writeln(s, "hello")
+        scuba.utils.writeln(s, "goodbye")
+        assert s.getvalue() == "hello\ngoodbye\n"
+
 
 def test_expand_env_vars(monkeypatch):
     monkeypatch.setenv("MY_VAR", "my favorite variable")
-    assert scuba.utils.expand_env_vars("This is $MY_VAR") == \
-            "This is my favorite variable"
-    assert scuba.utils.expand_env_vars("What is ${MY_VAR}?") == \
-            "What is my favorite variable?"
+    assert (
+        scuba.utils.expand_env_vars("This is $MY_VAR") == "This is my favorite variable"
+    )
+    assert (
+        scuba.utils.expand_env_vars("What is ${MY_VAR}?")
+        == "What is my favorite variable?"
+    )
+
 
 def test_expand_missing_env_vars(monkeypatch):
     monkeypatch.delenv("MY_VAR", raising=False)

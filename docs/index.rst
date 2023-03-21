@@ -14,3 +14,4 @@ Local builds made easy, using Docker.
    bash_completion
    environment
    changelog
+   contributing

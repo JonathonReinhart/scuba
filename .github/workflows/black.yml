@@ -1,0 +1,17 @@
+# Enforce code formatting with Black
+# https://black.readthedocs.io/en/stable/integrations/github_actions.html
+name: Blacken
+
+on: [push, pull_request]
+
+jobs:
+  blacken:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: psf/black@stable
+        with:
+          # TODO(#203): Remove target-version when we add pyproject.toml
+          options: "--check --color --diff --target-version=py37"
+          src: "."
+          version: "~= 23.0"  # Must match requirements.txt
