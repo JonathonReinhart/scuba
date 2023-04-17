@@ -11,7 +11,6 @@ jobs:
       - uses: actions/checkout@v3
       - uses: psf/black@stable
         with:
-          # TODO(#203): Remove target-version when we add pyproject.toml
-          options: "--check --color --diff --target-version=py37"
+          options: "--check --color --diff"
           src: "."
           version: "~= 23.0"  # Must match requirements.txt

@@ -5,8 +5,6 @@ import black
 
 def _run_black(fix: bool) -> bool:
     args = [
-        # TODO(#203): Remove target-version when we add pyproject.toml
-        "--target-version=py37",
         ".",
     ]
 
