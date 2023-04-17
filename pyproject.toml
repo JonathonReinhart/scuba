@@ -1,0 +1,45 @@
+[project]
+name = "scuba"
+dynamic = ["version"]
+
+authors = [
+    {name = "Jonathon Reinhart", email="jonathon.reinhart@gmail.com"},
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+    "Topic :: Software Development :: Build Tools",
+]
+dependencies = [
+    "PyYAML",
+]
+description = "Simplify use of Docker containers for building software"
+keywords = ["docker"]
+license = {file = "LICENSE.txt"}
+readme = "README.md"
+requires-python = ">=3.7"
+
+[project.optional-dependencies]
+argcomplete = ["argcomplete>=1.10.1"]
+
+[project.scripts]
+scuba = "scuba.__main__:main"
+
+[project.urls]
+documentation = "https://scuba.readthedocs.io/"
+repository = "https://github.com/JonathonReinhart/scuba"
+changelog = "https://github.com/JonathonReinhart/scuba/blob/main/CHANGELOG.md"
+
+
+[build-system]
+# Tells pip to install wheel before trying to install
+# from an sdist or from Github.
+requires = [
+    "wheel",
+    "setuptools >= 42.0.0",
+]

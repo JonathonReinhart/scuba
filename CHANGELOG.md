@@ -3,6 +3,9 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Changed
+- Introduced `pyproject.toml` and moved metadata from `setup.py` (#211)
+
 ### Removed
 - Drop support for Python 3.5 - 3.6
 
