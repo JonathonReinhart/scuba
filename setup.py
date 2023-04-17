@@ -5,6 +5,9 @@ from setuptools.command.sdist import sdist
 from subprocess import check_call
 import os
 
+################################################################################
+# Build Hooks
+
 
 class build_scubainit(Command):
     description = "Build scubainit binary"
@@ -27,13 +30,6 @@ class build_hook(build):
         build.run(self)
 
 
-def read_project_file(path):
-    proj_dir = os.path.dirname(__file__)
-    path = os.path.join(proj_dir, path)
-    with open(path, "r") as f:
-        return f.read()
-
-
 ################################################################################
 # Dynamic versioning
 
@@ -52,27 +48,15 @@ def get_version():
 ################################################################################
 
 setup(
-    name="scuba",
+    #####
+    # Dynamic core metadata, in addition to pyproject.toml [project]
     version=get_version(),
-    python_requires=">=3.7",
-    description="Simplify use of Docker containers for building software",
-    long_description=read_project_file("README.md"),
-    long_description_content_type="text/markdown",
-    classifiers=[
-        "Development Status :: 5 - Production/Stable",
-        "Environment :: Console",
-        "Intended Audience :: Developers",
-        "License :: OSI Approved :: MIT License",
-        "Natural Language :: English",
-        "Operating System :: POSIX :: Linux",
-        "Operating System :: MacOS :: MacOS X",
-        "Topic :: Software Development :: Build Tools",
-    ],
-    license="MIT",
-    keywords="docker",
-    author="Jonathon Reinhart",
-    author_email="jonathon.reinhart@gmail.com",
-    url="https://github.com/JonathonReinhart/scuba",
+    #####
+    # Setuptools-specific config
+    # We could put this in pyproject.toml [tool.setuptools], but choose not to:
+    # - The functionality is still in beta and requires setuptools >= 61.0.0
+    # - We need setup.py to provide build_hook, so we might as well keep all
+    #   setuptools-specific config here, in one file.
     packages=["scuba"],
     package_data={
         "scuba": [
@@ -81,19 +65,6 @@ setup(
     },
     include_package_data=True,  # https://github.com/pypa/setuptools/issues/1064
     zip_safe=False,  # http://stackoverflow.com/q/24642788/119527
-    entry_points={
-        "console_scripts": [
-            "scuba = scuba.__main__:main",
-        ]
-    },
-    install_requires=[
-        "PyYAML",
-    ],
-    extras_require={
-        "argcomplete": [
-            "argcomplete>=1.10.1",
-        ],
-    },
     # http://stackoverflow.com/questions/17806485
     # http://stackoverflow.com/questions/21915469
     cmdclass={
