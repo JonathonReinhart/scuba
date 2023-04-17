@@ -37,7 +37,7 @@ jobs:
         pip install wheel
     - name: Run tests
       run: |
-        python setup.py bdist_wheel
+        python -m build
         pip install dist/scuba-*-py3-none-any.whl
         ./run_unit_tests.sh
         ./run_full_tests.py
