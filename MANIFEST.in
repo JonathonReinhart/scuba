@@ -3,5 +3,3 @@ include CHANGELOG.md
 
 include Makefile
 graft scubainit
-
-include bash_completion/scuba
