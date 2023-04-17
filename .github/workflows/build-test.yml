@@ -44,6 +44,8 @@ jobs:
 
     - name: Run tests
       run: |
+        # Make sure we only use the wheel
+        rm -r scuba scubainit
         pip install dist/scuba-*-py3-none-any.whl
         ./run_unit_tests.sh
         ./run_full_tests.py
