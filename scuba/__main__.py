@@ -8,16 +8,12 @@ import sys
 import shlex
 import itertools
 import argparse
+from typing import Any, Optional, Sequence
 
 try:
-    import argcomplete
+    import argcomplete  # type: ignore
 except ImportError:
-
-    class argcomplete:  # type: ignore
-        @staticmethod
-        def autocomplete(*_, **__):
-            pass
-
+    from . import argcomplete_stub as argcomplete  # type: ignore[no-redef]
 
 from . import dockerutil
 from .config import find_config, ScubaConfig, ConfigError, ConfigNotFoundError
@@ -26,16 +22,20 @@ from .scuba import ScubaDive, ScubaError
 from .utils import format_cmdline, parse_env_var
 from .version import __version__
 
+g_verbose: bool = False
 
-def appmsg(msg):
+
+def appmsg(msg: str) -> None:
     print("scuba: " + msg, file=sys.stderr)
 
 
-def parse_scuba_args(argv):
-    def _list_images_completer(**_):
+def parse_scuba_args(argv: Optional[Sequence[str]]) -> argparse.Namespace:
+    def _list_images_completer(**kwargs: Any) -> Sequence[str]:
         return dockerutil.get_images()
 
-    def _list_aliases_completer(parsed_args, **_):
+    def _list_aliases_completer(
+        parsed_args: argparse.Namespace, **kwargs: Any
+    ) -> Sequence[str]:
         # We don't want to try to complete any aliases if one was already given
         if parsed_args.command:
             return []
@@ -44,8 +44,9 @@ def parse_scuba_args(argv):
             _, _, config = find_config()
             return sorted(config.aliases)
         except (ConfigNotFoundError, ConfigError):
-            argcomplete.warn(
-                "No or invalid config found.  Cannot auto-complete aliases."
+            print(
+                "\nNo or invalid config found. Cannot auto-complete aliases.",
+                file=sys.stderr,
             )
             return []
 
@@ -73,7 +74,7 @@ def parse_scuba_args(argv):
     ap.add_argument("--entrypoint", help="Override the default ENTRYPOINT of the image")
 
     img_arg = ap.add_argument("--image", help="Override Docker image")
-    img_arg.completer = _list_images_completer
+    img_arg.completer = _list_images_completer  # type: ignore[attr-defined]
 
     ap.add_argument("--shell", help="Override shell used in Docker container")
     ap.add_argument(
@@ -96,7 +97,7 @@ def parse_scuba_args(argv):
         nargs=argparse.REMAINDER,
         help="Command (and arguments) to run in the container",
     )
-    cmd_arg.completer = _list_aliases_completer
+    cmd_arg.completer = _list_aliases_completer  # type: ignore[attr-defined]
 
     argcomplete.autocomplete(ap, always_complete_options=False)
     args = ap.parse_args(argv)
@@ -118,7 +119,7 @@ def parse_scuba_args(argv):
     return args
 
 
-def run_scuba(scuba_args):
+def run_scuba(scuba_args: argparse.Namespace) -> int:
     # Locate .scuba.yml
     try:
         # top_path is where .scuba.yml is found, and becomes the top of our bind mount.
@@ -164,6 +165,9 @@ def run_scuba(scuba_args):
 
         # Explicitly pass sys.stdin/stdout/stderr so they apply to the
         # child process if overridden (by tests).
+        #
+        # TODO: This doesn't seem to work in all cases with pytest:
+        # _pytest.capture.DontReadFromInput doesn't have fileno()
         return dockerutil.call(
             args=run_args,
             stdin=sys.stdin,
@@ -172,7 +176,7 @@ def run_scuba(scuba_args):
         )
 
 
-def main(argv=None):
+def main(argv: Optional[Sequence[str]] = None) -> None:
     scuba_args = parse_scuba_args(argv)
 
     try:
