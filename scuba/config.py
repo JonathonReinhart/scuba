@@ -1,12 +1,21 @@
-import collections
+from __future__ import annotations
+import dataclasses
 import os
-import yaml
 import re
 import shlex
+from typing import Any, List, Dict, Optional, TextIO, Tuple, Type, TypeVar, Union
+
+import yaml
+import yaml.nodes
 
 from .constants import *
 from .utils import *
 from .dockerutil import make_vol_opt
+
+CfgNode = Any
+CfgData = Dict[str, CfgNode]
+Environment = Dict[str, str]
+_T = TypeVar("_T")
 
 
 class ConfigError(Exception):
@@ -25,19 +34,17 @@ class OverrideMixin:
     and any object can be checked if it is an OverrideMixin using isinstance().
     """
 
-    pass
-
 
 class OverrideNone(OverrideMixin):
     """
     Represents a None value that also has Override behavior
     """
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return False
 
 
-class OverrideList(collections.UserList, OverrideMixin):
+class OverrideList(list, OverrideMixin):
     pass
 
 
@@ -47,15 +54,26 @@ class OverrideStr(str, OverrideMixin):
 
 # http://stackoverflow.com/a/9577670
 class Loader(yaml.SafeLoader):
-    def __init__(self, stream, root=None):
-        if root is None:
+    _root: str  # directory containing the loaded document
+    _cache: Dict[str, Any]  # document path => document
+
+    def __init__(self, stream: TextIO):
+        if not hasattr(self, "_root"):
             self._root = os.path.split(stream.name)[0]
-        else:
-            self._root = root
         self._cache = dict()
         super().__init__(stream)
 
-    def from_yaml(self, node):
+    @staticmethod
+    def _rooted_loader(root: str) -> Type[Loader]:
+        """Get a Loader class with _root set to root"""
+
+        class RootedLoader(Loader):
+            pass
+
+        RootedLoader._root = root
+        return RootedLoader
+
+    def from_yaml(self, node: yaml.nodes.Node) -> Any:
         """
         Implementes a !from_yaml constructor with the following syntax:
             !from_yaml filename key
@@ -73,7 +91,9 @@ class Loader(yaml.SafeLoader):
         """
 
         # Load the content from the node, as a scalar
+        assert isinstance(node, yaml.nodes.ScalarNode)
         content = self.construct_scalar(node)
+        assert isinstance(content, str)
 
         # Split on unquoted spaces
         parts = shlex.split(content)
@@ -103,15 +123,17 @@ class Loader(yaml.SafeLoader):
             raise yaml.YAMLError(f"Key {key!r} not found in {filename}")
         return cur
 
-    def override(self, node):
+    def override(self, node: yaml.nodes.Node) -> OverrideMixin:
         """
         Implements !override constructor
         """
         # Load the content from the node, as a scalar
+        assert isinstance(node, yaml.nodes.ScalarNode)
         content = self.construct_scalar(node)
+        assert isinstance(content, str)
 
         # Dynamically add an OverrideMixin to the resulting object's type
-        obj = yaml.load(content, lambda s: Loader(s, root=self._root))
+        obj = yaml.load(content, self._rooted_loader(root=self._root))
         if obj is None:
             obj = OverrideNone()
         else:
@@ -126,6 +148,7 @@ class Loader(yaml.SafeLoader):
                 # Primitive classes (e.g., int, str) don't support __class__ assignment
                 obj = mixin_type(obj)
 
+        assert isinstance(obj, OverrideMixin)
         return obj
 
 
@@ -133,7 +156,7 @@ Loader.add_constructor("!from_yaml", Loader.from_yaml)
 Loader.add_constructor("!override", Loader.override)
 
 
-def find_config():
+def find_config() -> Tuple[str, str, ScubaConfig]:
     """Search up the directory hierarchy for .scuba.yml
 
     Returns: path, rel, config on success, or None if not found
@@ -169,11 +192,16 @@ def find_config():
         rel = os.path.join(rest, rel)
 
 
-def _process_script_node(node, name):
+def _process_script_node(node: CfgNode, name: str) -> List[str]:
     """Process a script-type node
 
-    This handles nodes that follow the *Common script schema*,
-    as outlined in doc/yaml-reference.md.
+    Args:
+      node: A node of data retrieved from a YAML document. Should be a "common
+        script schema" node as described in docs/configuration.rst.
+      name: The name of the node.
+
+    Returns:
+      A script; a list of command strings.
     """
     if isinstance(node, str):
         # The script is just the text itself
@@ -196,7 +224,7 @@ def _process_script_node(node, name):
     raise ConfigError(f"{name}: must be string or dict")
 
 
-def _process_environment(node, name):
+def _process_environment(node: CfgNode, name: str) -> Environment:
     # Environment can be either a list of strings ("KEY=VALUE") or a mapping
     # Environment keys and values are always strings
     result = {}
@@ -220,7 +248,7 @@ def _process_environment(node, name):
     return result
 
 
-def _get_nullable_str(data, key):
+def _get_nullable_str(data: Dict[str, Any], key: str) -> Optional[str]:
     # N.B. We can't use data.get() here, because that might return
     # None, leading to ambiguity between the key being absent or set
     # to a null value.
@@ -232,52 +260,62 @@ def _get_nullable_str(data, key):
     if not key in data:
         return None
 
-    ep = data[key]
+    value = data[key]
 
     # We represent a null value as an empty string.
-    if isinstance(ep, OverrideNone):
-        ep = OverrideStr("")
-    elif ep is None:
-        ep = ""
+    if isinstance(value, OverrideNone):
+        value = OverrideStr("")
+    elif value is None:
+        value = ""
 
-    if not isinstance(ep, str):
-        raise ConfigError(f"{key!r} must be a string, not {type(ep).__name__}")
-    return ep
+    if not isinstance(value, str):
+        raise ConfigError(f"{key!r} must be a string, not {type(value).__name__}")
+    return value
 
 
-def _get_entrypoint(data):
+def _get_entrypoint(data: CfgData) -> Optional[str]:
     return _get_nullable_str(data, "entrypoint")
 
 
-def _get_docker_args(data):
-    args = _get_nullable_str(data, "docker_args")
+def _get_docker_args(data: CfgData) -> Optional[List[str]]:
+    args_str = _get_nullable_str(data, "docker_args")
+    if args_str is None:
+        return None
 
-    if args is not None:
-        override = isinstance(args, OverrideMixin)
-        args = shlex.split(args)
-        if override:
-            args = OverrideList(args)
+    override = isinstance(args_str, OverrideMixin)
+    args = shlex.split(args_str)
+    if override:
+        args = OverrideList(args)
 
     return args
 
 
-def _get_typed_val(data, key, type_):
-    v = data.get(key)
+def _get_typed_val(
+    data: CfgData,
+    key: str,
+    type_: Type[_T],
+    default: Optional[_T] = None,
+) -> Optional[_T]:
+    v = data.get(key, default)
     if v is not None and not isinstance(v, type_):
         raise ConfigError(f"{key!r} must be a {type_.__name__}, not {type(v).__name__}")
     return v
 
 
-def _get_dict(data, key):
+def _get_str(data: CfgData, key: str, default: Optional[str] = None) -> Optional[str]:
+    return _get_typed_val(data, key, str, default)
+
+
+def _get_dict(data: CfgData, key: str) -> Optional[dict]:
     return _get_typed_val(data, key, dict)
 
 
-def _get_delimited_str_list(data, key, sep):
+def _get_delimited_str_list(data: CfgData, key: str, sep: str) -> List[str]:
     s = _get_typed_val(data, key, str)
     return s.split(sep) if s else []
 
 
-def _get_volumes(data):
+def _get_volumes(data: CfgData) -> Optional[Dict[str, ScubaVolume]]:
     voldata = _get_dict(data, "volumes")
     if voldata is None:
         return None
@@ -289,7 +327,7 @@ def _get_volumes(data):
     return vols
 
 
-def _expand_path(in_str):
+def _expand_path(in_str: str) -> str:
     try:
         output = expand_env_vars(in_str)
     except KeyError as ke:
@@ -305,14 +343,14 @@ def _expand_path(in_str):
     return output
 
 
+@dataclasses.dataclass(frozen=True)
 class ScubaVolume:
-    def __init__(self, container_path, host_path=None, options=None):
-        self.container_path = container_path
-        self.host_path = host_path
-        self.options = options or []
+    container_path: str
+    host_path: str  # TODO: Optional for anonymous volume
+    options: List[str] = dataclasses.field(default_factory=list)
 
     @classmethod
-    def from_dict(cls, cpath, node):
+    def from_dict(cls, cpath: str, node: CfgNode) -> ScubaVolume:
         # Treat a null node as an empty dict
         if node is None:
             node = {}
@@ -343,37 +381,24 @@ class ScubaVolume:
 
         raise ConfigError(f"{cpath}: must be string or dict")
 
-    def get_vol_opt(self):
-        if not self.host_path:
-            raise NotImplementedError("No anonymous volumes for now")
+    def get_vol_opt(self) -> str:
         return make_vol_opt(self.host_path, self.container_path, self.options)
 
 
+@dataclasses.dataclass(frozen=True)
 class ScubaAlias:
-    def __init__(
-        self,
-        name,
-        script,
-        image=None,
-        entrypoint=None,
-        environment=None,
-        shell=None,
-        as_root=None,
-        docker_args=None,
-        volumes=None,
-    ):
-        self.name = name
-        self.script = script
-        self.image = image
-        self.entrypoint = entrypoint
-        self.environment = environment
-        self.shell = shell
-        self.as_root = bool(as_root)
-        self.docker_args = docker_args
-        self.volumes = volumes
+    name: str
+    script: List[str]
+    image: Optional[str] = None
+    entrypoint: Optional[str] = None
+    environment: Optional[Dict[str, str]] = None
+    shell: Optional[str] = None
+    as_root: bool = False
+    docker_args: Optional[List[str]] = None
+    volumes: Optional[Dict[str, ScubaVolume]] = None
 
     @classmethod
-    def from_dict(cls, name, node):
+    def from_dict(cls, name: str, node: CfgNode) -> ScubaAlias:
         script = _process_script_node(node, name)
 
         if isinstance(node, dict):  # Rich alias
@@ -386,7 +411,7 @@ class ScubaAlias:
                     node.get("environment"), f"{name}.environment"
                 ),
                 shell=node.get("shell"),
-                as_root=node.get("root"),
+                as_root=bool(node.get("root")),
                 docker_args=_get_docker_args(node),
                 volumes=_get_volumes(node),
             )
@@ -395,7 +420,15 @@ class ScubaAlias:
 
 
 class ScubaConfig:
-    def __init__(self, **data):
+    shell: str
+    entrypoint: Optional[str]
+    docker_args: Optional[List[str]]  # TODO: drop Optional?
+    volumes: Optional[Dict[str, ScubaVolume]]  # TODO: drop Optional? Dict?
+    aliases: Dict[str, ScubaAlias]
+    hooks: Dict[str, List[str]]
+    environment: Environment
+
+    def __init__(self, **data: CfgNode) -> None:
         optional_nodes = (
             "image",
             "aliases",
@@ -415,46 +448,46 @@ class ScubaConfig:
                 + ", ".join(extra)
             )
 
-        self._image = data.get("image")
-        self.shell = data.get("shell", DEFAULT_SHELL)
+        self._image = _get_str(data, "image")
+
+        shell = _get_str(data, "shell", DEFAULT_SHELL)
+        assert shell is not None  # Guaranteed by default arg. TODO: express via type?
+        self.shell = shell
+
         self.entrypoint = _get_entrypoint(data)
         self.docker_args = _get_docker_args(data)
         self.volumes = _get_volumes(data)
-        self._load_aliases(data)
-        self._load_hooks(data)
-        self._load_environment(data)
+        self.aliases = self._load_aliases(data)
+        self.hooks = self._load_hooks(data)
+        self.environment = _process_environment(data.get("environment"), "environment")
 
-    def _load_aliases(self, data):
-        self.aliases = {}
-
+    def _load_aliases(self, data: CfgData) -> Dict[str, ScubaAlias]:
+        aliases = {}
         for name, node in data.get("aliases", {}).items():
             if " " in name:
                 raise ConfigError("Alias names cannot contain spaces")
-            self.aliases[name] = ScubaAlias.from_dict(name, node)
+            aliases[name] = ScubaAlias.from_dict(name, node)
+        return aliases
 
-    def _load_hooks(self, data):
-        self.hooks = {}
-
+    def _load_hooks(self, data: CfgData) -> Dict[str, List[str]]:
+        hooks = {}
         for name in (
             "user",
             "root",
         ):
             node = data.get("hooks", {}).get(name)
             if node:
-                hook = _process_script_node(node, name)
-                self.hooks[name] = hook
-
-    def _load_environment(self, data):
-        self.environment = _process_environment(data.get("environment"), "environment")
+                hooks[name] = _process_script_node(node, name)
+        return hooks
 
     @property
-    def image(self):
-        if not self._image:
+    def image(self) -> str:
+        if self._image is None:
             raise ConfigError("Top-level 'image' not set")
         return self._image
 
 
-def load_config(path):
+def load_config(path: str) -> ScubaConfig:
     try:
         with open(path, "r") as f:
             data = yaml.load(f, Loader)
