@@ -1,8 +1,11 @@
 argcomplete >= 1.10.1
 build
+mypy~=1.2.0
 PyYAML
 pytest
 pytest-cov
+types-PyYAML
+types-pkg-resources
 coverage
 black~=23.0  # Must match .github/workflows/black.yml
 -r docs/requirements.txt

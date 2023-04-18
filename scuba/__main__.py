@@ -13,7 +13,7 @@ try:
     import argcomplete
 except ImportError:
 
-    class argcomplete:
+    class argcomplete:  # type: ignore
         @staticmethod
         def autocomplete(*_, **__):
             pass

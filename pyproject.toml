@@ -43,3 +43,9 @@ requires = [
     "wheel",
     "setuptools >= 42.0.0",
 ]
+
+
+# mypy
+[tool.mypy]
+packages = ["scuba", "tests"]
+warn_unused_configs = true
