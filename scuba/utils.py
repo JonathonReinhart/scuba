@@ -1,14 +1,14 @@
-import errno
 import os
 from shlex import quote as shell_quote
 import string
+from typing import Iterable, TextIO, Tuple
 
 
-def shell_quote_cmd(cmdlist):
+def shell_quote_cmd(cmdlist: Iterable[str]) -> str:
     return " ".join(map(shell_quote, cmdlist))
 
 
-def format_cmdline(args, maxwidth=80):
+def format_cmdline(args: Iterable[str], maxwidth: int = 80) -> str:
     """Format args into a shell-quoted command line.
 
     The result will be wrapped to maxwidth characters where possible,
@@ -18,7 +18,7 @@ def format_cmdline(args, maxwidth=80):
     # Leave room for the space and backslash at the end of each line
     maxwidth -= 2
 
-    def lines():
+    def lines() -> Iterable[str]:
         line = ""
         for a in (shell_quote(a) for a in args):
             # If adding this argument will make the line too long,
@@ -39,7 +39,7 @@ def format_cmdline(args, maxwidth=80):
     return " \\\n".join(lines())
 
 
-def parse_env_var(s):
+def parse_env_var(s: str) -> Tuple[str, str]:
     """Parse an environment variable string
 
     Returns a key-value tuple
@@ -58,7 +58,7 @@ def parse_env_var(s):
     return (k, os.getenv(k, ""))
 
 
-def flatten_list(x):
+def flatten_list(x: list) -> list:
     if not isinstance(x, list):
         raise ValueError("argument is not a list")
     result = []
@@ -71,18 +71,18 @@ def flatten_list(x):
     return result
 
 
-def get_umask():
+def get_umask() -> int:
     # Same logic as bash/builtins/umask.def
     val = os.umask(0o22)
     os.umask(val)
     return val
 
 
-def writeln(f, line):
+def writeln(f: TextIO, line: str) -> None:
     f.write(line + "\n")
 
 
-def expand_env_vars(in_str):
+def expand_env_vars(in_str: str) -> str:
     """Expand environment variables in a string
 
     Can raise `KeyError` if a variable is referenced but not defined, similar to
