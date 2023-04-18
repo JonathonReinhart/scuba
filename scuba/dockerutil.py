@@ -1,6 +1,11 @@
+from __future__ import annotations
 import subprocess
-import errno
 import json
+from typing import Any, Dict, IO, Optional, Sequence, Union
+
+# https://github.com/python/typeshed/blob/main/stdlib/subprocess.pyi
+_CMD = Union[str, bytes, Sequence[Union[str, bytes]]]
+_FILE = Union[None, int, IO[Any]]
 
 
 class DockerError(Exception):
@@ -8,43 +13,44 @@ class DockerError(Exception):
 
 
 class DockerExecuteError(DockerError):
-    pass
+    def __init__(self) -> None:
+        super().__init__("Failed to execute docker. Is it installed?")
 
 
 class NoSuchImageError(DockerError):
-    def __init__(self, image):
+    def __init__(self, image: str):
         self.image = image
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"No such image: {self.image}"
 
 
-def __wrap_docker_exec(func):
-    """Wrap a function to raise DockerExecuteError on ENOENT"""
-
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except FileNotFoundError:
-            raise DockerExecuteError("Failed to execute docker. Is it installed?")
-
-    return wrapper
-
-
-call = __wrap_docker_exec(subprocess.call)
+def call(
+    args: _CMD,
+    stdin: _FILE,
+    stdout: _FILE,
+    stderr: _FILE,
+) -> int:
+    try:
+        return subprocess.call(args, stdin=stdin, stdout=stdout, stderr=stderr)
+    except FileNotFoundError as err:
+        raise DockerExecuteError() from err
 
 
-def _run_docker(*args, capture=False):
+def _run_docker(*args: str, capture: bool = False) -> subprocess.CompletedProcess[str]:
     """Run docker and raise DockerExecuteError on ENOENT"""
-    args = ["docker"] + list(args)
-    kw = dict(text=True)
+    docker_args = ["docker"] + list(args)
+    kw: Dict[str, Any] = dict(text=True)
     if capture:
         kw.update(capture_output=True)
 
-    return __wrap_docker_exec(subprocess.run)(args, **kw)
+    try:
+        return subprocess.run(docker_args, **kw)
+    except FileNotFoundError as err:
+        raise DockerExecuteError() from err
 
 
-def docker_inspect(image):
+def docker_inspect(image: str) -> dict:
     """Inspects a docker image
 
     Returns: Parsed JSON data
@@ -56,10 +62,12 @@ def docker_inspect(image):
             raise NoSuchImageError(image)
         raise DockerError(f"Failed to inspect image: {cp.stderr.strip()}")
 
-    return json.loads(cp.stdout)[0]
+    result = json.loads(cp.stdout)[0]
+    assert isinstance(result, dict)
+    return result
 
 
-def docker_pull(image):
+def docker_pull(image: str) -> None:
     """Pulls an image"""
     # If this fails, the default docker stdout/stderr looks good to the user.
     cp = _run_docker("pull", image)
@@ -67,7 +75,7 @@ def docker_pull(image):
         raise DockerError(f"Failed to pull image: {image}")
 
 
-def docker_inspect_or_pull(image):
+def docker_inspect_or_pull(image: str) -> dict:
     """Inspects a docker image, pulling it if it doesn't exist"""
     try:
         return docker_inspect(image)
@@ -77,7 +85,7 @@ def docker_inspect_or_pull(image):
         return docker_inspect(image)
 
 
-def get_images():
+def get_images() -> Sequence[str]:
     """Get the current list of docker images
 
     Returns: List of image names
@@ -101,28 +109,35 @@ def get_images():
     return cp.stdout.splitlines()
 
 
-def get_image_command(image):
+def _get_image_config(image: str, key: str) -> Optional[Sequence[str]]:
+    info = docker_inspect_or_pull(image)
+    try:
+        result = info["Config"][key]
+    except KeyError as ke:
+        raise DockerError(f"Failed to inspect image: JSON result missing key {ke}")
+
+    assert isinstance(result, (type(None), list))
+    return result
+
+
+def get_image_command(image: str) -> Optional[Sequence[str]]:
     """Gets the default command for an image"""
-    info = docker_inspect_or_pull(image)
-    try:
-        return info["Config"]["Cmd"]
-    except KeyError as ke:
-        raise DockerError(f"Failed to inspect image: JSON result missing key {ke}")
+    return _get_image_config(image, "Cmd")
 
 
-def get_image_entrypoint(image):
+def get_image_entrypoint(image: str) -> Optional[Sequence[str]]:
     """Gets the image entrypoint"""
-    info = docker_inspect_or_pull(image)
-    try:
-        return info["Config"]["Entrypoint"]
-    except KeyError as ke:
-        raise DockerError(f"Failed to inspect image: JSON result missing key {ke}")
+    return _get_image_config(image, "Entrypoint")
 
 
-def make_vol_opt(hostdir, contdir, options=None):
+def make_vol_opt(
+    hostdir: str,
+    contdir: str,
+    options: Optional[Sequence[str]] = None,
+) -> str:
     """Generate a docker volume option"""
     vol = f"--volume={hostdir}:{contdir}"
-    if options != None:
+    if options is not None:
         if isinstance(options, str):
             options = (options,)
         vol += ":" + ",".join(options)
