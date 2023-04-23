@@ -1,4 +1,6 @@
+import dataclasses
 from os.path import abspath, dirname, exists, join, normpath
+import subprocess
 import sys
 
 # This logic has been adapted from that of PyInstaller
@@ -17,38 +19,48 @@ BASE_VERSION = "2.10.1"
 git_archive_rev = "$Format:%h$"
 
 
-def git_describe():
-    from subprocess import check_call, check_output
+@dataclasses.dataclass(frozen=True)
+class GitDescribe:
+    tag: str
+    commits: int
+    rev: str
 
+
+def git_describe() -> GitDescribe:
     # Get the version from the local Git repository
-    check_call(["git", "update-index", "-q", "--refresh"], cwd=PROJPATH)
+    subprocess.run(["git", "update-index", "-q", "--refresh"], check=True, cwd=PROJPATH)
 
-    desc = check_output(["git", "describe", "--long", "--dirty", "--tag"], cwd=PROJPATH)
-    desc = desc.decode("utf-8").strip()
+    result = subprocess.run(
+        ["git", "describe", "--long", "--dirty", "--tag"],
+        check=True,
+        cwd=PROJPATH,
+        stdout=subprocess.PIPE,
+        encoding="utf-8",
+    )
+    parts = result.stdout.rstrip().split("-", 2)
+    return GitDescribe(
+        tag=parts[0].lstrip("v"),
+        commits=int(parts[1]),
+        rev=parts[2],
+    )
 
-    tag, commits, rev = desc.split("-", 2)
-    tag = tag.lstrip("v")
-    commits = int(commits)
 
-    return tag, commits, rev
-
-
-def get_version():
+def get_version() -> str:
     # Git repo
     # If a local git repository is present, use `git describe` to provide a rich version
     gitdir = normpath(join(PROJPATH, ".git"))
     if exists(gitdir):
-        tag, commits, rev = git_describe()
+        desc = git_describe()
 
         # Ensure the base version matches the Git tag
-        if tag != BASE_VERSION:
+        if desc.tag != BASE_VERSION:
             raise Exception("Git revision different from base version")
 
         # No local version if we're on a tag
-        if commits == 0 and not rev.endswith("dirty"):
+        if desc.commits == 0 and not desc.rev.endswith("dirty"):
             return BASE_VERSION
 
-        return f"{BASE_VERSION}+{commits}-{rev}"
+        return f"{BASE_VERSION}+{desc.commits}-{desc.rev}"
 
     # Git archive
     # If this was produced via `git archive`, we'll use the version it provides

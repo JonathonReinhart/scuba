@@ -38,6 +38,10 @@ jobs:
 
         ci/test_setup.sh
 
+    - name: Lint
+      run: |
+        mypy
+
     - name: Build
       run: |
         python -m build

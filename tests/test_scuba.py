@@ -182,7 +182,9 @@ class TestScubaContext:
         cfg = ScubaConfig(
             image="test_image",
         )
-        result = ScubaContext.process_command(cfg, [], image=override_image_name)
+        result = ScubaContext.process_command(
+            cfg, [], image_override=override_image_name
+        )
         assert result.image == override_image_name
 
     def test_process_command_image_override_missing(self):
@@ -190,7 +192,9 @@ class TestScubaContext:
         override_image_name = "override_image"
 
         cfg = ScubaConfig()
-        result = ScubaContext.process_command(cfg, [], image=override_image_name)
+        result = ScubaContext.process_command(
+            cfg, [], image_override=override_image_name
+        )
         assert result.image == override_image_name
 
     def test_process_command_image_override_alias(self):
@@ -208,7 +212,9 @@ class TestScubaContext:
                 ),
             )
         )
-        result = ScubaContext.process_command(cfg, [], image=override_image_name)
+        result = ScubaContext.process_command(
+            cfg, [], image_override=override_image_name
+        )
         assert result.image == override_image_name
 
     def test_env_merge(self):

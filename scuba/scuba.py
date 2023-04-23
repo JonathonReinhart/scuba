@@ -1,18 +1,24 @@
+from __future__ import annotations
+import copy
+import dataclasses
 import os
 import shutil
 import sys
 import tempfile
-from collections.abc import Mapping
 from grp import getgrgid
 from io import StringIO
 from pwd import getpwuid
+from typing import cast, Any, Dict, Iterable, List, Optional, Sequence, Tuple, Union
+from typing import TextIO
 
 from .config import find_config, ScubaConfig, OverrideMixin
-from .config import ConfigError, ConfigNotFoundError
+from .config import ConfigError, ConfigNotFoundError, ScubaVolume
 from .dockerutil import get_image_command
 from .dockerutil import get_image_entrypoint
 from .dockerutil import make_vol_opt
 from .utils import shell_quote_cmd, flatten_list, get_umask, writeln
+
+VolumeTuple = Tuple[str, str, List[str]]
 
 
 class ScubaError(Exception):
@@ -20,39 +26,43 @@ class ScubaError(Exception):
 
 
 class ScubaDive:
+    context: ScubaContext
+    env_vars: Dict[str, str]
+    volumes: List[VolumeTuple]
+    options: List[str]
+    docker_args: List[str]
+
+    docker_cmd: List[str]
+
     def __init__(
         self,
-        user_command,
-        config,
-        top_path,
-        top_rel,
-        docker_args=None,
-        env=None,
-        as_root=False,
-        verbose=False,
-        image_override=None,
-        entrypoint=None,
-        shell_override=None,
-        keep_tempfiles=False,
+        user_command: List[str],
+        config: ScubaConfig,
+        top_path: str,
+        top_rel: str,
+        docker_args: Optional[List[str]] = None,
+        env: Optional[Dict[str, str]] = None,
+        as_root: bool = False,
+        verbose: bool = False,
+        image_override: Optional[str] = None,
+        entrypoint: Optional[str] = None,
+        shell_override: Optional[str] = None,
+        keep_tempfiles: bool = False,
     ):
-        env = env or {}
-        if not isinstance(env, Mapping):
-            raise ValueError("Argument env must be dict-like")
-
         self.as_root = as_root
         self.verbose = verbose
         self.entrypoint_override = entrypoint
         self.keep_tempfiles = keep_tempfiles
 
         # These will be added to docker run cmdline
-        self.env_vars = env
+        self.env_vars = env or {}
         self.volumes = []
         self.options = []
         self.docker_args = docker_args or []
-        self.workdir = None
+        self.workdir: Optional[str] = None
 
-        self.__scubadir_hostpath = None
-        self.__scubadir_contpath = None
+        self.__scubadir_hostpath: Optional[str] = None
+        self.__scubadir_contpath: Optional[str] = None
         self.config = config
 
         # Mount scuba root directory at the same path in the container...
@@ -68,8 +78,8 @@ class ScubaDive:
             self.context = ScubaContext.process_command(
                 cfg=self.config,
                 command=user_command,
-                image=image_override,
-                shell=shell_override,
+                image_override=image_override,
+                shell_override=shell_override,
             )
 
             # Apply environment vars from .scuba.yml
@@ -95,28 +105,31 @@ class ScubaDive:
             self._cleanup()
             raise
 
-    def __enter__(self):
+    def __enter__(self) -> ScubaDive:
         return self
 
-    def __exit__(self, *exc_info):
+    def __exit__(self, *exc_info: Any) -> None:
         self._cleanup()
 
-    def _cleanup(self):
+    def _cleanup(self) -> None:
         if self.__scubadir_hostpath and not self.keep_tempfiles:
             shutil.rmtree(self.__scubadir_hostpath)
 
-    def __str__(self):
+    def __str__(self) -> str:
         s = StringIO()
 
         indent = "  "
         level = 0
 
-        def writelist(name, vals):
+        def writehdr(name: str) -> None:
             writeln(s, f"{indent * level}{name}:")
+
+        def writelist(name: str, vals: Optional[Iterable[Any]]) -> None:
+            writehdr(name)
             for val in vals or ():
                 writeln(s, f"{indent * (level + 1)}{val}")
 
-        def writescl(name, val=""):
+        def writescl(name: str, val: Union[None, bool, float, str]) -> None:
             writeln(s, f"{indent * level}{name + ':':<14s}{val}")
 
         writeln(s, "ScubaDive")
@@ -133,9 +146,9 @@ class ScubaDive:
             "volumes", (f"{hp} => {cp} {opt}" for hp, cp, opt in self.__get_vol_opts())
         )
 
-        writescl("context")
+        writehdr("context")
         level += 1
-        writescl("script", self.context.script)
+        writelist("script", self.context.script)
         writescl("image", self.context.image)
         writelist("docker_args", self.context.docker_args)
         writelist("volumes", self.context.volumes)
@@ -143,22 +156,27 @@ class ScubaDive:
         return s.getvalue()
 
     @property
-    def is_remote_docker(self):
+    def is_remote_docker(self) -> bool:
         return "DOCKER_HOST" in os.environ
 
-    def add_env(self, name, val):
+    def add_env(self, name: str, val: Union[str, int]) -> None:
         """Add an environment variable to the docker run invocation"""
         if name in self.env_vars:
             raise KeyError(name)
-        self.env_vars[name] = val
+        self.env_vars[name] = str(val)
 
-    def add_volume(self, hostpath, contpath, options=None):
+    def add_volume(
+        self,
+        hostpath: str,
+        contpath: str,
+        options: Optional[List[str]] = None,
+    ) -> None:
         """Add a volume (bind-mount) to the docker run invocation"""
         if options is None:
             options = []
         self.volumes.append((hostpath, contpath, options))
 
-    def try_create_volumes(self):
+    def try_create_volumes(self) -> None:
         """Try to create non-existent host paths prior to docker run invocation
 
         This only creates user-defined volumes from configuration. The scubadir
@@ -182,14 +200,14 @@ class ScubaDive:
             except OSError as err:
                 raise ScubaError(f"Error creating volume host path: {err}") from err
 
-    def add_option(self, option):
+    def add_option(self, option: str) -> None:
         """Add another option to the docker run invocation"""
         self.options.append(option)
 
-    def set_workdir(self, workdir):
+    def set_workdir(self, workdir: str) -> None:
         self.workdir = workdir
 
-    def __locate_scubainit(self):
+    def __locate_scubainit(self) -> str:
         """Determine path to scubainit binary"""
         pkg_path = os.path.dirname(__file__)
 
@@ -198,13 +216,13 @@ class ScubaDive:
             raise ScubaError(f"scubainit not found at {scubainit_path!r}")
         return scubainit_path
 
-    def __make_scubadir(self):
+    def __make_scubadir(self) -> None:
         """Make temp directory where all ancillary files are bind-mounted"""
         self.__scubadir_hostpath = tempfile.mkdtemp(prefix="scubadir")
         self.__scubadir_contpath = "/.scuba"
         self.add_volume(self.__scubadir_hostpath, self.__scubadir_contpath)
 
-    def __setup_native_run(self):
+    def __setup_native_run(self) -> None:
         # These options are appended to mounted volume arguments
         # NOTE: This tells Docker to re-label the directory for compatibility
         # with SELinux. See `man docker-run` for more information.
@@ -272,50 +290,59 @@ class ScubaDive:
         else:
             ep = get_image_entrypoint(self.context.image)
             if ep:
-                self.docker_cmd = ep
+                self.docker_cmd = list(ep)
 
         # The user command is executed via a generated shell script
-        with self.open_scubadir_file("command.sh", "wt") as f:
-            self.docker_cmd += [self.context.shell, f.container_path]
-            writeln(f, "# Auto-generated from scuba")
-            writeln(f, "set -e")
+        with self.open_scubadir_file("command.sh") as cmd_script:
+            self.docker_cmd += [self.context.shell, cmd_script.container_path]
+            writeln(cmd_script, "# Auto-generated from scuba")
+            writeln(cmd_script, "set -e")
             for cmd in self.context.script:
-                writeln(f, cmd)
+                writeln(cmd_script, cmd)
 
-    def open_scubadir_file(self, name, mode):
-        """Opens a file in the 'scubadir'
+    def open_scubadir_file(self, name: str) -> Any:
+        """Opens a text file in the 'scubadir' for writing
 
         This file will automatically be bind-mounted into the container,
         at a path given by the 'container_path' property on the returned file object.
         """
+        assert self.__scubadir_hostpath is not None
+        assert self.__scubadir_contpath is not None
+
         path = os.path.join(self.__scubadir_hostpath, name)
         assert not os.path.exists(path)
 
         # Make any directories required
         os.makedirs(os.path.dirname(path), exist_ok=True)
 
-        f = open(path, mode)
+        # TODO: How to represent TextIO plus container_path attribute?
+        # Deriving from TextIO seemed to do nothing.
+        f: Any = open(path, "w")
         f.container_path = os.path.join(self.__scubadir_contpath, name)
+
         return f
 
-    def copy_scubadir_file(self, name, source):
+    def copy_scubadir_file(self, name: str, source: str) -> str:
         """Copies source into the scubadir
 
         Returns the container-path of the copied file
         """
+        assert self.__scubadir_hostpath is not None
+        assert self.__scubadir_contpath is not None
+
         dest = os.path.join(self.__scubadir_hostpath, name)
         assert not os.path.exists(dest)
         shutil.copy2(source, dest)
 
         return os.path.join(self.__scubadir_contpath, name)
 
-    def __generate_hook_script(self, name, shell):
+    def __generate_hook_script(self, name: str, shell: str) -> None:
         script = self.config.hooks.get(name)
         if not script:
             return
 
         # Generate the hook script, mount it into the container, and tell scubainit
-        with self.open_scubadir_file(f"hooks/{name}.sh", "wt") as f:
+        with self.open_scubadir_file(f"hooks/{name}.sh") as f:
             self.add_env(f"SCUBAINIT_HOOK_{name.upper()}", f.container_path)
 
             writeln(f, f"#!{shell}")
@@ -324,11 +351,11 @@ class ScubaDive:
             for cmd in script:
                 writeln(f, cmd)
 
-    def __get_vol_opts(self):
+    def __get_vol_opts(self) -> Iterable[VolumeTuple]:
         for hostpath, contpath, options in self.volumes:
             yield hostpath, contpath, options + self.vol_opts
 
-    def get_docker_cmdline(self):
+    def get_docker_cmdline(self) -> Sequence[str]:
         args = [
             "docker",
             "run",
@@ -369,79 +396,73 @@ class ScubaDive:
         return args
 
 
+@dataclasses.dataclass
 class ScubaContext:
-    def __init__(
-        self,
-        image=None,
-        script=None,
-        entrypoint=None,
-        environment=None,
-        shell=None,
-        docker_args=None,
-        volumes=None,
-    ):
-        self.image = image
-        self.script = script
-        self.as_root = False
-        self.entrypoint = entrypoint
-        self.environment = environment
-        self.shell = shell
-        self.docker_args = docker_args
-        self.volumes = volumes or {}
+    image: str
+    environment: Dict[str, str]  # key: value
+    volumes: Dict[str, ScubaVolume]
+    shell: str
+    docker_args: List[str]
+    script: Optional[List[str]] = None  # TODO: drop Optional?
+    entrypoint: Optional[str] = None
+    as_root: bool = False
 
     @classmethod
-    def process_command(cls, cfg, command, image=None, shell=None):
+    def process_command(
+        cls,
+        cfg: ScubaConfig,
+        command: Sequence[str],
+        image_override: Optional[str] = None,
+        shell_override: Optional[str] = None,
+    ) -> ScubaContext:
         """Processes a user command using aliases
 
         Arguments:
             cfg         ScubaConfig object
             command     A user command list (e.g. argv)
-            image       Override the image from .scuba.yml
-            shell       Override the shell from .scuba.yml
+            image_override       Override the image from .scuba.yml
+            shell_override       Override the shell from .scuba.yml
 
-        Returns: A ScubaContext object with the following attributes:
-            script: a list of command line strings
-            image: the docker image name to use
+        Returns: A ScubaContext object
         """
-        result = cls(
-            entrypoint=cfg.entrypoint,
-            environment=cfg.environment.copy(),
-            shell=cfg.shell,
-            docker_args=cfg.docker_args,
-            volumes=cfg.volumes,
-        )
+
+        image = None
+        shell = None
+        script = None
+        entrypoint = cfg.entrypoint
+        environment = copy.copy(cfg.environment)
+        docker_args = copy.copy(cfg.docker_args) or []
+        volumes: Dict[str, ScubaVolume] = copy.copy(cfg.volumes or {})
+        as_root = False
 
         if command:
             alias = cfg.aliases.get(command[0])
             if not alias:
                 # Command is not an alias; use it as-is.
-                result.script = [shell_quote_cmd(command)]
+                script = [shell_quote_cmd(command)]
             else:
                 # Using an alias
                 # Does this alias override the image and/or entrypoint?
                 if alias.image:
-                    result.image = alias.image
+                    image = alias.image
                 if alias.entrypoint is not None:
-                    result.entrypoint = alias.entrypoint
+                    entrypoint = alias.entrypoint
                 if alias.shell is not None:
-                    result.shell = alias.shell
+                    shell = alias.shell
                 if alias.as_root:
-                    result.as_root = True
+                    as_root = True
 
-                if (
-                    isinstance(alias.docker_args, OverrideMixin)
-                    or result.docker_args is None
-                ):
-                    result.docker_args = alias.docker_args
+                if isinstance(alias.docker_args, OverrideMixin) or docker_args is None:
+                    docker_args = cast(List[str], alias.docker_args)
                 elif alias.docker_args is not None:
-                    result.docker_args.extend(alias.docker_args)
+                    docker_args.extend(alias.docker_args)
 
                 if alias.volumes is not None:
-                    result.volumes.update(alias.volumes)
+                    volumes.update(alias.volumes)
 
                 # Merge/override the environment
                 if alias.environment:
-                    result.environment.update(alias.environment)
+                    environment.update(alias.environment)
 
                 if len(alias.script) > 1:
                     # Alias is a multiline script; no additional
@@ -450,28 +471,39 @@ class ScubaContext:
                         raise ConfigError(
                             "Additional arguments not allowed with multi-line aliases"
                         )
-                    result.script = alias.script
+                    script = alias.script
 
                 else:
                     # Alias is a single-line script; perform substituion
                     # and add user arguments.
-                    command.pop(0)
-                    result.script = [alias.script[0] + " " + shell_quote_cmd(command)]
+                    script = [alias.script[0] + " " + shell_quote_cmd(command[1:])]
 
-            result.script = flatten_list(result.script)
+            script = flatten_list(script)
 
         # If a shell was given on the CLI, it should override the shell set by
         # the alias or top-level config
-        if shell:
-            result.shell = shell
+        if shell_override:
+            shell = shell_override
 
         # If an image was given, it overrides what might have been set by an alias
-        if image:
-            result.image = image
+        if image_override:
+            image = image_override
 
         # If the image was still not set, then try to get it from the confg,
         # which will raise a ConfigError if it is not set
-        if not result.image:
-            result.image = cfg.image
+        if image is None:
+            image = cfg.image
 
-        return result
+        if shell is None:
+            shell = cfg.shell
+
+        return cls(
+            image=image,
+            script=script,
+            entrypoint=entrypoint,
+            environment=environment,
+            shell=shell,
+            docker_args=docker_args,
+            volumes=volumes,
+            as_root=as_root,
+        )
