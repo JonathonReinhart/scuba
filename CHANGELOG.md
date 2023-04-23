@@ -5,6 +5,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 ### Changed
 - Introduced `pyproject.toml` and moved metadata from `setup.py` (#211)
+- Added type annotations to scuba package and mypy checking in CI (#207)
 
 ### Removed
 - Drop support for Python 3.5 - 3.6
