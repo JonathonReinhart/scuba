@@ -8,7 +8,11 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Added type annotations to scuba package and mypy checking in CI (#207)
 
 ### Removed
-- Drop support for Python 3.5 - 3.6
+- Drop support for Python 3.5 - 3.6 (#205)
+
+### Fixed
+- Fixed bug causing invalid volume spec error on Docker 24.0.5 and newer (#217)
+
 
 ## [2.10.1] - 2023-03-07
 ### Fixed

@@ -108,11 +108,8 @@ def test_make_vol_opt_no_opts():
     assert uut.make_vol_opt("/hostdir", "/contdir") == "--volume=/hostdir:/contdir"
 
 
-def test_make_vol_opt_one_opt():
-    assert (
-        uut.make_vol_opt("/hostdir", "/contdir", "ro")
-        == "--volume=/hostdir:/contdir:ro"
-    )
+def test_make_vol_opt_empty_opts():
+    assert uut.make_vol_opt("/hostdir", "/contdir", []) == "--volume=/hostdir:/contdir"
 
 
 def test_make_vol_opt_multi_opts():
