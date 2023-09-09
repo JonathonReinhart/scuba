@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [2.11.0] - 2023-09-09
 ### Changed
 - Introduced `pyproject.toml` and moved metadata from `setup.py` (#211)
 - Added type annotations to scuba package and mypy checking in CI (#207)
@@ -258,7 +258,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 First versioned release
 
 
-[Unreleased]: https://github.com/JonathonReinhart/scuba/compare/v2.10.1...HEAD
+[Unreleased]: https://github.com/JonathonReinhart/scuba/compare/v2.11.0...HEAD
+[2.11.0]: https://github.com/JonathonReinhart/scuba/compare/v2.10.1...v2.11.0
 [2.10.1]: https://github.com/JonathonReinhart/scuba/compare/v2.10.0...v2.10.1
 [2.10.0]: https://github.com/JonathonReinhart/scuba/compare/v2.9.0...v2.10.0
 [2.9.0]: https://github.com/JonathonReinhart/scuba/compare/v2.8.0...v2.9.0
