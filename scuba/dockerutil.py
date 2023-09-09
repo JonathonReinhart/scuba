@@ -137,8 +137,7 @@ def make_vol_opt(
 ) -> str:
     """Generate a docker volume option"""
     vol = f"--volume={hostdir}:{contdir}"
-    if options is not None:
-        if isinstance(options, str):
-            options = (options,)
+    if options:
+        assert not isinstance(options, str)
         vol += ":" + ",".join(options)
     return vol
