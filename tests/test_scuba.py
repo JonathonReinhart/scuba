@@ -6,7 +6,7 @@ from scuba.scuba import ScubaContext
 
 
 class TestScubaContext:
-    def test_process_command_image(self):
+    def test_process_command_image(self) -> None:
         """process_command returns the image and entrypoint"""
         image_name = "test_image"
         entrypoint = "test_entrypoint"
@@ -19,7 +19,7 @@ class TestScubaContext:
         assert result.image == image_name
         assert result.entrypoint == entrypoint
 
-    def test_process_command_empty(self):
+    def test_process_command_empty(self) -> None:
         """process_command handles no aliases and an empty command"""
         cfg = ScubaConfig(
             image="na",
@@ -27,17 +27,18 @@ class TestScubaContext:
         result = ScubaContext.process_command(cfg, [])
         assert result.script == None
 
-    def test_process_command_no_aliases(self):
+    def test_process_command_no_aliases(self) -> None:
         """process_command handles no aliases"""
         cfg = ScubaConfig(
             image="na",
         )
         result = ScubaContext.process_command(cfg, ["cmd", "arg1", "arg2"])
+        assert result.script is not None
         assert [shlex.split(s) for s in result.script] == [
             ["cmd", "arg1", "arg2"],
         ]
 
-    def test_process_command_aliases_unused(self):
+    def test_process_command_aliases_unused(self) -> None:
         """process_command handles unused aliases"""
         cfg = ScubaConfig(
             image="na",
@@ -47,11 +48,12 @@ class TestScubaContext:
             ),
         )
         result = ScubaContext.process_command(cfg, ["cmd", "arg1", "arg2"])
+        assert result.script is not None
         assert [shlex.split(s) for s in result.script] == [
             ["cmd", "arg1", "arg2"],
         ]
 
-    def test_process_command_aliases_used_noargs(self):
+    def test_process_command_aliases_used_noargs(self) -> None:
         """process_command handles aliases with no args"""
         cfg = ScubaConfig(
             image="na",
@@ -61,11 +63,12 @@ class TestScubaContext:
             ),
         )
         result = ScubaContext.process_command(cfg, ["apple", "arg1", "arg2"])
+        assert result.script is not None
         assert [shlex.split(s) for s in result.script] == [
             ["banana", "arg1", "arg2"],
         ]
 
-    def test_process_command_aliases_used_withargs(self):
+    def test_process_command_aliases_used_withargs(self) -> None:
         """process_command handles aliases with args"""
         cfg = ScubaConfig(
             image="na",
@@ -77,11 +80,12 @@ class TestScubaContext:
         result = ScubaContext.process_command(
             cfg, ["apple", "arg1", "arg2 with spaces"]
         )
+        assert result.script is not None
         assert [shlex.split(s) for s in result.script] == [
             ["banana", "cherry", "pie is good", "arg1", "arg2 with spaces"],
         ]
 
-    def test_process_command_multiline_aliases_used(self):
+    def test_process_command_multiline_aliases_used(self) -> None:
         """process_command handles multiline aliases"""
         cfg = ScubaConfig(
             image="na",
@@ -96,12 +100,13 @@ class TestScubaContext:
             ),
         )
         result = ScubaContext.process_command(cfg, ["apple"])
+        assert result.script is not None
         assert [shlex.split(s) for s in result.script] == [
             ["banana", "cherry", "pie is good"],
             ["so", "is", "peach"],
         ]
 
-    def test_process_command_multiline_aliases_forbid_user_args(self):
+    def test_process_command_multiline_aliases_forbid_user_args(self) -> None:
         """process_command raises ConfigError when args are specified with multiline aliases"""
         cfg = ScubaConfig(
             image="na",
@@ -118,7 +123,7 @@ class TestScubaContext:
         with pytest.raises(ConfigError):
             ScubaContext.process_command(cfg, ["apple", "ARGS", "NOT ALLOWED"])
 
-    def test_process_command_alias_overrides_image(self):
+    def test_process_command_alias_overrides_image(self) -> None:
         """aliases can override the image"""
         cfg = ScubaConfig(
             image="default",
@@ -135,7 +140,7 @@ class TestScubaContext:
         result = ScubaContext.process_command(cfg, ["apple"])
         assert result.image == "overridden"
 
-    def test_process_command_alias_overrides_image_and_entrypoint(self):
+    def test_process_command_alias_overrides_image_and_entrypoint(self) -> None:
         """aliases can override the image and entrypoint"""
         cfg = ScubaConfig(
             image="default",
@@ -155,7 +160,7 @@ class TestScubaContext:
         assert result.image == "overridden"
         assert result.entrypoint == "overridden_entrypoint"
 
-    def test_process_command_alias_overrides_image_and_empty_entrypoint(self):
+    def test_process_command_alias_overrides_image_and_empty_entrypoint(self) -> None:
         """aliases can override the image and empty/null entrypoint"""
         cfg = ScubaConfig(
             image="default",
@@ -175,7 +180,7 @@ class TestScubaContext:
         assert result.image == "overridden"
         assert result.entrypoint == ""
 
-    def test_process_command_image_override(self):
+    def test_process_command_image_override(self) -> None:
         """process_command allows image to be overridden when provided"""
         override_image_name = "override_image"
 
@@ -187,7 +192,7 @@ class TestScubaContext:
         )
         assert result.image == override_image_name
 
-    def test_process_command_image_override_missing(self):
+    def test_process_command_image_override_missing(self) -> None:
         """process_command allows image to be overridden when not provided"""
         override_image_name = "override_image"
 
@@ -197,7 +202,7 @@ class TestScubaContext:
         )
         assert result.image == override_image_name
 
-    def test_process_command_image_override_alias(self):
+    def test_process_command_image_override_alias(self) -> None:
         """process_command allows image to be overridden when provided by alias"""
         override_image_name = "override_image"
 
@@ -217,7 +222,7 @@ class TestScubaContext:
         )
         assert result.image == override_image_name
 
-    def test_env_merge(self):
+    def test_env_merge(self) -> None:
         """process_command merges/overrides the environment from the alias"""
         cfg = ScubaConfig(
             image="dontcare",
@@ -243,7 +248,7 @@ class TestScubaContext:
         )
         assert result.environment == expected
 
-    def test_process_command_alias_extends_docker_args(self):
+    def test_process_command_alias_extends_docker_args(self) -> None:
         """aliases can extend the docker_args"""
         cfg = ScubaConfig(
             image="default",
@@ -260,7 +265,7 @@ class TestScubaContext:
         result = ScubaContext.process_command(cfg, ["apple"])
         assert result.docker_args == ["--privileged", "-v", "/tmp/:/tmp/"]
 
-    def test_process_command_alias_overrides_docker_args(self):
+    def test_process_command_alias_overrides_docker_args(self) -> None:
         """aliases can override the docker_args"""
         cfg = ScubaConfig(
             image="default",
@@ -277,7 +282,7 @@ class TestScubaContext:
         result = ScubaContext.process_command(cfg, ["apple"])
         assert result.docker_args == ["-v", "/tmp/:/tmp/"]
 
-    def test_process_command_alias_overrides_docker_args_with_empty(self):
+    def test_process_command_alias_overrides_docker_args_with_empty(self) -> None:
         """aliases can override the docker_args"""
         cfg = ScubaConfig(
             image="default",
@@ -294,7 +299,7 @@ class TestScubaContext:
         result = ScubaContext.process_command(cfg, ["apple"])
         assert result.docker_args == []
 
-    def test_process_command_alias_inherits_top_docker_args(self):
+    def test_process_command_alias_inherits_top_docker_args(self) -> None:
         """aliases inherit the top-level docker_args if not specified"""
         cfg = ScubaConfig(
             image="default",
@@ -313,7 +318,7 @@ class TestScubaContext:
     ############################################################################
     # volumes
 
-    def test_process_command_alias_extends_volumes(self):
+    def test_process_command_alias_extends_volumes(self) -> None:
         """aliases can extend the volumes"""
         cfg = ScubaConfig(
             image="default",
@@ -343,7 +348,7 @@ class TestScubaContext:
         assert v.container_path == "/bar"
         assert v.host_path == "/host/bar"
 
-    def test_process_command_alias_updates_volumes(self):
+    def test_process_command_alias_updates_volumes(self) -> None:
         """aliases can extend the volumes"""
         cfg = ScubaConfig(
             image="default",
