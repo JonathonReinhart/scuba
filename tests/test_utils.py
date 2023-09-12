@@ -2,6 +2,7 @@ import shlex
 from itertools import chain
 import os
 import io
+from typing import List, Sequence
 
 from .utils import *
 import pytest
@@ -9,15 +10,15 @@ import pytest
 import scuba.utils
 
 
-def _parse_cmdline(cmdline):
+def _parse_cmdline(cmdline: str) -> List[str]:
     # Strip the formatting and whitespace
     lines = [l.rstrip("\\").strip() for l in cmdline.splitlines()]
 
     # Split each line, and return a flattened list of arguments
-    return chain.from_iterable(map(shlex.split, lines))
+    return list(chain.from_iterable(map(shlex.split, lines)))
 
 
-def _test_format_cmdline(args):
+def _test_format_cmdline(args: Sequence[str]) -> None:
     # Call the unit-under-test to get the formatted command line
     result = scuba.utils.format_cmdline(args)
 
@@ -28,7 +29,7 @@ def _test_format_cmdline(args):
     assert_seq_equal(out_args, args)
 
 
-def test_format_cmdline():
+def test_format_cmdline() -> None:
     """format_cmdline works as expected"""
 
     _test_format_cmdline(

@@ -83,7 +83,7 @@ class TestMain:
                     sys.stdout = old_stdout
                     sys.stderr = old_stderr
 
-    def test_basic(self):
+    def test_basic(self) -> None:
         """Verify basic scuba functionality"""
 
         with open(".scuba.yml", "w") as f:
@@ -94,7 +94,7 @@ class TestMain:
 
         assert_str_equalish("my output", out)
 
-    def test_no_cmd(self):
+    def test_no_cmd(self) -> None:
         """Verify scuba works with no given command"""
 
         with open(".scuba.yml", "w") as f:
@@ -103,7 +103,7 @@ class TestMain:
         out, _ = self.run_scuba([])
         assert_str_equalish(out, "Hello world")
 
-    def test_no_image_cmd(self):
+    def test_no_image_cmd(self) -> None:
         """Verify scuba gracefully handles an image with no Cmd and no user command"""
 
         with open(".scuba.yml", "w") as f:
@@ -112,7 +112,7 @@ class TestMain:
         # ScubaError -> exit(128)
         out, _ = self.run_scuba([], 128)
 
-    def test_handle_get_image_command_error(self):
+    def test_handle_get_image_command_error(self) -> None:
         """Verify scuba handles a get_image_command error"""
 
         with open(".scuba.yml", "w") as f:
@@ -127,7 +127,7 @@ class TestMain:
             # DockerError -> exit(128)
             self.run_scuba([], 128)
 
-    def test_config_error(self):
+    def test_config_error(self) -> None:
         """Verify config errors are handled gracefully"""
 
         with open(".scuba.yml", "w") as f:
@@ -136,7 +136,7 @@ class TestMain:
         # ConfigError -> exit(128)
         self.run_scuba([], 128)
 
-    def test_multiline_alias_no_args_error(self):
+    def test_multiline_alias_no_args_error(self) -> None:
         """Verify config errors from passing arguments to multi-line alias are caught"""
         with open(".scuba.yml", "w") as f:
             f.write(
@@ -154,7 +154,7 @@ class TestMain:
         # ConfigError -> exit(128)
         self.run_scuba(["multi", "with", "args"], 128)
 
-    def test_version(self):
+    def test_version(self) -> None:
         """Verify scuba prints its version for -v"""
 
         out, err = self.run_scuba(["-v"])
@@ -163,7 +163,7 @@ class TestMain:
         assert name == "scuba"
         assert ver == scuba.__version__
 
-    def test_no_docker(self):
+    def test_no_docker(self) -> None:
         """Verify scuba gracefully handles docker not being installed"""
 
         with open(".scuba.yml", "w") as f:
@@ -194,7 +194,7 @@ class TestMain:
 
         # TODO: Assert temp files are not cleaned up?
 
-    def test_args(self):
+    def test_args(self) -> None:
         """Verify scuba handles cmdline args"""
 
         with open(".scuba.yml", "w") as f:
@@ -211,7 +211,7 @@ class TestMain:
 
         assert_seq_equal(out.splitlines(), lines)
 
-    def test_created_file_ownership(self):
+    def test_created_file_ownership(self) -> None:
         """Verify files created under scuba have correct ownership"""
 
         with open(".scuba.yml", "w") as f:
@@ -225,7 +225,7 @@ class TestMain:
         assert st.st_uid == os.getuid()
         assert st.st_gid == os.getgid()
 
-    def _setup_test_tty(self):
+    def _setup_test_tty(self) -> None:
         with open(".scuba.yml", "w") as f:
             f.write(f"image: {DOCKER_IMAGE}\n")
 
@@ -235,7 +235,7 @@ class TestMain:
         make_executable("check_tty.sh")
 
     @skipUnlessTty()
-    def test_with_tty(self):
+    def test_with_tty(self) -> None:
         """Verify docker allocates tty if stdout is a tty."""
         self._setup_test_tty()
 
@@ -244,7 +244,7 @@ class TestMain:
         assert_str_equalish(out, "isatty")
 
     @skipUnlessTty()
-    def test_without_tty(self):
+    def test_without_tty(self) -> None:
         """Verify docker doesn't allocate tty if stdout is not a tty."""
         self._setup_test_tty()
 
@@ -252,7 +252,7 @@ class TestMain:
 
         assert_str_equalish(out, "notatty")
 
-    def test_redirect_stdin(self):
+    def test_redirect_stdin(self) -> None:
         """Verify stdin redirection works"""
         with open(".scuba.yml", "w") as f:
             f.write(f"image: {DOCKER_IMAGE}\n")
@@ -292,7 +292,7 @@ class TestMain:
         assert gid == expected_gid
         assert groupname == expected_groupname
 
-    def test_user_scubauser(self):
+    def test_user_scubauser(self) -> None:
         """Verify scuba runs container as the current (host) uid/gid"""
         self._test_user(
             expected_uid=os.getuid(),
@@ -308,14 +308,14 @@ class TestMain:
         expected_groupname="root",
     )
 
-    def test_user_root(self):
+    def test_user_root(self) -> None:
         """Verify scuba -r runs container as root"""
         self._test_user(
             **self.EXPECT_ROOT,
             scuba_args=["-r"],
         )
 
-    def test_user_run_as_root(self):
+    def test_user_run_as_root(self) -> None:
         '''Verify running scuba as root is identical to "scuba -r"'''
 
         with mock.patch("os.getuid", return_value=0) as getuid_mock, mock.patch(
@@ -325,7 +325,7 @@ class TestMain:
             assert getuid_mock.called
             assert getgid_mock.called
 
-    def test_user_root_alias(self):
+    def test_user_root_alias(self) -> None:
         """Verify that aliases can set whether the container is run as root"""
         with open(".scuba.yml", "w") as f:
             f.write(
@@ -382,7 +382,7 @@ class TestMain:
 
         assert_str_equalish(out, "success")
 
-    def test_home_writable_scubauser(self):
+    def test_home_writable_scubauser(self) -> None:
         """Verify scubauser has a writable homedir"""
 
         # Run this test in /home/$username if applicable
@@ -399,11 +399,11 @@ class TestMain:
         with InTempDir(prefix="tmp-scubatest-", dir=homedir):
             self._test_home_writable()
 
-    def test_home_writable_root(self):
+    def test_home_writable_root(self) -> None:
         """Verify root has a writable homedir"""
         self._test_home_writable(["-r"])
 
-    def test_arbitrary_docker_args(self):
+    def test_arbitrary_docker_args(self) -> None:
         """Verify -d successfully passes arbitrary docker arguments"""
 
         with open(".scuba.yml", "w") as f:
@@ -425,7 +425,7 @@ class TestMain:
 
         assert_str_equalish(out, data)
 
-    def test_arbitrary_docker_args_merge_config(self):
+    def test_arbitrary_docker_args_merge_config(self) -> None:
         """Verify -d arguments are merged with docker_args in the config"""
         dummy = Path("dummy")
         dummy.touch()
@@ -451,7 +451,7 @@ class TestMain:
         files = set(out.splitlines())
         assert files == expfiles
 
-    def test_nested_sript(self):
+    def test_nested_sript(self) -> None:
         """Verify nested scripts works"""
         with open(".scuba.yml", "w") as f:
             f.write(f"image: {DOCKER_IMAGE}\n")
@@ -474,7 +474,7 @@ class TestMain:
     ############################################################################
     # Entrypoint
 
-    def test_image_entrypoint(self):
+    def test_image_entrypoint(self) -> None:
         """Verify scuba doesn't interfere with the configured image ENTRYPOINT"""
 
         with open(".scuba.yml", "w") as f:
@@ -483,7 +483,7 @@ class TestMain:
         out, _ = self.run_scuba(["cat", "entrypoint_works.txt"])
         assert_str_equalish("success", out)
 
-    def test_image_entrypoint_multiline(self):
+    def test_image_entrypoint_multiline(self) -> None:
         """Verify entrypoints are handled correctly with multi-line scripts"""
         with open(".scuba.yml", "w") as f:
             f.write(
@@ -500,7 +500,7 @@ class TestMain:
         out, _ = self.run_scuba(["testalias"])
         assert_str_equalish("\n".join(["success"] * 2), out)
 
-    def test_entrypoint_override(self):
+    def test_entrypoint_override(self) -> None:
         """Verify --entrypoint override works"""
         with open(".scuba.yml", "w") as f:
             f.write(
@@ -528,7 +528,7 @@ class TestMain:
         out, _ = self.run_scuba(args)
         assert_str_equalish(test_str, out)
 
-    def test_entrypoint_override_none(self):
+    def test_entrypoint_override_none(self) -> None:
         """Verify --entrypoint override (to nothing) works"""
         with open(".scuba.yml", "w") as f:
             f.write(
@@ -552,7 +552,7 @@ class TestMain:
         # (because it didn't run)
         assert_str_equalish("", out)
 
-    def test_yaml_entrypoint_override(self):
+    def test_yaml_entrypoint_override(self) -> None:
         """Verify entrypoint in .scuba.yml works"""
         with open(".scuba.yml", "w") as f:
             f.write(
@@ -575,7 +575,7 @@ class TestMain:
         out, _ = self.run_scuba(args)
         assert_str_equalish(test_str, out)
 
-    def test_yaml_entrypoint_override_none(self):
+    def test_yaml_entrypoint_override_none(self) -> None:
         """Verify "none" entrypoint in .scuba.yml works"""
         with open(".scuba.yml", "w") as f:
             f.write(
@@ -601,7 +601,7 @@ class TestMain:
     ############################################################################
     # Image override
 
-    def test_image_override(self):
+    def test_image_override(self) -> None:
         """Verify --image works"""
 
         with open(".scuba.yml", "w") as f:
@@ -617,7 +617,7 @@ class TestMain:
         out, _ = self.run_scuba(args)
         assert_str_equalish("success", out)
 
-    def test_image_override_with_alias(self):
+    def test_image_override_with_alias(self) -> None:
         """Verify --image works with aliases"""
 
         with open(".scuba.yml", "w") as f:
@@ -643,7 +643,7 @@ class TestMain:
         out, _ = self.run_scuba(args)
         assert_str_equalish("multi\nline\nalias", out)
 
-    def test_yml_not_needed_with_image_override(self):
+    def test_yml_not_needed_with_image_override(self) -> None:
         """Verify .scuba.yml can be missing if --image is used"""
 
         # no .scuba.yml
@@ -657,7 +657,7 @@ class TestMain:
         out, _ = self.run_scuba(args)
         assert_str_equalish("success", out)
 
-    def test_complex_commands_in_alias(self):
+    def test_complex_commands_in_alias(self) -> None:
         """Verify complex commands can be used in alias scripts"""
         test_string = "Hello world"
         os.mkdir("foo")
@@ -685,7 +685,7 @@ class TestMain:
         args = ["/bin/sh", "-c", cmd]
         return self.run_scuba(args, exp_retval=exp_retval)
 
-    def _test_hook_runs_as(self, hookname, exp_uid, exp_gid):
+    def _test_hook_runs_as(self, hookname, exp_uid, exp_gid) -> None:
         out, _ = self._test_one_hook(
             hookname,
             "echo $(id -u) $(id -g)",
@@ -699,15 +699,15 @@ class TestMain:
 
         assert_str_equalish(out[1], "success")
 
-    def test_user_hook_runs_as_user(self):
+    def test_user_hook_runs_as_user(self) -> None:
         """Verify user hook executes as user"""
         self._test_hook_runs_as("user", os.getuid(), os.getgid())
 
-    def test_root_hook_runs_as_root(self):
+    def test_root_hook_runs_as_root(self) -> None:
         """Verify root hook executes as root"""
         self._test_hook_runs_as("root", 0, 0)
 
-    def test_hook_failure_shows_correct_status(self):
+    def test_hook_failure_shows_correct_status(self) -> None:
         testval = 42
         out, err = self._test_one_hook(
             "root",
@@ -720,7 +720,7 @@ class TestMain:
     ############################################################################
     # Environment
 
-    def test_env_var_keyval(self):
+    def test_env_var_keyval(self) -> None:
         """Verify -e KEY=VAL works"""
         with open(".scuba.yml", "w") as f:
             f.write(f"image: {DOCKER_IMAGE}\n")
@@ -816,7 +816,7 @@ class TestMain:
     ############################################################################
     # Shell Override
 
-    def test_use_top_level_shell_override(self):
+    def test_use_top_level_shell_override(self) -> None:
         """Verify that the shell can be overriden at the top level"""
         with open(".scuba.yml", "w") as f:
             f.write(
@@ -833,7 +833,7 @@ class TestMain:
         # If we failed to override, the shebang would be #!/bin/sh
         assert_str_equalish("/bin/bash", out)
 
-    def test_alias_level_shell_override(self):
+    def test_alias_level_shell_override(self) -> None:
         """Verify that the shell can be overriden at the alias level without affecting other aliases"""
         with open(".scuba.yml", "w") as f:
             f.write(
@@ -855,7 +855,7 @@ class TestMain:
         # which is /bin/dash on Debian
         assert out.strip() in ["/bin/sh", "/bin/dash"]
 
-    def test_cli_shell_override(self):
+    def test_cli_shell_override(self) -> None:
         """Verify that the shell can be overriden by the CLI"""
         with open(".scuba.yml", "w") as f:
             f.write(
@@ -870,7 +870,7 @@ class TestMain:
         out, _ = self.run_scuba(["--shell", "/bin/bash", "default_shell"])
         assert_str_equalish("/bin/bash", out)
 
-    def test_shell_override_precedence(self):
+    def test_shell_override_precedence(self) -> None:
         """Verify that shell overrides at different levels override each other as expected"""
         # Precedence expectations are (with "<<" meaning "overridden by"):
         # Top-level SCUBA_YML shell << alias-level SCUBA_YML shell << CLI-specified shell
@@ -920,7 +920,7 @@ class TestMain:
     ############################################################################
     # Volumes
 
-    def test_volumes_basic(self):
+    def test_volumes_basic(self) -> None:
         """Verify volumes can be added at top-level and alias"""
 
         # Create some temporary directories with a file in each
@@ -950,7 +950,7 @@ class TestMain:
         out = out.splitlines()
         assert out == ["from the top", "from the alias"]
 
-    def test_volumes_alias_override(self):
+    def test_volumes_alias_override(self) -> None:
         """Verify volumes can be overridden by an alias"""
 
         # Create some temporary directories with a file in each
@@ -986,7 +986,7 @@ class TestMain:
         out = out.splitlines()
         assert out == ["from the alias"]
 
-    def test_volumes_host_path_create(self):
+    def test_volumes_host_path_create(self) -> None:
         """Missing host paths should be created before starting Docker"""
 
         userdir = Path("./user")
@@ -1009,7 +1009,7 @@ class TestMain:
         assert info.st_uid != 0, "Directory is owned by root"
         assert info.st_gid != 0, "Directory group is root"
 
-    def test_volumes_host_path_permissions(self):
+    def test_volumes_host_path_permissions(self) -> None:
         """Host path permission errors should be ignored"""
 
         rootdir = Path("./root")
@@ -1045,7 +1045,7 @@ class TestMain:
         assert info.st_uid == 0, "Directory is owned by root"
         assert info.st_gid == 0, "Directory group is root"
 
-    def test_volumes_host_path_failure(self):
+    def test_volumes_host_path_failure(self) -> None:
         """Host path failures due to OS errors prevent Docker run"""
 
         rootdir = Path("./root")
