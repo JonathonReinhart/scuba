@@ -4,6 +4,7 @@ import os
 import re
 import shlex
 from typing import Any, List, Dict, Optional, TextIO, Tuple, Type, TypeVar, Union
+from typing import overload
 
 import yaml
 import yaml.nodes
@@ -302,6 +303,16 @@ def _get_typed_val(
     return v
 
 
+@overload  # When default is None, can return None (Optional).
+def _get_str(data: CfgData, key: str, default: None = None) -> Optional[str]:
+    ...
+
+
+@overload  # When default is non-None, cannot return None.
+def _get_str(data: CfgData, key: str, default: str) -> str:
+    ...
+
+
 def _get_str(data: CfgData, key: str, default: Optional[str] = None) -> Optional[str]:
     return _get_typed_val(data, key, str, default)
 
@@ -449,11 +460,7 @@ class ScubaConfig:
             )
 
         self._image = _get_str(data, "image")
-
-        shell = _get_str(data, "shell", DEFAULT_SHELL)
-        assert shell is not None  # Guaranteed by default arg. TODO: express via type?
-        self.shell = shell
-
+        self.shell = _get_str(data, "shell", DEFAULT_SHELL)
         self.entrypoint = _get_entrypoint(data)
         self.docker_args = _get_docker_args(data)
         self.volumes = _get_volumes(data)
