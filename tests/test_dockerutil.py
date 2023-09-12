@@ -3,23 +3,24 @@ from unittest import mock
 import pytest
 
 import subprocess
+from typing import Sequence
 from .const import *
 
 import scuba.dockerutil as uut
 
 
-def test_get_image_command_success():
+def test_get_image_command_success() -> None:
     """get_image_command works"""
     assert uut.get_image_command(DOCKER_IMAGE)
 
 
-def test_get_image_command_bad_image():
+def test_get_image_command_bad_image() -> None:
     """get_image_command raises an exception for a bad image name"""
     with pytest.raises(uut.DockerError):
         uut.get_image_command("nosuchimageZZZZZZZZ")
 
 
-def test_get_image_no_docker():
+def test_get_image_no_docker() -> None:
     """get_image_command raises an exception if docker is not installed"""
 
     def mocked_run(args, real_run=subprocess.run, **kw):
@@ -32,7 +33,7 @@ def test_get_image_no_docker():
             uut.get_image_command("n/a")
 
 
-def _test_get_images(stdout, returncode=0):
+def _test_get_images(stdout, returncode=0) -> Sequence[str]:
     def mocked_run(*args, **kwargs):
         mock_obj = mock.MagicMock()
         mock_obj.returncode = returncode
@@ -43,13 +44,13 @@ def _test_get_images(stdout, returncode=0):
         return uut.get_images()
 
 
-def test_get_images_success__no_images():
+def test_get_images_success__no_images() -> None:
     """get_images works when no images are present"""
     images = _test_get_images("")
     assert images == []
 
 
-def test_get_images_success__multiple_images():
+def test_get_images_success__multiple_images() -> None:
     """get_images works when many images are present"""
     output = """\
 foo
@@ -72,13 +73,13 @@ dummy/crackle:pop
     ]
 
 
-def test_get_images__failure():
+def test_get_images__failure() -> None:
     """get_images fails because of error"""
     with pytest.raises(uut.DockerError):
         _test_get_images("This is a pre-canned error", 1)
 
 
-def test__get_image_command__pulls_image_if_missing():
+def test__get_image_command__pulls_image_if_missing() -> None:
     """get_image_command pulls an image if missing"""
     image = ALT_DOCKER_IMAGE
 
@@ -92,27 +93,27 @@ def test__get_image_command__pulls_image_if_missing():
     assert result
 
 
-def test_get_image_entrypoint():
+def test_get_image_entrypoint() -> None:
     """get_image_entrypoint works"""
     result = uut.get_image_entrypoint("scuba/entrypoint-test")
     assert result == ["/entrypoint.sh"]
 
 
-def test_get_image_entrypoint__none():
+def test_get_image_entrypoint__none() -> None:
     """get_image_entrypoint works for image with no entrypoint"""
     result = uut.get_image_entrypoint(DOCKER_IMAGE)
     assert result is None
 
 
-def test_make_vol_opt_no_opts():
+def test_make_vol_opt_no_opts() -> None:
     assert uut.make_vol_opt("/hostdir", "/contdir") == "--volume=/hostdir:/contdir"
 
 
-def test_make_vol_opt_empty_opts():
+def test_make_vol_opt_empty_opts() -> None:
     assert uut.make_vol_opt("/hostdir", "/contdir", []) == "--volume=/hostdir:/contdir"
 
 
-def test_make_vol_opt_multi_opts():
+def test_make_vol_opt_multi_opts() -> None:
     assert (
         uut.make_vol_opt("/hostdir", "/contdir", ["ro", "z"])
         == "--volume=/hostdir:/contdir:ro,z"
