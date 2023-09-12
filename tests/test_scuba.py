@@ -1,5 +1,6 @@
 import pytest
 import shlex
+from .utils import assert_vol
 
 from scuba.config import ScubaConfig, ConfigError, OverrideStr
 from scuba.scuba import ScubaContext
@@ -340,13 +341,8 @@ class TestScubaContext:
         vols = result.volumes
         assert len(vols) == 2
 
-        v = vols["/foo"]
-        assert v.container_path == "/foo"
-        assert v.host_path == "/host/foo"
-
-        v = vols["/bar"]
-        assert v.container_path == "/bar"
-        assert v.host_path == "/host/bar"
+        assert_vol(vols, "/foo", "/host/foo")
+        assert_vol(vols, "/bar", "/host/bar")
 
     def test_process_command_alias_updates_volumes(self) -> None:
         """aliases can extend the volumes"""
@@ -370,6 +366,4 @@ class TestScubaContext:
         vols = result.volumes
         assert len(vols) == 1
 
-        v = vols["/foo"]
-        assert v.container_path == "/foo"
-        assert v.host_path == "/alternate/foo"
+        assert_vol(vols, "/foo", "/alternate/foo")

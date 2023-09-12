@@ -6,8 +6,10 @@ import shutil
 import unittest
 import logging
 from pathlib import Path
-from typing import Any, Sequence, Union
+from typing import Any, Dict, List, Sequence, Union
 from unittest import mock
+
+from scuba.config import ScubaVolume
 
 PathStr = Union[Path, str]
 
@@ -24,6 +26,21 @@ def assert_str_equalish(exp: Any, act: Any) -> None:
     exp = str(exp).strip()
     act = str(act).strip()
     assert exp == act
+
+
+def assert_vol(
+    vols: Dict[Path, ScubaVolume],
+    cpath_str: str,
+    hpath_str: str,
+    options: List[str] = [],
+) -> None:
+    cpath = Path(cpath_str)
+    hpath = Path(hpath_str)
+    v = vols[cpath]
+    assert isinstance(v, ScubaVolume)
+    assert v.container_path == cpath
+    assert v.host_path == hpath
+    assert v.options == options
 
 
 def make_executable(path: PathStr) -> None:

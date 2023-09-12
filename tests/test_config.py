@@ -892,9 +892,7 @@ class TestConfig:
         assert config.volumes is not None
         assert len(config.volumes) == 1
 
-        v = config.volumes["/cpath"]
-        assert v.container_path == "/cpath"
-        assert v.host_path == "/hpath"
+        assert_vol(config.volumes, "/cpath", "/hpath")
 
     def test_volumes_complex(self) -> None:
         """volumes can be set using the complex form"""
@@ -917,23 +915,9 @@ class TestConfig:
         assert vols is not None
         assert len(vols) == 3
 
-        v = vols["/foo"]
-        assert isinstance(v, scuba.config.ScubaVolume)
-        assert v.container_path == "/foo"
-        assert v.host_path == "/host/foo"
-        assert v.options == []
-
-        v = vols["/bar"]
-        assert isinstance(v, scuba.config.ScubaVolume)
-        assert v.container_path == "/bar"
-        assert v.host_path == "/host/bar"
-        assert v.options == []
-
-        v = vols["/snap"]
-        assert isinstance(v, scuba.config.ScubaVolume)
-        assert v.container_path == "/snap"
-        assert v.host_path == "/host/snap"
-        assert v.options == ["z", "ro"]
+        assert_vol(vols, "/foo", "/host/foo")
+        assert_vol(vols, "/bar", "/host/bar")
+        assert_vol(vols, "/snap", "/host/snap", ["z", "ro"])
 
     def test_alias_volumes_set(self) -> None:
         """docker_args can be set via alias"""
@@ -958,17 +942,8 @@ class TestConfig:
         assert vols is not None
         assert len(vols) == 2
 
-        v = vols["/foo"]
-        assert isinstance(v, scuba.config.ScubaVolume)
-        assert v.container_path == "/foo"
-        assert v.host_path == "/host/foo"
-        assert v.options == []
-
-        v = vols["/bar"]
-        assert isinstance(v, scuba.config.ScubaVolume)
-        assert v.container_path == "/bar"
-        assert v.host_path == "/host/bar"
-        assert v.options == ["z", "ro"]
+        assert_vol(vols, "/foo", "/host/foo")
+        assert_vol(vols, "/bar", "/host/bar", ["z", "ro"])
 
     def test_volumes_with_env_vars_simple(self, monkeypatch) -> None:
         """volume definitions can contain environment variables"""
@@ -988,11 +963,7 @@ class TestConfig:
         assert vols is not None
         assert len(vols) == 1
 
-        v = list(vols.values())[0]
-        assert isinstance(v, scuba.config.ScubaVolume)
-        assert v.container_path == "/bar/baz/foo"
-        assert v.host_path == "/moo/doo/foo"
-        assert v.options == []
+        assert_vol(vols, "/bar/baz/foo", "/moo/doo/foo")
 
     def test_volumes_with_env_vars_complex(self, monkeypatch) -> None:
         """complex volume definitions can contain environment variables"""
@@ -1019,23 +990,11 @@ class TestConfig:
         assert vols is not None
         assert len(vols) == 3
 
-        v = vols["/home/testuser/.config"]
-        assert isinstance(v, scuba.config.ScubaVolume)
-        assert v.container_path == "/home/testuser/.config"
-        assert v.host_path == "/home/testuser/.config"
-        assert v.options == []
-
-        v = vols["/tmp/"]
-        assert isinstance(v, scuba.config.ScubaVolume)
-        assert v.container_path == "/tmp/"
-        assert v.host_path == "/home/testuser/scuba/myproject/tmp"
-        assert v.options == []
-
-        v = vols["/var/spool/mail/container"]
-        assert isinstance(v, scuba.config.ScubaVolume)
-        assert v.container_path == "/var/spool/mail/container"
-        assert v.host_path == "/var/spool/mail/testuser"
-        assert v.options == ["z", "ro"]
+        assert_vol(vols, "/home/testuser/.config", "/home/testuser/.config")
+        assert_vol(vols, "/tmp", "/home/testuser/scuba/myproject/tmp")
+        assert_vol(
+            vols, "/var/spool/mail/container", "/var/spool/mail/testuser", ["z", "ro"]
+        )
 
     def test_volumes_with_invalid_env_vars(self, monkeypatch) -> None:
         """Volume definitions cannot include unset env vars"""

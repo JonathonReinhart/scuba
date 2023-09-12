@@ -191,7 +191,7 @@ class ScubaDive:
             return
 
         for vol in self.context.volumes.values():
-            if os.path.exists(vol.host_path):
+            if vol.host_path.exists():
                 continue
 
             try:
@@ -403,7 +403,7 @@ class ScubaDive:
 class ScubaContext:
     image: str
     environment: Dict[str, str]  # key: value
-    volumes: Dict[str, ScubaVolume]
+    volumes: Dict[Path, ScubaVolume]
     shell: str
     docker_args: List[str]
     script: Optional[List[str]] = None  # TODO: drop Optional?
@@ -435,7 +435,7 @@ class ScubaContext:
         entrypoint = cfg.entrypoint
         environment = copy.copy(cfg.environment)
         docker_args = copy.copy(cfg.docker_args) or []
-        volumes: Dict[str, ScubaVolume] = copy.copy(cfg.volumes or {})
+        volumes: Dict[Path, ScubaVolume] = copy.copy(cfg.volumes or {})
         as_root = False
 
         if command:

@@ -314,7 +314,7 @@ def _get_str(data: CfgData, key: str, default: Optional[str] = None) -> Optional
     return _get_typed_val(data, key, str, default)
 
 
-def _get_dict(data: CfgData, key: str) -> Optional[dict]:
+def _get_dict(data: CfgData, key: str) -> Optional[dict[str, Any]]:
     return _get_typed_val(data, key, dict)
 
 
@@ -323,19 +323,19 @@ def _get_delimited_str_list(data: CfgData, key: str, sep: str) -> List[str]:
     return s.split(sep) if s else []
 
 
-def _get_volumes(data: CfgData) -> Optional[Dict[str, ScubaVolume]]:
+def _get_volumes(data: CfgData) -> Optional[Dict[Path, ScubaVolume]]:
     voldata = _get_dict(data, "volumes")
     if voldata is None:
         return None
 
     vols = {}
-    for cpath, v in voldata.items():
-        cpath = _expand_path(cpath)
+    for cpath_str, v in voldata.items():
+        cpath = _expand_path(cpath_str)
         vols[cpath] = ScubaVolume.from_dict(cpath, v)
     return vols
 
 
-def _expand_path(in_str: str) -> str:
+def _expand_path(in_str: str) -> Path:
     try:
         output = expand_env_vars(in_str)
     except KeyError as ke:
@@ -348,17 +348,17 @@ def _expand_path(in_str: str) -> str:
             f"Unable to expand string '{in_str}' due to parsing errors"
         ) from ve
 
-    return output
+    return Path(output)
 
 
 @dataclasses.dataclass(frozen=True)
 class ScubaVolume:
-    container_path: str
-    host_path: str  # TODO: Optional for anonymous volume
+    container_path: Path
+    host_path: Path  # TODO: Optional for anonymous volume
     options: List[str] = dataclasses.field(default_factory=list)
 
     @classmethod
-    def from_dict(cls, cpath: str, node: CfgNode) -> ScubaVolume:
+    def from_dict(cls, cpath: Path, node: CfgNode) -> ScubaVolume:
         # Treat a null node as an empty dict
         if node is None:
             node = {}
@@ -390,10 +390,7 @@ class ScubaVolume:
         raise ConfigError(f"{cpath}: must be string or dict")
 
     def get_vol_opt(self) -> str:
-        # TODO: change host_path and container_path to Path objects
-        return make_vol_opt(
-            Path(self.host_path), Path(self.container_path), self.options
-        )
+        return make_vol_opt(self.host_path, self.container_path, self.options)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -406,7 +403,7 @@ class ScubaAlias:
     shell: Optional[str] = None
     as_root: bool = False
     docker_args: Optional[List[str]] = None
-    volumes: Optional[Dict[str, ScubaVolume]] = None
+    volumes: Optional[Dict[Path, ScubaVolume]] = None
 
     @classmethod
     def from_dict(cls, name: str, node: CfgNode) -> ScubaAlias:
@@ -434,7 +431,7 @@ class ScubaConfig:
     shell: str
     entrypoint: Optional[str]
     docker_args: Optional[List[str]]  # TODO: drop Optional?
-    volumes: Optional[Dict[str, ScubaVolume]]  # TODO: drop Optional? Dict?
+    volumes: Optional[Dict[Path, ScubaVolume]]  # TODO: drop Optional? Dict?
     aliases: Dict[str, ScubaAlias]
     hooks: Dict[str, List[str]]
     environment: Environment
