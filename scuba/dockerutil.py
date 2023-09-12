@@ -137,6 +137,11 @@ def make_vol_opt(
     options: Optional[Sequence[str]] = None,
 ) -> str:
     """Generate a docker volume option"""
+    if not hostdir.is_absolute():
+        raise ValueError(f"hostdir not absolute: {hostdir}")
+    if not contdir.is_absolute():
+        raise ValueError(f"contdir not absolute: {contdir}")
+
     vol = f"--volume={hostdir}:{contdir}"
     if options:
         assert not isinstance(options, str)

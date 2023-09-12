@@ -125,3 +125,8 @@ def test_make_vol_opt_multi_opts() -> None:
         uut.make_vol_opt(Path("/hostdir"), Path("/contdir"), ["ro", "z"])
         == "--volume=/hostdir:/contdir:ro,z"
     )
+
+
+def test_make_vol_opt__requires_absolute() -> None:
+    with pytest.raises(ValueError):
+        uut.make_vol_opt(Path("hostdir"), Path("/contdir"))
