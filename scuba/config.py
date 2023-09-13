@@ -344,7 +344,8 @@ def _expand_path(in_str: str, base_dir: Optional[Path] = None) -> Path:
     the host environment.
 
     After environment variable expansion, absolute paths are returned as-is.
-    Relative paths are joined to base_dir, if provided.
+    Relative paths must start with ./ or ../ and are joined to base_dir, if
+    provided.
 
     Args:
       in_str: Input path as a string.
@@ -357,13 +358,14 @@ def _expand_path(in_str: str, base_dir: Optional[Path] = None) -> Path:
       ValueError: If base_dir is provided but not absolute.
       ConfigError: If a referenced environment variable is not set.
       ConfigError: An environment variable reference could not be parsed.
+      ConfigError: A relative path does not start with "./" or "../".
       ConfigError: A relative path is given when base_dir is not provided.
     """
     if base_dir is not None and not base_dir.is_absolute():
         raise ValueError(f"base_dir is not absolute: {base_dir}")
 
     try:
-        output = expand_env_vars(in_str)
+        path_str = expand_env_vars(in_str)
     except KeyError as ke:
         # pylint: disable=raise-missing-from
         raise ConfigError(
@@ -374,11 +376,20 @@ def _expand_path(in_str: str, base_dir: Optional[Path] = None) -> Path:
             f"Unable to expand string '{in_str}' due to parsing errors"
         ) from ve
 
-    path = Path(output)
+    path = Path(path_str)
 
     if not path.is_absolute():
         if base_dir is None:
             raise ConfigError(f"Relative path not allowed: {path}")
+
+        # Make sure it starts with ./ or ../
+        # We have to use the original string input since Path() will remove ./
+        valid_prefixes = ("./", "../")
+        if not any(path_str.startswith(pfx) for pfx in valid_prefixes):
+            raise ConfigError(
+                f"Relative path must start with {' or '.join(valid_prefixes)}: {path}"
+            )
+
         path = base_dir / path
 
     assert path.is_absolute()

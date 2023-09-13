@@ -1081,7 +1081,7 @@ class TestMain:
                 f"""
                 image: {DOCKER_IMAGE}
                 volumes:
-                  /userdir: {userdir}
+                  /userdir: ./{userdir}
                 """
             )
 

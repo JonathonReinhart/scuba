@@ -184,6 +184,7 @@ Volume container paths must be absolute.
 
 Volume host paths can be absolute or relative. If a relative path is used, it
 is interpreted as relative to the directory in which ``.scuba.yml`` is found.
+To avoid ambiguity, relative paths must start with ``./`` or ``../``.
 
 Volume host directories which do not already exist are created as the current
 user before creating the container.

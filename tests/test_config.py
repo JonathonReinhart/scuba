@@ -1012,18 +1012,17 @@ class TestConfig:
 
     def test_volumes_hostpath_rel(self, monkeypatch, in_tmp_path) -> None:
         """volume hostpath can be relative to scuba_root (top dir)"""
-        monkeypatch.setenv("RELVAR", "spam/eggs")
+        monkeypatch.setenv("RELVAR", "./spam/eggs")
 
         with open(".scuba.yml", "w") as f:
             f.write(
                 r"""
                 image: na
                 volumes:
-                  /one: foo             # simple form, naked dir name
-                  /two: ./foo/bar       # simple form, dotted path
-                  /three:               # complex form
+                  /bar: ./foo/bar       # simple form, dotted path
+                  /scp:                 # complex form
                     hostpath: ./snap/crackle/pop
-                  /four: $RELVAR        # simple form, relative path in variable
+                  /relvar: $RELVAR      # simple form, relative path in variable
                 """
             )
 
@@ -1038,10 +1037,38 @@ class TestConfig:
         assert found_rel == subdir
         assert config.volumes is not None
 
-        assert_vol(config.volumes, "/one", in_tmp_path / "foo")
-        assert_vol(config.volumes, "/two", in_tmp_path / "foo" / "bar")
-        assert_vol(config.volumes, "/three", in_tmp_path / "snap" / "crackle" / "pop")
-        assert_vol(config.volumes, "/four", in_tmp_path / "spam" / "eggs")
+        assert_vol(config.volumes, "/bar", in_tmp_path / "foo" / "bar")
+        assert_vol(config.volumes, "/scp", in_tmp_path / "snap" / "crackle" / "pop")
+        assert_vol(config.volumes, "/relvar", in_tmp_path / "spam" / "eggs")
+
+    def test_volumes_hostpath_rel_req_dot_simple(
+        self, monkeypatch, in_tmp_path
+    ) -> None:
+        """relaitve volume hostpath (simple form) must start with ./ or ../"""
+        with open(".scuba.yml", "w") as f:
+            f.write(
+                r"""
+                image: na
+                volumes:
+                  /one: foo  # Forbidden
+                """
+            )
+        self._invalid_config("Relative path must start with ./ or ../")
+
+    def test_volumes_hostpath_rel_requires_dot_complex(
+        self, monkeypatch, in_tmp_path
+    ) -> None:
+        """relaitve volume hostpath (complex form) must start with ./ or ../"""
+        with open(".scuba.yml", "w") as f:
+            f.write(
+                r"""
+                image: na
+                volumes:
+                  /one:
+                    hostpath: foo  # Forbidden
+                """
+            )
+        self._invalid_config("Relative path must start with ./ or ../")
 
     def test_volumes_contpath_rel(self, monkeypatch, in_tmp_path) -> None:
         with open(".scuba.yml", "w") as f:
