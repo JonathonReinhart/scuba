@@ -1009,3 +1009,47 @@ class TestConfig:
                 """
             )
         self._invalid_config("TEST_VAR1")
+
+    def test_volumes_hostpath_rel(self, monkeypatch, in_tmp_path) -> None:
+        """volume hostpath can be relative to scuba_root (top dir)"""
+        monkeypatch.setenv("RELVAR", "spam/eggs")
+
+        with open(".scuba.yml", "w") as f:
+            f.write(
+                r"""
+                image: na
+                volumes:
+                  /one: foo             # simple form, naked dir name
+                  /two: ./foo/bar       # simple form, dotted path
+                  /three:               # complex form
+                    hostpath: ./snap/crackle/pop
+                  /four: $RELVAR        # simple form, relative path in variable
+                """
+            )
+
+        # Make a subdirectory and cd into it
+        subdir = Path("way/down/here")
+        subdir.mkdir(parents=True)
+        monkeypatch.chdir(subdir)
+
+        # Locate the config
+        found_topdir, found_rel, config = scuba.config.find_config()
+        assert found_topdir == in_tmp_path
+        assert found_rel == subdir
+        assert config.volumes is not None
+
+        assert_vol(config.volumes, "/one", in_tmp_path / "foo")
+        assert_vol(config.volumes, "/two", in_tmp_path / "foo" / "bar")
+        assert_vol(config.volumes, "/three", in_tmp_path / "snap" / "crackle" / "pop")
+        assert_vol(config.volumes, "/four", in_tmp_path / "spam" / "eggs")
+
+    def test_volumes_contpath_rel(self, monkeypatch, in_tmp_path) -> None:
+        with open(".scuba.yml", "w") as f:
+            f.write(
+                r"""
+                image: na
+                volumes:
+                  foo: /what/now
+                """
+            )
+        self._invalid_config("Relative path not allowed: foo")

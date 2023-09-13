@@ -1065,3 +1065,30 @@ class TestMain:
             )
 
         self.run_scuba(["touch", "/userdir/test.txt"], 128)
+
+    def test_volumes_host_path_rel(self) -> None:
+        """Volume host paths can be relative"""
+
+        # Set up a subdir with a file to be read.
+        userdir = Path("./user")
+        userdir.mkdir(parents=True)
+
+        test_message = "Relative paths work"
+        (userdir / "test.txt").write_text(test_message)
+
+        with open(".scuba.yml", "w") as f:
+            f.write(
+                f"""
+                image: {DOCKER_IMAGE}
+                volumes:
+                  /userdir: {userdir}
+                """
+            )
+
+        # Invoke scuba from a different subdir, for good measure.
+        otherdir = Path("way/down/here")
+        otherdir.mkdir(parents=True)
+        os.chdir(otherdir)
+
+        out, _ = self.run_scuba(["cat", "/userdir/test.txt"])
+        assert out == test_message
