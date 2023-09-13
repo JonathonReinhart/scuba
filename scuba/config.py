@@ -173,7 +173,7 @@ def find_config() -> Tuple[Path, Path, ScubaConfig]:
     while True:
         cfg_path = path / SCUBA_YML
         if cfg_path.exists():
-            return path, Path.cwd().relative_to(path), load_config(cfg_path)
+            return path, Path.cwd().relative_to(path), load_config(cfg_path, path)
 
         if not cross_fs and path.is_mount():
             raise ConfigNotFoundError(
@@ -323,7 +323,9 @@ def _get_delimited_str_list(data: CfgData, key: str, sep: str) -> List[str]:
     return s.split(sep) if s else []
 
 
-def _get_volumes(data: CfgData) -> Optional[Dict[Path, ScubaVolume]]:
+def _get_volumes(
+    data: CfgData, scuba_root: Optional[Path]
+) -> Optional[Dict[Path, ScubaVolume]]:
     voldata = _get_dict(data, "volumes")
     if voldata is None:
         return None
@@ -331,7 +333,7 @@ def _get_volumes(data: CfgData) -> Optional[Dict[Path, ScubaVolume]]:
     vols = {}
     for cpath_str, v in voldata.items():
         cpath = _expand_path(cpath_str)
-        vols[cpath] = ScubaVolume.from_dict(cpath, v)
+        vols[cpath] = ScubaVolume.from_dict(cpath, v, scuba_root)
     return vols
 
 
@@ -390,7 +392,9 @@ class ScubaVolume:
     options: List[str] = dataclasses.field(default_factory=list)
 
     @classmethod
-    def from_dict(cls, cpath: Path, node: CfgNode) -> ScubaVolume:
+    def from_dict(
+        cls, cpath: Path, node: CfgNode, scuba_root: Optional[Path]
+    ) -> ScubaVolume:
         # Treat a null node as an empty dict
         if node is None:
             node = {}
@@ -438,7 +442,9 @@ class ScubaAlias:
     volumes: Optional[Dict[Path, ScubaVolume]] = None
 
     @classmethod
-    def from_dict(cls, name: str, node: CfgNode) -> ScubaAlias:
+    def from_dict(
+        cls, name: str, node: CfgNode, scuba_root: Optional[Path]
+    ) -> ScubaAlias:
         script = _process_script_node(node, name)
 
         if isinstance(node, dict):  # Rich alias
@@ -453,7 +459,7 @@ class ScubaAlias:
                 shell=node.get("shell"),
                 as_root=bool(node.get("root")),
                 docker_args=_get_docker_args(node),
-                volumes=_get_volumes(node),
+                volumes=_get_volumes(node, scuba_root),
             )
 
         return cls(name=name, script=script)
@@ -468,7 +474,11 @@ class ScubaConfig:
     hooks: Dict[str, List[str]]
     environment: Environment
 
-    def __init__(self, data: Optional[dict[str, CfgNode]] = None) -> None:
+    def __init__(
+        self,
+        data: Optional[dict[str, CfgNode]] = None,
+        scuba_root: Optional[Path] = None,
+    ) -> None:
         if data is None:
             data = {}
 
@@ -495,17 +505,19 @@ class ScubaConfig:
         self.shell = _get_str(data, "shell", DEFAULT_SHELL)
         self.entrypoint = _get_entrypoint(data)
         self.docker_args = _get_docker_args(data)
-        self.volumes = _get_volumes(data)
-        self.aliases = self._load_aliases(data)
+        self.volumes = _get_volumes(data, scuba_root)
+        self.aliases = self._load_aliases(data, scuba_root)
         self.hooks = self._load_hooks(data)
         self.environment = _process_environment(data.get("environment"), "environment")
 
-    def _load_aliases(self, data: CfgData) -> Dict[str, ScubaAlias]:
+    def _load_aliases(
+        self, data: CfgData, scuba_root: Optional[Path]
+    ) -> Dict[str, ScubaAlias]:
         aliases = {}
         for name, node in data.get("aliases", {}).items():
             if " " in name:
                 raise ConfigError("Alias names cannot contain spaces")
-            aliases[name] = ScubaAlias.from_dict(name, node)
+            aliases[name] = ScubaAlias.from_dict(name, node, scuba_root)
         return aliases
 
     def _load_hooks(self, data: CfgData) -> Dict[str, List[str]]:
@@ -526,7 +538,7 @@ class ScubaConfig:
         return self._image
 
 
-def load_config(path: Path) -> ScubaConfig:
+def load_config(path: Path, scuba_root: Path) -> ScubaConfig:
     try:
         with path.open("r") as f:
             data = yaml.load(f, Loader)
@@ -535,4 +547,4 @@ def load_config(path: Path) -> ScubaConfig:
     except yaml.YAMLError as e:
         raise ConfigError(f"Error loading {SCUBA_YML}: {e}")
 
-    return ScubaConfig(data)
+    return ScubaConfig(data, scuba_root)

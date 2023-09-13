@@ -12,7 +12,7 @@ import scuba.config
 
 
 def load_config() -> scuba.config.ScubaConfig:
-    return scuba.config.load_config(Path(".scuba.yml"))
+    return scuba.config.load_config(Path(".scuba.yml"), Path.cwd())
 
 
 class TestCommonScriptSchema:
