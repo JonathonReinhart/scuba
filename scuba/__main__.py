@@ -8,6 +8,7 @@ import sys
 import shlex
 import itertools
 import argparse
+from pathlib import Path
 from typing import Any, Optional, Sequence
 
 try:
@@ -137,8 +138,8 @@ def run_scuba(scuba_args: argparse.Namespace) -> int:
     dive = ScubaDive(
         user_command=scuba_args.command,
         config=config,
-        top_path=top_path,
-        top_rel=top_rel,
+        top_path=Path(top_path),  # TODO: remove Path()
+        top_rel=Path(top_rel),  # TODO: remove Path()
         docker_args=scuba_args.docker_args,
         env=scuba_args.env_vars,
         as_root=scuba_args.root,

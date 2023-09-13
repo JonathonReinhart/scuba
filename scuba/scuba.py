@@ -19,7 +19,7 @@ from .dockerutil import get_image_entrypoint
 from .dockerutil import make_vol_opt
 from .utils import shell_quote_cmd, flatten_list, get_umask, writeln
 
-VolumeTuple = Tuple[str, str, List[str]]
+VolumeTuple = Tuple[Path, Path, List[str]]
 
 
 class ScubaError(Exception):
@@ -39,8 +39,8 @@ class ScubaDive:
         self,
         user_command: List[str],
         config: ScubaConfig,
-        top_path: str,
-        top_rel: str,
+        top_path: Path,
+        top_rel: Path,
         docker_args: Optional[List[str]] = None,
         env: Optional[Dict[str, str]] = None,
         as_root: bool = False,
@@ -60,7 +60,7 @@ class ScubaDive:
         self.volumes = []
         self.options = []
         self.docker_args = docker_args or []
-        self.workdir: Optional[str] = None
+        self.workdir: Optional[Path] = None
 
         self.__scubadir_hostpath: Optional[str] = None
         self.__scubadir_contpath: Optional[str] = None
@@ -70,9 +70,9 @@ class ScubaDive:
         self.add_volume(top_path, top_path)
 
         # ...and set the working dir relative to it
-        self.set_workdir(os.path.join(top_path, top_rel))
+        self.set_workdir(top_path / top_rel)
 
-        self.add_env("SCUBA_ROOT", top_path)
+        self.add_env("SCUBA_ROOT", str(top_path))
 
         try:
             # Process any aliases
@@ -130,7 +130,7 @@ class ScubaDive:
             for val in vals or ():
                 writeln(s, f"{indent * (level + 1)}{val}")
 
-        def writescl(name: str, val: Union[None, bool, float, str]) -> None:
+        def writescl(name: str, val: Union[None, bool, float, str, Path]) -> None:
             writeln(s, f"{indent * level}{name + ':':<14s}{val}")
 
         writeln(s, "ScubaDive")
@@ -168,11 +168,13 @@ class ScubaDive:
 
     def add_volume(
         self,
-        hostpath: str,
-        contpath: str,
+        hostpath: Union[Path, str],
+        contpath: Union[Path, str],
         options: Optional[List[str]] = None,
     ) -> None:
         """Add a volume (bind-mount) to the docker run invocation"""
+        hostpath = Path(hostpath)
+        contpath = Path(contpath)
         if options is None:
             options = []
         self.volumes.append((hostpath, contpath, options))
@@ -205,7 +207,7 @@ class ScubaDive:
         """Add another option to the docker run invocation"""
         self.options.append(option)
 
-    def set_workdir(self, workdir: str) -> None:
+    def set_workdir(self, workdir: Path) -> None:
         self.workdir = workdir
 
     def __locate_scubainit(self) -> str:
@@ -370,14 +372,13 @@ class ScubaDive:
             args.append(f"--env={name}={val}")
 
         for hostpath, contpath, options in self.__get_vol_opts():
-            # TODO: update __get_vol_opts() to return Path objects or ScubaVolume objects
-            args.append(make_vol_opt(Path(hostpath), Path(contpath), options))
+            args.append(make_vol_opt(hostpath, contpath, options))
 
         for _, vol in self.context.volumes.items():
             args.append(vol.get_vol_opt())
 
         if self.workdir:
-            args += ["-w", self.workdir]
+            args += ["-w", str(self.workdir)]
 
         args += self.options
 
