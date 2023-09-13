@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+### Added
+- Enable the use of relative paths in a volume hostpath (#227)
+
+
 ## [2.11.0] - 2023-09-09
 ### Changed
 - Introduced `pyproject.toml` and moved metadata from `setup.py` (#211)
