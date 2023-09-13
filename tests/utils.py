@@ -5,27 +5,28 @@ import tempfile
 import shutil
 import unittest
 import logging
+from pathlib import Path
+from typing import Any, Sequence, Union
 from unittest import mock
 
+PathStr = Union[Path, str]
 
-def assert_seq_equal(a, b):
+
+def assert_seq_equal(a: Sequence, b: Sequence) -> None:
     assert list(a) == list(b)
 
 
-def assert_paths_equal(a, b):
-    # TODO: normpath() updatd to handle Path in Python 3.6
-    a = str(a)
-    b = str(b)
+def assert_paths_equal(a: PathStr, b: PathStr) -> None:
     assert normpath(a) == normpath(b)
 
 
-def assert_str_equalish(exp, act):
+def assert_str_equalish(exp: Any, act: Any) -> None:
     exp = str(exp).strip()
     act = str(act).strip()
     assert exp == act
 
 
-def make_executable(path):
+def make_executable(path: PathStr) -> None:
     mode = os.stat(path).st_mode
     mode |= (mode & 0o444) >> 2  # copy R bits to X
     os.chmod(path, mode)
