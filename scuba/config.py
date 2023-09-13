@@ -56,17 +56,17 @@ class OverrideStr(str, OverrideMixin):
 
 # http://stackoverflow.com/a/9577670
 class Loader(yaml.SafeLoader):
-    _root: str  # directory containing the loaded document
-    _cache: Dict[str, Any]  # document path => document
+    _root: Path  # directory containing the loaded document
+    _cache: Dict[Path, Any]  # document path => document
 
     def __init__(self, stream: TextIO):
         if not hasattr(self, "_root"):
-            self._root = os.path.split(stream.name)[0]
+            self._root = Path(stream.name).parent
         self._cache = dict()
         super().__init__(stream)
 
     @staticmethod
-    def _rooted_loader(root: str) -> Type[Loader]:
+    def _rooted_loader(root: Path) -> Type[Loader]:
         """Get a Loader class with _root set to root"""
 
         class RootedLoader(Loader):
@@ -104,12 +104,14 @@ class Loader(yaml.SafeLoader):
         filename, key = parts
 
         # path is relative to the current YAML document
-        path = os.path.join(self._root, filename)
+        path = self._root / filename
 
         # Load the other YAML document
         doc = self._cache.get(path)
         if not doc:
-            with open(path, "r") as f:
+            # TODO: Use path.open(), paired with open() in load_config() for convenience in
+            # tests/test_config.py::TestConfig::test_load_config_from_yaml_cached_file.
+            with open(str(path), "r") as f:
                 doc = yaml.load(f, self.__class__)
                 self._cache[path] = doc
 
