@@ -132,14 +132,14 @@ def run_scuba(scuba_args: argparse.Namespace) -> int:
         # .scuba.yml is allowed to be missing if --image was given.
         if not scuba_args.image:
             raise
-        top_path, top_rel, config = os.getcwd(), "", ScubaConfig()
+        top_path, top_rel, config = Path.cwd(), Path(), ScubaConfig()
 
     # Set up scuba Docker invocation
     dive = ScubaDive(
         user_command=scuba_args.command,
         config=config,
-        top_path=Path(top_path),  # TODO: remove Path()
-        top_rel=Path(top_rel),  # TODO: remove Path()
+        top_path=top_path,
+        top_rel=top_rel,
         docker_args=scuba_args.docker_args,
         env=scuba_args.env_vars,
         as_root=scuba_args.root,

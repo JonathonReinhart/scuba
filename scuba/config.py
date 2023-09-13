@@ -158,7 +158,7 @@ Loader.add_constructor("!from_yaml", Loader.from_yaml)
 Loader.add_constructor("!override", Loader.override)
 
 
-def find_config() -> Tuple[str, str, ScubaConfig]:
+def find_config() -> Tuple[Path, Path, ScubaConfig]:
     """Search up the directory hierarchy for .scuba.yml
 
     Returns: path, rel, config on success, or None if not found
@@ -168,15 +168,14 @@ def find_config() -> Tuple[str, str, ScubaConfig]:
         config  The loaded configuration
     """
     cross_fs = "SCUBA_DISCOVERY_ACROSS_FILESYSTEM" in os.environ
-    path = os.getcwd()
+    path = Path.cwd()
 
-    rel = ""
     while True:
-        cfg_path = os.path.join(path, SCUBA_YML)
-        if os.path.exists(cfg_path):
-            return path, rel, load_config(Path(cfg_path))  # TODO: remove Path()
+        cfg_path = path / SCUBA_YML
+        if cfg_path.exists():
+            return path, Path.cwd().relative_to(path), load_config(cfg_path)
 
-        if not cross_fs and os.path.ismount(path):
+        if not cross_fs and path.is_mount():
             raise ConfigNotFoundError(
                 f"{SCUBA_YML} not found here or any parent up to mount point {path}"
                 "\nStopping at filesystem boundary"
@@ -184,14 +183,11 @@ def find_config() -> Tuple[str, str, ScubaConfig]:
             )
 
         # Traverse up directory hierarchy
-        path, rest = os.path.split(path)
+        path, rest = path.parent, path.name
         if not rest:
             raise ConfigNotFoundError(
                 f"{SCUBA_YML} not found here or any parent directories"
             )
-
-        # Accumulate the relative path back to where we started
-        rel = os.path.join(rest, rel)
 
 
 def _process_script_node(node: CfgNode, name: str) -> List[str]:
