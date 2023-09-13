@@ -19,6 +19,15 @@ def assert_seq_equal(a: Sequence, b: Sequence) -> None:
 
 
 def assert_paths_equal(a: PathStr, b: PathStr) -> None:
+    # NOTE: normpath() can behave undesirably in the face of symlinks, so this
+    # comparison is probably not perfect. But since we're often dealing with
+    # "pure" paths (that don't actually exist on the filesystem), there's not
+    # much more we can do.
+    #
+    # "This string manipulation may change the meaning of a path that contains
+    # symbolic links."
+    #
+    # https://docs.python.org/3/library/os.path.html#os.path.normpath
     assert normpath(a) == normpath(b)
 
 
@@ -38,8 +47,8 @@ def assert_vol(
     hpath = Path(hpath_str)
     v = vols[cpath]
     assert isinstance(v, ScubaVolume)
-    assert v.container_path == cpath
-    assert v.host_path == hpath
+    assert_paths_equal(v.container_path, cpath)
+    assert_paths_equal(v.host_path, hpath)
     assert v.options == options
 
 
