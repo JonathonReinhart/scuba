@@ -335,7 +335,31 @@ def _get_volumes(data: CfgData) -> Optional[Dict[Path, ScubaVolume]]:
     return vols
 
 
-def _expand_path(in_str: str) -> Path:
+def _expand_path(in_str: str, base_dir: Optional[Path] = None) -> Path:
+    """Expand variables in a path string and make it absolute.
+
+    Environment variable references (e.g. $FOO and ${FOO}) are expanded using
+    the host environment.
+
+    After environment variable expansion, absolute paths are returned as-is.
+    Relative paths are joined to base_dir, if provided.
+
+    Args:
+      in_str: Input path as a string.
+      base_dir: Path to which relative paths will be joined.
+
+    Returns:
+      An absolute Path.
+
+    Raises:
+      ValueError: If base_dir is provided but not absolute.
+      ConfigError: If a referenced environment variable is not set.
+      ConfigError: An environment variable reference could not be parsed.
+      ConfigError: A relative path is given when base_dir is not provided.
+    """
+    if base_dir is not None and not base_dir.is_absolute():
+        raise ValueError(f"base_dir is not absolute: {base_dir}")
+
     try:
         output = expand_env_vars(in_str)
     except KeyError as ke:
@@ -348,7 +372,15 @@ def _expand_path(in_str: str) -> Path:
             f"Unable to expand string '{in_str}' due to parsing errors"
         ) from ve
 
-    return Path(output)
+    path = Path(output)
+
+    if not path.is_absolute():
+        if base_dir is None:
+            raise ConfigError(f"Relative path not allowed: {path}")
+        path = base_dir / path
+
+    assert path.is_absolute()
+    return path
 
 
 @dataclasses.dataclass(frozen=True)
