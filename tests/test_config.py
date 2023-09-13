@@ -1041,6 +1041,40 @@ class TestConfig:
         assert_vol(config.volumes, "/scp", in_tmp_path / "snap" / "crackle" / "pop")
         assert_vol(config.volumes, "/relvar", in_tmp_path / "spam" / "eggs")
 
+    def test_volumes_hostpath_rel_above(self, monkeypatch, in_tmp_path) -> None:
+        """volume hostpath can be relative, above scuba_root (top dir)"""
+        # Directory structure:
+        #
+        # test-tmpdir/              # in_tmp_path
+        # |- foo_up_here/           # will be mounted at /foo
+        # |- way/
+        #    |- down/
+        #       |- here/            # scuba roo (found_topdir)
+        #          |- .scuba.yml
+
+        # First, make a subdirectory and cd into it
+        project_dir = Path("way/down/here")
+        project_dir.mkdir(parents=True)
+        monkeypatch.chdir(project_dir)
+
+        # Now put .scuba.yml here
+        with open(".scuba.yml", "w") as f:
+            f.write(
+                r"""
+                image: na
+                volumes:
+                  /foo: ../../../foo_up_here
+                """
+            )
+
+        # Locate the config
+        found_topdir, found_rel, config = scuba.config.find_config()
+        assert found_topdir == in_tmp_path / project_dir
+        assert found_rel == Path()
+
+        assert config.volumes is not None
+        assert_vol(config.volumes, "/foo", in_tmp_path / "foo_up_here")
+
     def test_volumes_hostpath_rel_req_dot_simple(
         self, monkeypatch, in_tmp_path
     ) -> None:

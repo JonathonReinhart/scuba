@@ -1092,3 +1092,40 @@ class TestMain:
 
         out, _ = self.run_scuba(["cat", "/userdir/test.txt"])
         assert out == test_message
+
+    def test_volumes_hostpath_rel_above(self) -> None:
+        """Volume host paths can be relative, above the scuba root dir"""
+        # Directory structure:
+        #
+        # test-tmpdir/
+        # |- user/                  # will be mounted at /userdir
+        # |  |- test.txt
+        # |- my/
+        #    |- cool/
+        #       |- project/         # scuba root
+        #          |- .scuba.yml
+
+        # Set up a subdir with a file to be read.
+        userdir = Path("./user")
+        userdir.mkdir(parents=True)
+
+        test_message = "Relative paths work"
+        (userdir / "test.txt").write_text(test_message)
+
+        # Set up a subdir for scuba
+        projdir = Path("my/cool/project")
+        projdir.mkdir(parents=True)
+
+        # Change to the project subdir and write the .scuba.yml file there.
+        os.chdir(projdir)
+        with open(".scuba.yml", "w") as f:
+            f.write(
+                f"""
+                image: {DOCKER_IMAGE}
+                volumes:
+                  /userdir: ../../../{userdir}
+                """
+            )
+
+        out, _ = self.run_scuba(["cat", "/userdir/test.txt"])
+        assert out == test_message
