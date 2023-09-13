@@ -1,6 +1,7 @@
 from __future__ import annotations
 import dataclasses
 import os
+from pathlib import Path
 import re
 import shlex
 from typing import Any, List, Dict, Optional, TextIO, Tuple, Type, TypeVar, Union
@@ -393,7 +394,10 @@ class ScubaVolume:
         raise ConfigError(f"{cpath}: must be string or dict")
 
     def get_vol_opt(self) -> str:
-        return make_vol_opt(self.host_path, self.container_path, self.options)
+        # TODO: change host_path and container_path to Path objects
+        return make_vol_opt(
+            Path(self.host_path), Path(self.container_path), self.options
+        )
 
 
 @dataclasses.dataclass(frozen=True)

@@ -7,6 +7,7 @@ import sys
 import tempfile
 from grp import getgrgid
 from io import StringIO
+from pathlib import Path
 from pwd import getpwuid
 from typing import cast, Any, Dict, Iterable, List, Optional, Sequence, Tuple, Union
 from typing import TextIO
@@ -369,7 +370,8 @@ class ScubaDive:
             args.append(f"--env={name}={val}")
 
         for hostpath, contpath, options in self.__get_vol_opts():
-            args.append(make_vol_opt(hostpath, contpath, options))
+            # TODO: update __get_vol_opts() to return Path objects or ScubaVolume objects
+            args.append(make_vol_opt(Path(hostpath), Path(contpath), options))
 
         for _, vol in self.context.volumes.items():
             args.append(vol.get_vol_opt())
