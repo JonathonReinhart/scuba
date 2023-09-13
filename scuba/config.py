@@ -332,7 +332,7 @@ def _get_volumes(
 
     vols = {}
     for cpath_str, v in voldata.items():
-        cpath = _expand_path(cpath_str)
+        cpath = _expand_path(cpath_str)  # no base_dir; container path must be absolute.
         vols[cpath] = ScubaVolume.from_dict(cpath, v, scuba_root)
     return vols
 
@@ -405,7 +405,7 @@ class ScubaVolume:
         if isinstance(node, str):
             return cls(
                 container_path=cpath,
-                host_path=_expand_path(node),
+                host_path=_expand_path(node, scuba_root),
             )
 
         # Complex form
@@ -419,7 +419,7 @@ class ScubaVolume:
                 raise ConfigError(f"Volume {cpath} must have a 'hostpath' subkey")
             return cls(
                 container_path=cpath,
-                host_path=_expand_path(hpath),
+                host_path=_expand_path(hpath, scuba_root),
                 options=_get_delimited_str_list(node, "options", ","),
             )
 
