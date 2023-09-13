@@ -11,8 +11,8 @@ from pwd import getpwuid
 from typing import cast, Any, Dict, Iterable, List, Optional, Sequence, Tuple, Union
 from typing import TextIO
 
-from .config import find_config, ScubaConfig, OverrideMixin
-from .config import ConfigError, ConfigNotFoundError, ScubaVolume
+from .config import ScubaConfig, OverrideMixin
+from .config import ConfigError, ScubaVolume
 from .dockerutil import get_image_command
 from .dockerutil import get_image_entrypoint
 from .dockerutil import make_vol_opt
