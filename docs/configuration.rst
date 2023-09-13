@@ -145,8 +145,8 @@ style <https://yaml.org/spec/1.2/spec.html#id2788097>`_:
 ``volumes``
 -----------
 
-The optional ``volumes`` node *(added in v2.9.0)* allows additional `volumes
-<https://docs.docker.com/storage/volumes/>`_ or bind-mounts to be specified.
+The optional ``volumes`` node *(added in v2.9.0)* allows additional
+`bind-mounts<https://docs.docker.com/storage/bind-mounts/>`_ to be specified.
 ``volumes`` is a mapping (dictionary) where each key is the container-path.
 In the simple form, the value is a string, the host-path to be bind-mounted:
 
@@ -154,6 +154,7 @@ In the simple form, the value is a string, the host-path to be bind-mounted:
 
     volumes:
       /var/lib/foo: /host/foo
+      /var/lib/bar: ./bar
 
 In the complex form, the value is a mapping which must contain a ``hostpath``
 subkey. It can also contain an ``options`` subkey with a comma-separated list
@@ -178,6 +179,11 @@ directory into the container at the same path.
 
 If a referenced environment variable is not set, Scuba exits with a
 configuration error.
+
+Volume container paths must be absolute.
+
+Volume host paths can be absolute or relative. If a relative path is used, it
+is interpreted as relative to the directory in which ``.scuba.yml`` is found.
 
 Volume host directories which do not already exist are created as the current
 user before creating the container.
