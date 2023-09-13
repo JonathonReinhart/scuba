@@ -468,7 +468,10 @@ class ScubaConfig:
     hooks: Dict[str, List[str]]
     environment: Environment
 
-    def __init__(self, **data: CfgNode) -> None:
+    def __init__(self, data: Optional[dict[str, CfgNode]] = None) -> None:
+        if data is None:
+            data = {}
+
         optional_nodes = (
             "image",
             "aliases",
@@ -532,4 +535,4 @@ def load_config(path: Path) -> ScubaConfig:
     except yaml.YAMLError as e:
         raise ConfigError(f"Error loading {SCUBA_YML}: {e}")
 
-    return ScubaConfig(**(data or {}))
+    return ScubaConfig(data)

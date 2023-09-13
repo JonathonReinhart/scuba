@@ -1,9 +1,16 @@
 import pytest
 import shlex
+from typing import Any
 from .utils import assert_vol
 
 from scuba.config import ScubaConfig, ConfigError, OverrideStr
 from scuba.scuba import ScubaContext
+
+
+# This exists simply to adapt all of the existing, simple kwargs-style callers
+# to the new one-dict argument ScubaConfig.__init__().
+def make_config(**data: Any) -> ScubaConfig:
+    return ScubaConfig(data)
 
 
 class TestScubaContext:
@@ -12,7 +19,7 @@ class TestScubaContext:
         image_name = "test_image"
         entrypoint = "test_entrypoint"
 
-        cfg = ScubaConfig(
+        cfg = make_config(
             image=image_name,
             entrypoint=entrypoint,
         )
@@ -22,7 +29,7 @@ class TestScubaContext:
 
     def test_process_command_empty(self) -> None:
         """process_command handles no aliases and an empty command"""
-        cfg = ScubaConfig(
+        cfg = make_config(
             image="na",
         )
         result = ScubaContext.process_command(cfg, [])
@@ -30,7 +37,7 @@ class TestScubaContext:
 
     def test_process_command_no_aliases(self) -> None:
         """process_command handles no aliases"""
-        cfg = ScubaConfig(
+        cfg = make_config(
             image="na",
         )
         result = ScubaContext.process_command(cfg, ["cmd", "arg1", "arg2"])
@@ -41,7 +48,7 @@ class TestScubaContext:
 
     def test_process_command_aliases_unused(self) -> None:
         """process_command handles unused aliases"""
-        cfg = ScubaConfig(
+        cfg = make_config(
             image="na",
             aliases=dict(
                 apple="banana",
@@ -56,7 +63,7 @@ class TestScubaContext:
 
     def test_process_command_aliases_used_noargs(self) -> None:
         """process_command handles aliases with no args"""
-        cfg = ScubaConfig(
+        cfg = make_config(
             image="na",
             aliases=dict(
                 apple="banana",
@@ -71,7 +78,7 @@ class TestScubaContext:
 
     def test_process_command_aliases_used_withargs(self) -> None:
         """process_command handles aliases with args"""
-        cfg = ScubaConfig(
+        cfg = make_config(
             image="na",
             aliases=dict(
                 apple='banana cherry "pie is good"',
@@ -88,7 +95,7 @@ class TestScubaContext:
 
     def test_process_command_multiline_aliases_used(self) -> None:
         """process_command handles multiline aliases"""
-        cfg = ScubaConfig(
+        cfg = make_config(
             image="na",
             aliases=dict(
                 apple=dict(
@@ -109,7 +116,7 @@ class TestScubaContext:
 
     def test_process_command_multiline_aliases_forbid_user_args(self) -> None:
         """process_command raises ConfigError when args are specified with multiline aliases"""
-        cfg = ScubaConfig(
+        cfg = make_config(
             image="na",
             aliases=dict(
                 apple=dict(
@@ -126,7 +133,7 @@ class TestScubaContext:
 
     def test_process_command_alias_overrides_image(self) -> None:
         """aliases can override the image"""
-        cfg = ScubaConfig(
+        cfg = make_config(
             image="default",
             aliases=dict(
                 apple=dict(
@@ -143,7 +150,7 @@ class TestScubaContext:
 
     def test_process_command_alias_overrides_image_and_entrypoint(self) -> None:
         """aliases can override the image and entrypoint"""
-        cfg = ScubaConfig(
+        cfg = make_config(
             image="default",
             entrypoint="default_entrypoint",
             aliases=dict(
@@ -163,7 +170,7 @@ class TestScubaContext:
 
     def test_process_command_alias_overrides_image_and_empty_entrypoint(self) -> None:
         """aliases can override the image and empty/null entrypoint"""
-        cfg = ScubaConfig(
+        cfg = make_config(
             image="default",
             entrypoint="default_entrypoint",
             aliases=dict(
@@ -185,7 +192,7 @@ class TestScubaContext:
         """process_command allows image to be overridden when provided"""
         override_image_name = "override_image"
 
-        cfg = ScubaConfig(
+        cfg = make_config(
             image="test_image",
         )
         result = ScubaContext.process_command(
@@ -197,7 +204,7 @@ class TestScubaContext:
         """process_command allows image to be overridden when not provided"""
         override_image_name = "override_image"
 
-        cfg = ScubaConfig()
+        cfg = make_config()
         result = ScubaContext.process_command(
             cfg, [], image_override=override_image_name
         )
@@ -207,7 +214,7 @@ class TestScubaContext:
         """process_command allows image to be overridden when provided by alias"""
         override_image_name = "override_image"
 
-        cfg = ScubaConfig(
+        cfg = make_config(
             aliases=dict(
                 apple=dict(
                     script=[
@@ -225,7 +232,7 @@ class TestScubaContext:
 
     def test_env_merge(self) -> None:
         """process_command merges/overrides the environment from the alias"""
-        cfg = ScubaConfig(
+        cfg = make_config(
             image="dontcare",
             environment=dict(
                 AAA="aaa_base",
@@ -251,7 +258,7 @@ class TestScubaContext:
 
     def test_process_command_alias_extends_docker_args(self) -> None:
         """aliases can extend the docker_args"""
-        cfg = ScubaConfig(
+        cfg = make_config(
             image="default",
             docker_args="--privileged",
             aliases=dict(
@@ -268,7 +275,7 @@ class TestScubaContext:
 
     def test_process_command_alias_overrides_docker_args(self) -> None:
         """aliases can override the docker_args"""
-        cfg = ScubaConfig(
+        cfg = make_config(
             image="default",
             docker_args="--privileged",
             aliases=dict(
@@ -285,7 +292,7 @@ class TestScubaContext:
 
     def test_process_command_alias_overrides_docker_args_with_empty(self) -> None:
         """aliases can override the docker_args"""
-        cfg = ScubaConfig(
+        cfg = make_config(
             image="default",
             docker_args="--privileged",
             aliases=dict(
@@ -302,7 +309,7 @@ class TestScubaContext:
 
     def test_process_command_alias_inherits_top_docker_args(self) -> None:
         """aliases inherit the top-level docker_args if not specified"""
-        cfg = ScubaConfig(
+        cfg = make_config(
             image="default",
             docker_args="--privileged",
             aliases=dict(
@@ -321,7 +328,7 @@ class TestScubaContext:
 
     def test_process_command_alias_extends_volumes(self) -> None:
         """aliases can extend the volumes"""
-        cfg = ScubaConfig(
+        cfg = make_config(
             image="default",
             volumes={
                 "/foo": "/host/foo",
@@ -346,7 +353,7 @@ class TestScubaContext:
 
     def test_process_command_alias_updates_volumes(self) -> None:
         """aliases can extend the volumes"""
-        cfg = ScubaConfig(
+        cfg = make_config(
             image="default",
             volumes={
                 "/foo": "/host/foo",
