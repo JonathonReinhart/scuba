@@ -5,13 +5,14 @@ import pytest
 import logging
 import os
 from os.path import join
+from pathlib import Path
 from shutil import rmtree
 
 import scuba.config
 
 
 def load_config() -> scuba.config.ScubaConfig:
-    return scuba.config.load_config(".scuba.yml")
+    return scuba.config.load_config(Path(".scuba.yml"))
 
 
 class TestCommonScriptSchema:
@@ -216,13 +217,13 @@ class TestConfig:
             f.write("    image:  !from_yaml .gitlab.yml three\n")
             f.write("    script: ugh\n")
 
-        with mock_open() as m:
+        with mock.patch.object(Path, "open", autospec=True, side_effect=Path.open) as m:
             config = load_config()
 
         # Assert that .gitlab.yml was only opened once
         assert m.mock_calls == [
-            mock.call(".scuba.yml", "r"),
-            mock.call(".gitlab.yml", "r"),
+            mock.call(Path(".scuba.yml"), "r"),
+            mock.call(Path(".gitlab.yml"), "r"),
         ]
 
     def test_load_config_image_from_yaml_nested_key_missing(self) -> None:

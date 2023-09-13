@@ -32,15 +32,6 @@ def make_executable(path: PathStr) -> None:
     os.chmod(path, mode)
 
 
-def mock_open():
-    real_open = open
-
-    def mocked_open(*args, **kwargs):
-        return real_open(*args, **kwargs)
-
-    return mock.patch("builtins.open", side_effect=mocked_open)
-
-
 # http://stackoverflow.com/a/8389373/119527
 class PseudoTTY:
     def __init__(self, underlying):

@@ -109,9 +109,7 @@ class Loader(yaml.SafeLoader):
         # Load the other YAML document
         doc = self._cache.get(path)
         if not doc:
-            # TODO: Use path.open(), paired with open() in load_config() for convenience in
-            # tests/test_config.py::TestConfig::test_load_config_from_yaml_cached_file.
-            with open(str(path), "r") as f:
+            with path.open("r") as f:
                 doc = yaml.load(f, self.__class__)
                 self._cache[path] = doc
 
@@ -176,7 +174,7 @@ def find_config() -> Tuple[str, str, ScubaConfig]:
     while True:
         cfg_path = os.path.join(path, SCUBA_YML)
         if os.path.exists(cfg_path):
-            return path, rel, load_config(cfg_path)
+            return path, rel, load_config(Path(cfg_path))  # TODO: remove Path()
 
         if not cross_fs and os.path.ismount(path):
             raise ConfigNotFoundError(
@@ -500,9 +498,9 @@ class ScubaConfig:
         return self._image
 
 
-def load_config(path: str) -> ScubaConfig:
+def load_config(path: Path) -> ScubaConfig:
     try:
-        with open(path, "r") as f:
+        with path.open("r") as f:
             data = yaml.load(f, Loader)
     except IOError as e:
         raise ConfigError(f"Error opening {SCUBA_YML}: {e}")
