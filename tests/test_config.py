@@ -5,9 +5,14 @@ import pytest
 import logging
 import os
 from os.path import join
+from pathlib import Path
 from shutil import rmtree
 
 import scuba.config
+
+
+def load_config() -> scuba.config.ScubaConfig:
+    return scuba.config.load_config(Path(".scuba.yml"))
 
 
 class TestCommonScriptSchema:
@@ -106,14 +111,14 @@ class TestConfig:
 
     def _invalid_config(self, match=None):
         with pytest.raises(scuba.config.ConfigError, match=match) as e:
-            scuba.config.load_config(".scuba.yml")
+            load_config()
 
     def test_load_config_no_image(self) -> None:
         """load_config raises ConfigError if the config is empty and image is referenced"""
         with open(".scuba.yml", "w") as f:
             pass
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         with pytest.raises(scuba.config.ConfigError):
             img = config.image
 
@@ -130,7 +135,7 @@ class TestConfig:
         with open(".scuba.yml", "w") as f:
             f.write("image: bosybux\n")
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         assert config.image == "bosybux"
 
     def test_load_config_with_aliases(self) -> None:
@@ -141,7 +146,7 @@ class TestConfig:
             f.write("  foo: bar\n")
             f.write("  snap: crackle pop\n")
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         assert config.image == "bosybux"
         assert len(config.aliases) == 2
         assert config.aliases["foo"].script == ["bar"]
@@ -164,7 +169,7 @@ class TestConfig:
         with open(".scuba.yml", "w") as f:
             f.write("image: !from_yaml .gitlab.yml image\n")
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         assert config.image == "dummian:8.2"
 
     def test_load_config_image_from_yaml_nested_keys(self) -> None:
@@ -177,7 +182,7 @@ class TestConfig:
         with open(".scuba.yml", "w") as f:
             f.write("image: !from_yaml .gitlab.yml somewhere.down.here\n")
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         assert config.image == "dummian:8.2"
 
     def test_load_config_image_from_yaml_nested_keys_with_escaped_characters(
@@ -192,7 +197,7 @@ class TestConfig:
         with open(".scuba.yml", "w") as f:
             f.write('image: !from_yaml .gitlab.yml "\\.its.somewhere\\.down.here"\n')
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         assert config.image == "dummian:8.2"
 
     def test_load_config_from_yaml_cached_file(self) -> None:
@@ -212,13 +217,13 @@ class TestConfig:
             f.write("    image:  !from_yaml .gitlab.yml three\n")
             f.write("    script: ugh\n")
 
-        with mock_open() as m:
-            config = scuba.config.load_config(".scuba.yml")
+        with mock.patch.object(Path, "open", autospec=True, side_effect=Path.open) as m:
+            config = load_config()
 
         # Assert that .gitlab.yml was only opened once
         assert m.mock_calls == [
-            mock.call(".scuba.yml", "r"),
-            mock.call(".gitlab.yml", "r"),
+            mock.call(Path(".scuba.yml"), "r"),
+            mock.call(Path(".gitlab.yml"), "r"),
         ]
 
     def test_load_config_image_from_yaml_nested_key_missing(self) -> None:
@@ -247,7 +252,7 @@ class TestConfig:
         with open(".scuba.yml", "w") as f:
             f.write("image: !from_yaml .gitlab.yml 𝕦𝕟𝕚𝕔𝕠𝕕𝕖\n")
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         assert config.image == "𝕨𝕠𝕣𝕜𝕤:𝕠𝕜"
 
     def test_load_config_image_from_yaml_missing_arg(self) -> None:
@@ -268,7 +273,7 @@ class TestConfig:
 
         pat = "could not determine a constructor for the tag.*python/object/apply"
         with pytest.raises(scuba.config.ConfigError, match=pat) as ctx:
-            scuba.config.load_config(".scuba.yml")
+            load_config()
 
     def test_load_config_safe(self) -> None:
         """load_config safely loads yaml"""
@@ -299,7 +304,7 @@ class TestConfig:
                 """
             )
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
 
         assert config.hooks.get("root") == [
             'echo "This runs before we switch users"',
@@ -372,7 +377,7 @@ class TestConfig:
         monkeypatch.setenv("EXTERNAL", "Outside world")
         monkeypatch.delenv("EXTERNAL_NOTSET", raising=False)
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
 
         expect = dict(
             FOO="This is foo",
@@ -408,7 +413,7 @@ class TestConfig:
         monkeypatch.setenv("EXTERNAL", "Outside world")
         monkeypatch.delenv("EXTERNAL_NOTSET", raising=False)
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
 
         expect = dict(
             FOO="This is foo",
@@ -437,7 +442,7 @@ class TestConfig:
                 """
             )
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
 
         assert config.aliases["al"].environment == dict(
             FOO="Overridden",
@@ -456,7 +461,7 @@ class TestConfig:
                 """
             )
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         assert config.entrypoint is None
 
     def test_entrypoint_null(self) -> None:
@@ -469,7 +474,7 @@ class TestConfig:
                 """
             )
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         assert config.entrypoint == ""  # Null => empty string
 
     def test_entrypoint_invalid(self) -> None:
@@ -494,7 +499,7 @@ class TestConfig:
                 """
             )
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         assert config.entrypoint == ""
 
     def test_entrypoint_set(self) -> None:
@@ -507,7 +512,7 @@ class TestConfig:
                 """
             )
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         assert config.entrypoint == "my_ep"
 
     def test_alias_entrypoint_null(self) -> None:
@@ -525,7 +530,7 @@ class TestConfig:
                 """
             )
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         assert config.aliases["testalias"].entrypoint == ""  # Null => empty string
 
     def test_alias_entrypoint_empty_string(self) -> None:
@@ -543,7 +548,7 @@ class TestConfig:
                 """
             )
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         assert config.aliases["testalias"].entrypoint == ""
 
     def test_alias_entrypoint(self) -> None:
@@ -561,7 +566,7 @@ class TestConfig:
                 """
             )
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         assert config.aliases["testalias"].entrypoint == "use_this_ep"
 
     ############################################################################
@@ -576,7 +581,7 @@ class TestConfig:
                 """
             )
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         assert config.docker_args is None
 
     def test_docker_args_invalid(self) -> None:
@@ -601,7 +606,7 @@ class TestConfig:
                 """
             )
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         assert config.docker_args == []
 
     def test_docker_args_set_empty_string(self) -> None:
@@ -614,7 +619,7 @@ class TestConfig:
                 """
             )
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         assert config.docker_args == []  # '' -> [] after shlex.split()
 
     def test_docker_args_set(self) -> None:
@@ -627,7 +632,7 @@ class TestConfig:
                 """
             )
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         assert config.docker_args == ["--privileged"]
 
     def test_docker_args_set_multi(self) -> None:
@@ -640,7 +645,7 @@ class TestConfig:
                 """
             )
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         assert config.docker_args == ["--privileged", "-v", "/tmp/:/tmp/"]
 
     def test_alias_docker_args_null(self) -> None:
@@ -658,7 +663,7 @@ class TestConfig:
                 """
             )
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         assert config.aliases["testalias"].docker_args == []
 
     def test_alias_docker_args_empty_string(self) -> None:
@@ -676,7 +681,7 @@ class TestConfig:
                 """
             )
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         assert config.aliases["testalias"].docker_args == []
 
     def test_alias_docker_args_set(self) -> None:
@@ -694,7 +699,7 @@ class TestConfig:
                 """
             )
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         assert config.aliases["testalias"].docker_args == ["-v", "/tmp/:/tmp/"]
 
     def test_alias_docker_args_override(self) -> None:
@@ -712,7 +717,7 @@ class TestConfig:
                 """
             )
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         assert config.aliases["testalias"].docker_args == ["-v", "/tmp/:/tmp/"]
         assert isinstance(
             config.aliases["testalias"].docker_args, scuba.config.OverrideMixin
@@ -733,7 +738,7 @@ class TestConfig:
                 """
             )
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         assert config.aliases["testalias"].docker_args == []
         assert isinstance(
             config.aliases["testalias"].docker_args, scuba.config.OverrideMixin
@@ -757,7 +762,7 @@ class TestConfig:
                 """
             )
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         assert config.aliases["testalias"].docker_args == ["-v", "/tmp/:/tmp/"]
         assert isinstance(
             config.aliases["testalias"].docker_args, scuba.config.OverrideMixin
@@ -781,7 +786,7 @@ class TestConfig:
                 """
             )
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         assert config.aliases["testalias"].docker_args == ["-v", "/tmp/:/tmp/"]
         assert isinstance(
             config.aliases["testalias"].docker_args, scuba.config.OverrideMixin
@@ -799,7 +804,7 @@ class TestConfig:
                 """
             )
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         assert config.volumes is None
 
     def test_volumes_null(self) -> None:
@@ -812,7 +817,7 @@ class TestConfig:
                 """
             )
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         assert config.volumes == None
 
     def test_volumes_invalid(self) -> None:
@@ -883,13 +888,11 @@ class TestConfig:
                 """
             )
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         assert config.volumes is not None
         assert len(config.volumes) == 1
 
-        v = config.volumes["/cpath"]
-        assert v.container_path == "/cpath"
-        assert v.host_path == "/hpath"
+        assert_vol(config.volumes, "/cpath", "/hpath")
 
     def test_volumes_complex(self) -> None:
         """volumes can be set using the complex form"""
@@ -907,28 +910,14 @@ class TestConfig:
                 """
             )
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         vols = config.volumes
         assert vols is not None
         assert len(vols) == 3
 
-        v = vols["/foo"]
-        assert isinstance(v, scuba.config.ScubaVolume)
-        assert v.container_path == "/foo"
-        assert v.host_path == "/host/foo"
-        assert v.options == []
-
-        v = vols["/bar"]
-        assert isinstance(v, scuba.config.ScubaVolume)
-        assert v.container_path == "/bar"
-        assert v.host_path == "/host/bar"
-        assert v.options == []
-
-        v = vols["/snap"]
-        assert isinstance(v, scuba.config.ScubaVolume)
-        assert v.container_path == "/snap"
-        assert v.host_path == "/host/snap"
-        assert v.options == ["z", "ro"]
+        assert_vol(vols, "/foo", "/host/foo")
+        assert_vol(vols, "/bar", "/host/bar")
+        assert_vol(vols, "/snap", "/host/snap", ["z", "ro"])
 
     def test_alias_volumes_set(self) -> None:
         """docker_args can be set via alias"""
@@ -948,22 +937,13 @@ class TestConfig:
                 """
             )
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         vols = config.aliases["testalias"].volumes
         assert vols is not None
         assert len(vols) == 2
 
-        v = vols["/foo"]
-        assert isinstance(v, scuba.config.ScubaVolume)
-        assert v.container_path == "/foo"
-        assert v.host_path == "/host/foo"
-        assert v.options == []
-
-        v = vols["/bar"]
-        assert isinstance(v, scuba.config.ScubaVolume)
-        assert v.container_path == "/bar"
-        assert v.host_path == "/host/bar"
-        assert v.options == ["z", "ro"]
+        assert_vol(vols, "/foo", "/host/foo")
+        assert_vol(vols, "/bar", "/host/bar", ["z", "ro"])
 
     def test_volumes_with_env_vars_simple(self, monkeypatch) -> None:
         """volume definitions can contain environment variables"""
@@ -978,16 +958,12 @@ class TestConfig:
                 """
             )
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         vols = config.volumes
         assert vols is not None
         assert len(vols) == 1
 
-        v = list(vols.values())[0]
-        assert isinstance(v, scuba.config.ScubaVolume)
-        assert v.container_path == "/bar/baz/foo"
-        assert v.host_path == "/moo/doo/foo"
-        assert v.options == []
+        assert_vol(vols, "/bar/baz/foo", "/moo/doo/foo")
 
     def test_volumes_with_env_vars_complex(self, monkeypatch) -> None:
         """complex volume definitions can contain environment variables"""
@@ -1009,28 +985,16 @@ class TestConfig:
                 """
             )
 
-        config = scuba.config.load_config(".scuba.yml")
+        config = load_config()
         vols = config.volumes
         assert vols is not None
         assert len(vols) == 3
 
-        v = vols["/home/testuser/.config"]
-        assert isinstance(v, scuba.config.ScubaVolume)
-        assert v.container_path == "/home/testuser/.config"
-        assert v.host_path == "/home/testuser/.config"
-        assert v.options == []
-
-        v = vols["/tmp/"]
-        assert isinstance(v, scuba.config.ScubaVolume)
-        assert v.container_path == "/tmp/"
-        assert v.host_path == "/home/testuser/scuba/myproject/tmp"
-        assert v.options == []
-
-        v = vols["/var/spool/mail/container"]
-        assert isinstance(v, scuba.config.ScubaVolume)
-        assert v.container_path == "/var/spool/mail/container"
-        assert v.host_path == "/var/spool/mail/testuser"
-        assert v.options == ["z", "ro"]
+        assert_vol(vols, "/home/testuser/.config", "/home/testuser/.config")
+        assert_vol(vols, "/tmp", "/home/testuser/scuba/myproject/tmp")
+        assert_vol(
+            vols, "/var/spool/mail/container", "/var/spool/mail/testuser", ["z", "ro"]
+        )
 
     def test_volumes_with_invalid_env_vars(self, monkeypatch) -> None:
         """Volume definitions cannot include unset env vars"""

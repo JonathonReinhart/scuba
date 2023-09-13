@@ -8,6 +8,7 @@ import sys
 import shlex
 import itertools
 import argparse
+from pathlib import Path
 from typing import Any, Optional, Sequence
 
 try:
@@ -131,7 +132,7 @@ def run_scuba(scuba_args: argparse.Namespace) -> int:
         # .scuba.yml is allowed to be missing if --image was given.
         if not scuba_args.image:
             raise
-        top_path, top_rel, config = os.getcwd(), "", ScubaConfig()
+        top_path, top_rel, config = Path.cwd(), Path(), ScubaConfig()
 
     # Set up scuba Docker invocation
     dive = ScubaDive(

@@ -2,6 +2,7 @@ from __future__ import annotations
 import subprocess
 import json
 from typing import Any, Dict, IO, Optional, Sequence, Union
+from pathlib import Path
 
 # https://github.com/python/typeshed/blob/main/stdlib/subprocess.pyi
 _CMD = Union[str, bytes, Sequence[Union[str, bytes]]]
@@ -131,8 +132,8 @@ def get_image_entrypoint(image: str) -> Optional[Sequence[str]]:
 
 
 def make_vol_opt(
-    hostdir: str,
-    contdir: str,
+    hostdir: Path,
+    contdir: Path,
     options: Optional[Sequence[str]] = None,
 ) -> str:
     """Generate a docker volume option"""

@@ -2,6 +2,7 @@
 from unittest import mock
 import pytest
 
+from pathlib import Path
 import subprocess
 from typing import Sequence
 from .const import *
@@ -106,15 +107,21 @@ def test_get_image_entrypoint__none() -> None:
 
 
 def test_make_vol_opt_no_opts() -> None:
-    assert uut.make_vol_opt("/hostdir", "/contdir") == "--volume=/hostdir:/contdir"
+    assert (
+        uut.make_vol_opt(Path("/hostdir"), Path("/contdir"))
+        == "--volume=/hostdir:/contdir"
+    )
 
 
 def test_make_vol_opt_empty_opts() -> None:
-    assert uut.make_vol_opt("/hostdir", "/contdir", []) == "--volume=/hostdir:/contdir"
+    assert (
+        uut.make_vol_opt(Path("/hostdir"), Path("/contdir"), [])
+        == "--volume=/hostdir:/contdir"
+    )
 
 
 def test_make_vol_opt_multi_opts() -> None:
     assert (
-        uut.make_vol_opt("/hostdir", "/contdir", ["ro", "z"])
+        uut.make_vol_opt(Path("/hostdir"), Path("/contdir"), ["ro", "z"])
         == "--volume=/hostdir:/contdir:ro,z"
     )

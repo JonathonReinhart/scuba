@@ -1,6 +1,7 @@
 from __future__ import annotations
 import dataclasses
 import os
+from pathlib import Path
 import re
 import shlex
 from typing import Any, List, Dict, Optional, TextIO, Tuple, Type, TypeVar, Union
@@ -55,17 +56,17 @@ class OverrideStr(str, OverrideMixin):
 
 # http://stackoverflow.com/a/9577670
 class Loader(yaml.SafeLoader):
-    _root: str  # directory containing the loaded document
-    _cache: Dict[str, Any]  # document path => document
+    _root: Path  # directory containing the loaded document
+    _cache: Dict[Path, Any]  # document path => document
 
     def __init__(self, stream: TextIO):
         if not hasattr(self, "_root"):
-            self._root = os.path.split(stream.name)[0]
+            self._root = Path(stream.name).parent
         self._cache = dict()
         super().__init__(stream)
 
     @staticmethod
-    def _rooted_loader(root: str) -> Type[Loader]:
+    def _rooted_loader(root: Path) -> Type[Loader]:
         """Get a Loader class with _root set to root"""
 
         class RootedLoader(Loader):
@@ -103,12 +104,12 @@ class Loader(yaml.SafeLoader):
         filename, key = parts
 
         # path is relative to the current YAML document
-        path = os.path.join(self._root, filename)
+        path = self._root / filename
 
         # Load the other YAML document
         doc = self._cache.get(path)
         if not doc:
-            with open(path, "r") as f:
+            with path.open("r") as f:
                 doc = yaml.load(f, self.__class__)
                 self._cache[path] = doc
 
@@ -157,7 +158,7 @@ Loader.add_constructor("!from_yaml", Loader.from_yaml)
 Loader.add_constructor("!override", Loader.override)
 
 
-def find_config() -> Tuple[str, str, ScubaConfig]:
+def find_config() -> Tuple[Path, Path, ScubaConfig]:
     """Search up the directory hierarchy for .scuba.yml
 
     Returns: path, rel, config on success, or None if not found
@@ -167,15 +168,14 @@ def find_config() -> Tuple[str, str, ScubaConfig]:
         config  The loaded configuration
     """
     cross_fs = "SCUBA_DISCOVERY_ACROSS_FILESYSTEM" in os.environ
-    path = os.getcwd()
+    path = Path.cwd()
 
-    rel = ""
     while True:
-        cfg_path = os.path.join(path, SCUBA_YML)
-        if os.path.exists(cfg_path):
-            return path, rel, load_config(cfg_path)
+        cfg_path = path / SCUBA_YML
+        if cfg_path.exists():
+            return path, Path.cwd().relative_to(path), load_config(cfg_path)
 
-        if not cross_fs and os.path.ismount(path):
+        if not cross_fs and path.is_mount():
             raise ConfigNotFoundError(
                 f"{SCUBA_YML} not found here or any parent up to mount point {path}"
                 "\nStopping at filesystem boundary"
@@ -183,14 +183,11 @@ def find_config() -> Tuple[str, str, ScubaConfig]:
             )
 
         # Traverse up directory hierarchy
-        path, rest = os.path.split(path)
+        path, rest = path.parent, path.name
         if not rest:
             raise ConfigNotFoundError(
                 f"{SCUBA_YML} not found here or any parent directories"
             )
-
-        # Accumulate the relative path back to where we started
-        rel = os.path.join(rest, rel)
 
 
 def _process_script_node(node: CfgNode, name: str) -> List[str]:
@@ -317,7 +314,7 @@ def _get_str(data: CfgData, key: str, default: Optional[str] = None) -> Optional
     return _get_typed_val(data, key, str, default)
 
 
-def _get_dict(data: CfgData, key: str) -> Optional[dict]:
+def _get_dict(data: CfgData, key: str) -> Optional[dict[str, Any]]:
     return _get_typed_val(data, key, dict)
 
 
@@ -326,19 +323,19 @@ def _get_delimited_str_list(data: CfgData, key: str, sep: str) -> List[str]:
     return s.split(sep) if s else []
 
 
-def _get_volumes(data: CfgData) -> Optional[Dict[str, ScubaVolume]]:
+def _get_volumes(data: CfgData) -> Optional[Dict[Path, ScubaVolume]]:
     voldata = _get_dict(data, "volumes")
     if voldata is None:
         return None
 
     vols = {}
-    for cpath, v in voldata.items():
-        cpath = _expand_path(cpath)
+    for cpath_str, v in voldata.items():
+        cpath = _expand_path(cpath_str)
         vols[cpath] = ScubaVolume.from_dict(cpath, v)
     return vols
 
 
-def _expand_path(in_str: str) -> str:
+def _expand_path(in_str: str) -> Path:
     try:
         output = expand_env_vars(in_str)
     except KeyError as ke:
@@ -351,17 +348,17 @@ def _expand_path(in_str: str) -> str:
             f"Unable to expand string '{in_str}' due to parsing errors"
         ) from ve
 
-    return output
+    return Path(output)
 
 
 @dataclasses.dataclass(frozen=True)
 class ScubaVolume:
-    container_path: str
-    host_path: str  # TODO: Optional for anonymous volume
+    container_path: Path
+    host_path: Path  # TODO: Optional for anonymous volume
     options: List[str] = dataclasses.field(default_factory=list)
 
     @classmethod
-    def from_dict(cls, cpath: str, node: CfgNode) -> ScubaVolume:
+    def from_dict(cls, cpath: Path, node: CfgNode) -> ScubaVolume:
         # Treat a null node as an empty dict
         if node is None:
             node = {}
@@ -406,7 +403,7 @@ class ScubaAlias:
     shell: Optional[str] = None
     as_root: bool = False
     docker_args: Optional[List[str]] = None
-    volumes: Optional[Dict[str, ScubaVolume]] = None
+    volumes: Optional[Dict[Path, ScubaVolume]] = None
 
     @classmethod
     def from_dict(cls, name: str, node: CfgNode) -> ScubaAlias:
@@ -434,7 +431,7 @@ class ScubaConfig:
     shell: str
     entrypoint: Optional[str]
     docker_args: Optional[List[str]]  # TODO: drop Optional?
-    volumes: Optional[Dict[str, ScubaVolume]]  # TODO: drop Optional? Dict?
+    volumes: Optional[Dict[Path, ScubaVolume]]  # TODO: drop Optional? Dict?
     aliases: Dict[str, ScubaAlias]
     hooks: Dict[str, List[str]]
     environment: Environment
@@ -494,9 +491,9 @@ class ScubaConfig:
         return self._image
 
 
-def load_config(path: str) -> ScubaConfig:
+def load_config(path: Path) -> ScubaConfig:
     try:
-        with open(path, "r") as f:
+        with path.open("r") as f:
             data = yaml.load(f, Loader)
     except IOError as e:
         raise ConfigError(f"Error opening {SCUBA_YML}: {e}")
