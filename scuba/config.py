@@ -173,7 +173,7 @@ def find_config() -> Tuple[Path, Path, ScubaConfig]:
     while True:
         cfg_path = path / SCUBA_YML
         if cfg_path.exists():
-            return path, Path.cwd().relative_to(path), load_config(cfg_path)
+            return path, Path.cwd().relative_to(path), load_config(cfg_path, path)
 
         if not cross_fs and path.is_mount():
             raise ConfigNotFoundError(
@@ -323,21 +323,49 @@ def _get_delimited_str_list(data: CfgData, key: str, sep: str) -> List[str]:
     return s.split(sep) if s else []
 
 
-def _get_volumes(data: CfgData) -> Optional[Dict[Path, ScubaVolume]]:
+def _get_volumes(
+    data: CfgData, scuba_root: Optional[Path]
+) -> Optional[Dict[Path, ScubaVolume]]:
     voldata = _get_dict(data, "volumes")
     if voldata is None:
         return None
 
     vols = {}
     for cpath_str, v in voldata.items():
-        cpath = _expand_path(cpath_str)
-        vols[cpath] = ScubaVolume.from_dict(cpath, v)
+        cpath = _expand_path(cpath_str)  # no base_dir; container path must be absolute.
+        vols[cpath] = ScubaVolume.from_dict(cpath, v, scuba_root)
     return vols
 
 
-def _expand_path(in_str: str) -> Path:
+def _expand_path(in_str: str, base_dir: Optional[Path] = None) -> Path:
+    """Expand variables in a path string and make it absolute.
+
+    Environment variable references (e.g. $FOO and ${FOO}) are expanded using
+    the host environment.
+
+    After environment variable expansion, absolute paths are returned as-is.
+    Relative paths must start with ./ or ../ and are joined to base_dir, if
+    provided.
+
+    Args:
+      in_str: Input path as a string.
+      base_dir: Path to which relative paths will be joined.
+
+    Returns:
+      An absolute Path.
+
+    Raises:
+      ValueError: If base_dir is provided but not absolute.
+      ConfigError: If a referenced environment variable is not set.
+      ConfigError: An environment variable reference could not be parsed.
+      ConfigError: A relative path does not start with "./" or "../".
+      ConfigError: A relative path is given when base_dir is not provided.
+    """
+    if base_dir is not None and not base_dir.is_absolute():
+        raise ValueError(f"base_dir is not absolute: {base_dir}")
+
     try:
-        output = expand_env_vars(in_str)
+        path_str = expand_env_vars(in_str)
     except KeyError as ke:
         # pylint: disable=raise-missing-from
         raise ConfigError(
@@ -348,7 +376,24 @@ def _expand_path(in_str: str) -> Path:
             f"Unable to expand string '{in_str}' due to parsing errors"
         ) from ve
 
-    return Path(output)
+    path = Path(path_str)
+
+    if not path.is_absolute():
+        if base_dir is None:
+            raise ConfigError(f"Relative path not allowed: {path}")
+
+        # Make sure it starts with ./ or ../
+        # We have to use the original string input since Path() will remove ./
+        valid_prefixes = ("./", "../")
+        if not any(path_str.startswith(pfx) for pfx in valid_prefixes):
+            raise ConfigError(
+                f"Relative path must start with {' or '.join(valid_prefixes)}: {path}"
+            )
+
+        path = base_dir / path
+
+    assert path.is_absolute()
+    return path
 
 
 @dataclasses.dataclass(frozen=True)
@@ -358,7 +403,9 @@ class ScubaVolume:
     options: List[str] = dataclasses.field(default_factory=list)
 
     @classmethod
-    def from_dict(cls, cpath: Path, node: CfgNode) -> ScubaVolume:
+    def from_dict(
+        cls, cpath: Path, node: CfgNode, scuba_root: Optional[Path]
+    ) -> ScubaVolume:
         # Treat a null node as an empty dict
         if node is None:
             node = {}
@@ -369,7 +416,7 @@ class ScubaVolume:
         if isinstance(node, str):
             return cls(
                 container_path=cpath,
-                host_path=_expand_path(node),
+                host_path=_expand_path(node, scuba_root),
             )
 
         # Complex form
@@ -383,7 +430,7 @@ class ScubaVolume:
                 raise ConfigError(f"Volume {cpath} must have a 'hostpath' subkey")
             return cls(
                 container_path=cpath,
-                host_path=_expand_path(hpath),
+                host_path=_expand_path(hpath, scuba_root),
                 options=_get_delimited_str_list(node, "options", ","),
             )
 
@@ -406,7 +453,9 @@ class ScubaAlias:
     volumes: Optional[Dict[Path, ScubaVolume]] = None
 
     @classmethod
-    def from_dict(cls, name: str, node: CfgNode) -> ScubaAlias:
+    def from_dict(
+        cls, name: str, node: CfgNode, scuba_root: Optional[Path]
+    ) -> ScubaAlias:
         script = _process_script_node(node, name)
 
         if isinstance(node, dict):  # Rich alias
@@ -421,7 +470,7 @@ class ScubaAlias:
                 shell=node.get("shell"),
                 as_root=bool(node.get("root")),
                 docker_args=_get_docker_args(node),
-                volumes=_get_volumes(node),
+                volumes=_get_volumes(node, scuba_root),
             )
 
         return cls(name=name, script=script)
@@ -436,7 +485,14 @@ class ScubaConfig:
     hooks: Dict[str, List[str]]
     environment: Environment
 
-    def __init__(self, **data: CfgNode) -> None:
+    def __init__(
+        self,
+        data: Optional[dict[str, CfgNode]] = None,
+        scuba_root: Optional[Path] = None,
+    ) -> None:
+        if data is None:
+            data = {}
+
         optional_nodes = (
             "image",
             "aliases",
@@ -460,17 +516,19 @@ class ScubaConfig:
         self.shell = _get_str(data, "shell", DEFAULT_SHELL)
         self.entrypoint = _get_entrypoint(data)
         self.docker_args = _get_docker_args(data)
-        self.volumes = _get_volumes(data)
-        self.aliases = self._load_aliases(data)
+        self.volumes = _get_volumes(data, scuba_root)
+        self.aliases = self._load_aliases(data, scuba_root)
         self.hooks = self._load_hooks(data)
         self.environment = _process_environment(data.get("environment"), "environment")
 
-    def _load_aliases(self, data: CfgData) -> Dict[str, ScubaAlias]:
+    def _load_aliases(
+        self, data: CfgData, scuba_root: Optional[Path]
+    ) -> Dict[str, ScubaAlias]:
         aliases = {}
         for name, node in data.get("aliases", {}).items():
             if " " in name:
                 raise ConfigError("Alias names cannot contain spaces")
-            aliases[name] = ScubaAlias.from_dict(name, node)
+            aliases[name] = ScubaAlias.from_dict(name, node, scuba_root)
         return aliases
 
     def _load_hooks(self, data: CfgData) -> Dict[str, List[str]]:
@@ -491,7 +549,7 @@ class ScubaConfig:
         return self._image
 
 
-def load_config(path: Path) -> ScubaConfig:
+def load_config(path: Path, scuba_root: Path) -> ScubaConfig:
     try:
         with path.open("r") as f:
             data = yaml.load(f, Loader)
@@ -500,4 +558,4 @@ def load_config(path: Path) -> ScubaConfig:
     except yaml.YAMLError as e:
         raise ConfigError(f"Error loading {SCUBA_YML}: {e}")
 
-    return ScubaConfig(**(data or {}))
+    return ScubaConfig(data, scuba_root)

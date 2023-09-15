@@ -12,7 +12,7 @@ import scuba.config
 
 
 def load_config() -> scuba.config.ScubaConfig:
-    return scuba.config.load_config(Path(".scuba.yml"))
+    return scuba.config.load_config(Path(".scuba.yml"), Path.cwd())
 
 
 class TestCommonScriptSchema:
@@ -1009,3 +1009,127 @@ class TestConfig:
                 """
             )
         self._invalid_config("TEST_VAR1")
+
+    def test_volumes_hostpath_rel(self, monkeypatch, in_tmp_path) -> None:
+        """volume hostpath can be relative to scuba_root (top dir)"""
+        monkeypatch.setenv("RELVAR", "./spam/eggs")
+
+        with open(".scuba.yml", "w") as f:
+            f.write(
+                r"""
+                image: na
+                volumes:
+                  /bar: ./foo/bar       # simple form, dotted path
+                  /scp:                 # complex form
+                    hostpath: ./snap/crackle/pop
+                  /relvar: $RELVAR      # simple form, relative path in variable
+                """
+            )
+
+        # Make a subdirectory and cd into it
+        subdir = Path("way/down/here")
+        subdir.mkdir(parents=True)
+        monkeypatch.chdir(subdir)
+
+        # Locate the config
+        found_topdir, found_rel, config = scuba.config.find_config()
+        assert found_topdir == in_tmp_path
+        assert found_rel == subdir
+        assert config.volumes is not None
+
+        assert_vol(config.volumes, "/bar", in_tmp_path / "foo" / "bar")
+        assert_vol(config.volumes, "/scp", in_tmp_path / "snap" / "crackle" / "pop")
+        assert_vol(config.volumes, "/relvar", in_tmp_path / "spam" / "eggs")
+
+    def test_volumes_hostpath_rel_above(self, monkeypatch, in_tmp_path) -> None:
+        """volume hostpath can be relative, above scuba_root (top dir)"""
+        # Directory structure:
+        #
+        # test-tmpdir/              # in_tmp_path
+        # |- foo_up_here/           # will be mounted at /foo
+        # |- way/
+        #    |- down/
+        #       |- here/            # scuba roo (found_topdir)
+        #          |- .scuba.yml
+
+        # First, make a subdirectory and cd into it
+        project_dir = Path("way/down/here")
+        project_dir.mkdir(parents=True)
+        monkeypatch.chdir(project_dir)
+
+        # Now put .scuba.yml here
+        with open(".scuba.yml", "w") as f:
+            f.write(
+                r"""
+                image: na
+                volumes:
+                  /foo: ../../../foo_up_here
+                """
+            )
+
+        # Locate the config
+        found_topdir, found_rel, config = scuba.config.find_config()
+        assert found_topdir == in_tmp_path / project_dir
+        assert found_rel == Path()
+
+        assert config.volumes is not None
+        assert_vol(config.volumes, "/foo", in_tmp_path / "foo_up_here")
+
+    def test_volumes_hostpath_rel_req_dot_simple(
+        self, monkeypatch, in_tmp_path
+    ) -> None:
+        """relaitve volume hostpath (simple form) must start with ./ or ../"""
+        with open(".scuba.yml", "w") as f:
+            f.write(
+                r"""
+                image: na
+                volumes:
+                  /one: foo  # Forbidden
+                """
+            )
+        self._invalid_config("Relative path must start with ./ or ../")
+
+    def test_volumes_hostpath_rel_requires_dot_complex(
+        self, monkeypatch, in_tmp_path
+    ) -> None:
+        """relaitve volume hostpath (complex form) must start with ./ or ../"""
+        with open(".scuba.yml", "w") as f:
+            f.write(
+                r"""
+                image: na
+                volumes:
+                  /one:
+                    hostpath: foo  # Forbidden
+                """
+            )
+        self._invalid_config("Relative path must start with ./ or ../")
+
+    def test_volumes_hostpath_rel_in_env(self, monkeypatch, in_tmp_path) -> None:
+        """volume definitions can contain environment variables, including relative path portions"""
+        monkeypatch.setenv("PREFIX", "./")
+        with open(".scuba.yml", "w") as f:
+            f.write(
+                r"""
+                image: na
+                volumes:
+                  /foo: ${PREFIX}/foo
+                """
+            )
+
+        config = load_config()
+        vols = config.volumes
+        assert vols is not None
+        assert len(vols) == 1
+
+        assert_vol(vols, "/foo", in_tmp_path / "foo")
+
+    def test_volumes_contpath_rel(self, monkeypatch, in_tmp_path) -> None:
+        with open(".scuba.yml", "w") as f:
+            f.write(
+                r"""
+                image: na
+                volumes:
+                  foo: /what/now
+                """
+            )
+        self._invalid_config("Relative path not allowed: foo")
