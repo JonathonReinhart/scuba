@@ -1104,6 +1104,25 @@ class TestConfig:
             )
         self._invalid_config("Relative path must start with ./ or ../")
 
+    def test_volumes_hostpath_rel_in_env(self, monkeypatch, in_tmp_path) -> None:
+        """volume definitions can contain environment variables, including relative path portions"""
+        monkeypatch.setenv("PREFIX", "./")
+        with open(".scuba.yml", "w") as f:
+            f.write(
+                r"""
+                image: na
+                volumes:
+                  /foo: ${PREFIX}/foo
+                """
+            )
+
+        config = load_config()
+        vols = config.volumes
+        assert vols is not None
+        assert len(vols) == 1
+
+        assert_vol(vols, "/foo", in_tmp_path / "foo")
+
     def test_volumes_contpath_rel(self, monkeypatch, in_tmp_path) -> None:
         with open(".scuba.yml", "w") as f:
             f.write(
