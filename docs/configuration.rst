@@ -146,7 +146,7 @@ style <https://yaml.org/spec/1.2/spec.html#id2788097>`_:
 -----------
 
 The optional ``volumes`` node *(added in v2.9.0)* allows additional
-`bind-mounts<https://docs.docker.com/storage/bind-mounts/>`_ to be specified.
+`bind-mounts <https://docs.docker.com/storage/bind-mounts/>`_ to be specified.
 ``volumes`` is a mapping (dictionary) where each key is the container-path.
 In the simple form, the value is a string, the host-path to be bind-mounted:
 
