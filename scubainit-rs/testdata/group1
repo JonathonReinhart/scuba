@@ -1,0 +1,8 @@
+foo:x:1234:moe,larry,shemp
+
+# Blank lines and comments are okay
+bar:x:2345:moe
+
+snap:x:3456:
+
+# Done!
