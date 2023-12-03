@@ -8,4 +8,4 @@ scuba/scubainit:
 .PHONY: clean
 clean:
 	make -C scubainit clean
-	rm scuba/scubainit
+	rm -f scuba/scubainit
