@@ -1,11 +1,13 @@
 use anyhow::{bail, Context as _, Result};
 use exec::execvp;
+use log::{debug, error, info, warn};
 use std::env;
 use std::fs;
 use std::os::unix::fs::{chown, PermissionsExt};
 use std::os::unix::process::ExitStatusExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
+use stderrlog::{self, LogLevelNum};
 
 use scubainit::util::{libc_result, make_executable, open_read_append};
 use scubainit::util::{pop_env_bool, pop_env_str, pop_env_uint};
@@ -32,7 +34,7 @@ const USER_HOME: &str = "/home";
 
 fn main() -> ExitCode {
     if let Err(err) = run_scubainit() {
-        eprintln!("scubainit: {err}");
+        error!("{err:#}");
         ExitCode::from(SCUBAINIT_EXIT_FAIL)
     } else {
         ExitCode::SUCCESS
@@ -40,11 +42,13 @@ fn main() -> ExitCode {
 }
 
 fn run_scubainit() -> Result<()> {
+    setup_logging()?;
+    info!("Looking Rusty!");
+
     let ctx = process_envvars()?;
 
-    // TODO: Hook up ctx.verbose to logging at info or debug level
-
     if let Some(ref user_info) = ctx.user_info {
+        debug!("Setting up user...");
         user_info.make_homedir()?;
         user_info.add_group()?;
         user_info.add_user()?;
@@ -70,10 +74,11 @@ fn run_scubainit() -> Result<()> {
         bail!("Missing command");
     }
     let program = &argv[0];
-    eprintln!("Executing program={program:?} with argv={argv:?}");
+    debug!("Executing program={program:?} with argv={argv:?}");
     // TODO: Use std::os::unix::process::CommandExt::exec() instead?
     // We would want to use the same options to invoke the user hook above, too.
-    Err(execvp(program, argv).into())
+    let result: Result<()> = Err(execvp(program, argv).into());
+    result.context(format!("Failed to execute {program:?}"))
 }
 
 struct UserInfo {
@@ -90,6 +95,7 @@ impl UserInfo {
 
     pub fn make_homedir(&self) -> Result<()> {
         let home = self.home_dir();
+        debug!("Creating home dir: {home:?}");
         fs::create_dir_all(&home)?;
         fs::set_permissions(&home, fs::Permissions::from_mode(0o700))?;
         chown(&home, Some(self.uid), Some(self.gid))?;
@@ -99,6 +105,8 @@ impl UserInfo {
     pub fn add_group(&self) -> Result<()> {
         let group_name = &self.group;
         let gid = self.gid;
+
+        debug!("Adding group '{group_name}' (gid={gid})");
 
         let file = open_read_append(ETC_GROUP)?;
 
@@ -117,7 +125,7 @@ impl UserInfo {
             }
 
             if gid_matches {
-                eprintln!("Warning: GID {gid} already exists in {ETC_GROUP}");
+                warn!("Warning: GID {gid} already exists in {ETC_GROUP}");
             }
         }
 
@@ -135,6 +143,7 @@ impl UserInfo {
     pub fn add_user(&self) -> Result<()> {
         let user_name = &self.user;
         let uid = self.uid;
+        debug!("Adding user '{user_name}' (uid={uid})");
 
         let file = open_read_append(ETC_PASSWD)?;
 
@@ -153,7 +162,7 @@ impl UserInfo {
             }
 
             if uid_matches {
-                eprintln!("Warning: UID {uid} already exists in {ETC_PASSWD}");
+                warn!("Warning: UID {uid} already exists in {ETC_PASSWD}");
             }
         }
 
@@ -175,6 +184,7 @@ impl UserInfo {
 
     pub fn add_shadow(&self) -> Result<()> {
         let user_name = &self.user;
+        debug!("Adding shadow entry for '{user_name}'");
 
         let file = open_read_append(ETC_SHADOW)?;
 
@@ -206,6 +216,7 @@ impl UserInfo {
         let uid = self.uid;
         let gid = self.gid;
         let user = &self.user;
+        debug!("Changing to user={user}, uid={uid}, gid={gid}");
 
         // Drop all supplementary groups. Must be called before setuid().
         // SAFETY: The setgroups() syscall accesses no memory when size is 0.
@@ -240,8 +251,6 @@ impl UserInfo {
 struct Context {
     user_info: Option<UserInfo>,
     umask: Option<u32>,
-    #[allow(dead_code)] // TODO: See above about using verbose
-    verbose: bool,
     user_hook: Option<String>,
     root_hook: Option<String>,
 }
@@ -271,6 +280,7 @@ impl Context {
 
         make_executable(path)?;
 
+        debug!("Executing hook {path}");
         let status = Command::new(path).status()?;
         if !status.success() {
             if let Some(code) = status.code() {
@@ -326,10 +336,26 @@ fn process_envvars() -> Result<Context> {
 
         // Optional vars
         umask: pop_env_uint(SCUBAINIT_UMASK)?,
-        verbose: pop_env_bool(SCUBAINIT_VERBOSE),
+
+        // SCUBAINIT_VERBOSE is popped in setup_logging().
 
         // Hook scripts
         user_hook: pop_env_str(SCUBAINIT_HOOK_USER),
         root_hook: pop_env_str(SCUBAINIT_HOOK_ROOT),
     })
+}
+
+fn setup_logging() -> Result<()> {
+    let verbose = pop_env_bool(SCUBAINIT_VERBOSE);
+    let verbosity = if verbose {
+        LogLevelNum::Debug
+    } else {
+        LogLevelNum::Error
+    };
+
+    Ok(stderrlog::new()
+        .module(module_path!())
+        .show_module_names(true)
+        .verbosity(verbosity)
+        .init()?)
 }
