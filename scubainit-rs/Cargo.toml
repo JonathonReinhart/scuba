@@ -12,3 +12,11 @@ libc = "0.2"
 
 [dev-dependencies]
 tempfile = "3.8.1"
+
+[profile.release]
+# https://stackoverflow.com/a/54842093/119527
+opt-level = 'z'     # Optimize for size
+lto = true          # Enable link-time optimization
+codegen-units = 1   # Reduce number of codegen units to increase optimizations
+panic = 'abort'     # Abort on panic
+strip = true        # Strip symbols from binary
