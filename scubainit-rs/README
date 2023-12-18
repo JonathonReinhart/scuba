@@ -1,0 +1,9 @@
+
+Resources for building small, static binaries:
+
+- https://stackoverflow.com/a/31778003/119527
+  rustup target add x86_64-unknown-linux-musl
+  RUSTFLAGS='-C relocation-model=static -C strip=symbols' cargo build --release --target x86_64-unknown-linux-musl
+
+- https://stackoverflow.com/a/54842093/119527
+  Cargo.toml [profile.release] options
