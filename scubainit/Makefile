@@ -6,4 +6,4 @@ scubainit: scubainit.c
 
 .PHONY: clean
 clean:
-	rm scubainit
+	rm -f scubainit
