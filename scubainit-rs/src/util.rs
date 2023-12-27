@@ -107,6 +107,7 @@ pub fn make_executable(path: &str) -> std::io::Result<()> {
 mod tests {
     use super::*;
     use crate::string_vec;
+    use temp_env;
 
     fn not_set(name: &str) -> bool {
         env::var(name).is_err()
@@ -147,47 +148,57 @@ mod tests {
 
     #[test]
     fn pop_env_str_works() {
-        env::set_var(VAR_NAME, "My string");
-        assert_eq!(pop_env_str(VAR_NAME).unwrap(), "My string");
-        assert!(not_set(VAR_NAME));
+        temp_env::with_var(VAR_NAME, Some("My string"), || {
+            assert_eq!(pop_env_str(VAR_NAME).unwrap(), "My string");
+            assert!(not_set(VAR_NAME));
+        });
     }
 
     #[test]
     fn pop_env_str_handles_unset() {
-        assert!(not_set(VAR_NAME));
-        assert_eq!(pop_env_str(VAR_NAME), None);
+        temp_env::with_var_unset(VAR_NAME, || {
+            assert!(not_set(VAR_NAME));
+            assert_eq!(pop_env_str(VAR_NAME), None);
+        });
     }
 
     #[test]
     fn pop_env_bool_works() {
-        env::set_var(VAR_NAME, "1");
-        assert!(pop_env_bool(VAR_NAME));
-        assert!(not_set(VAR_NAME));
+        temp_env::with_var(VAR_NAME, Some("1"), || {
+            assert!(pop_env_bool(VAR_NAME));
+            assert!(not_set(VAR_NAME));
+        });
     }
 
     #[test]
     fn pop_env_bool_handles_unset() {
-        assert!(not_set(VAR_NAME));
-        assert!(!pop_env_bool(VAR_NAME));
+        temp_env::with_var_unset(VAR_NAME, || {
+            assert!(not_set(VAR_NAME));
+            assert!(!pop_env_bool(VAR_NAME));
+        });
     }
 
     #[test]
     fn pop_env_uint_works() {
-        env::set_var(VAR_NAME, "1234");
-        assert_eq!(pop_env_uint(VAR_NAME).unwrap(), Some(1234));
-        assert!(not_set(VAR_NAME));
+        temp_env::with_var(VAR_NAME, Some("1234"), || {
+            assert_eq!(pop_env_uint(VAR_NAME).unwrap(), Some(1234));
+            assert!(not_set(VAR_NAME));
+        });
     }
 
     #[test]
     fn pop_env_uint_handles_unset() {
-        assert!(not_set(VAR_NAME));
-        assert_eq!(pop_env_uint(VAR_NAME).unwrap(), None);
+        temp_env::with_var_unset(VAR_NAME, || {
+            assert!(not_set(VAR_NAME));
+            assert_eq!(pop_env_uint(VAR_NAME).unwrap(), None);
+        });
     }
 
     #[test]
     fn pop_env_uint_handles_invalid() {
-        env::set_var(VAR_NAME, "zzz");
-        assert!(pop_env_uint(VAR_NAME).is_err());
-        assert!(not_set(VAR_NAME));
+        temp_env::with_var(VAR_NAME, Some("zzz"), || {
+            assert!(pop_env_uint(VAR_NAME).is_err());
+            assert!(not_set(VAR_NAME));
+        });
     }
 }

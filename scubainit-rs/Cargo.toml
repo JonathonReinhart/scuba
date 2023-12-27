@@ -13,6 +13,7 @@ log = "0.4.20"
 stderrlog = "0.5.4"
 
 [dev-dependencies]
+temp-env = "0.3.6"
 tempfile = "3.8.1"
 
 [profile.release]
