@@ -1,4 +1,4 @@
-use crate::entfiles::{EntFileReader, EntFileWriter, Entry, ReadEntryError};
+use crate::entfiles::{EntFileReader, EntFileWriter, EntLineParser, Entry, ReadEntryError};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct PasswdEntry {
@@ -18,17 +18,15 @@ impl Entry for PasswdEntry {
     fn from_line(line: &str) -> Result<PasswdEntry, ReadEntryError> {
         // https://man7.org/linux/man-pages/man5/passwd.5.html
         //   name:password:UID:GID:GECOS:directory:shell
-        let mut parts = line.split(":");
-        let mut next_field = || parts.next().ok_or(ReadEntryError::Invalid);
-
+        let mut parser = EntLineParser::new(line);
         Ok(PasswdEntry {
-            name: next_field()?.to_string(),
-            passwd: next_field()?.to_string(),
-            uid: next_field()?.parse().map_err(ReadEntryError::ParseInt)?,
-            gid: next_field()?.parse().map_err(ReadEntryError::ParseInt)?,
-            gecos: next_field()?.to_string(),
-            home_dir: next_field()?.to_string(),
-            shell: next_field()?.to_string(),
+            name: parser.next_field_string()?,
+            passwd: parser.next_field_string()?,
+            uid: parser.next_field_u32()?,
+            gid: parser.next_field_u32()?,
+            gecos: parser.next_field_string()?,
+            home_dir: parser.next_field_string()?,
+            shell: parser.next_field_string()?,
         })
     }
 

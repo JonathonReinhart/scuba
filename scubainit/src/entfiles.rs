@@ -44,6 +44,46 @@ impl std::error::Error for ReadEntryError {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// EntLineParser
+
+pub struct EntLineParser<'a> {
+    fields: std::str::Split<'a, char>,
+}
+
+impl<'a> EntLineParser<'a> {
+    pub fn new(line: &str) -> EntLineParser {
+        EntLineParser {
+            fields: line.split(':'),
+        }
+    }
+
+    pub fn next_field_str(&mut self) -> Result<&'a str, ReadEntryError> {
+        self.fields.next().ok_or(ReadEntryError::Invalid)
+    }
+
+    pub fn next_field_string(&mut self) -> Result<String, ReadEntryError> {
+        self.next_field_str().map(|s| s.to_string())
+    }
+
+    pub fn next_field_u32(&mut self) -> Result<u32, ReadEntryError> {
+        self.next_field_str()?
+            .parse::<u32>()
+            .map_err(ReadEntryError::ParseInt)
+    }
+
+    pub fn next_field_u32_opt(&mut self) -> Result<Option<u32>, ReadEntryError> {
+        let value = self.next_field_str()?;
+        if value.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(
+                value.parse::<u32>().map_err(ReadEntryError::ParseInt)?,
+            ))
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // EntFileReader
 
 pub struct EntFileReader<'a, T> {
@@ -110,6 +150,56 @@ impl<T: Entry> EntFileWriter<'_, T> {
         if written != data.len() {
             return Err(short_write());
         }
+        Ok(())
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// tests
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn next_field_str_works() -> Result<(), String> {
+        let mut parser = EntLineParser::new("aaa:bbb");
+        assert_eq!(parser.next_field_str().unwrap(), "aaa");
+        assert_eq!(parser.next_field_str().unwrap(), "bbb");
+        assert!(parser
+            .next_field_str()
+            .is_err_and(|e| matches!(e, ReadEntryError::Invalid)));
+        Ok(())
+    }
+
+    #[test]
+    fn next_field_string_works() -> Result<(), String> {
+        let mut parser = EntLineParser::new("aaa:bbb");
+        assert_eq!(parser.next_field_string().unwrap(), "aaa");
+        assert_eq!(parser.next_field_string().unwrap(), "bbb");
+        assert!(parser
+            .next_field_string()
+            .is_err_and(|e| matches!(e, ReadEntryError::Invalid)));
+        Ok(())
+    }
+
+    #[test]
+    fn next_field_u32_works() -> Result<(), String> {
+        let mut parser = EntLineParser::new("123:456:7zz");
+        assert_eq!(parser.next_field_u32().unwrap(), 123);
+        assert_eq!(parser.next_field_u32().unwrap(), 456);
+        assert!(parser
+            .next_field_u32()
+            .is_err_and(|e| matches!(e, ReadEntryError::ParseInt(_))));
+        Ok(())
+    }
+
+    #[test]
+    fn next_field_u32_opt_works() -> Result<(), String> {
+        let mut parser = EntLineParser::new("xxx::");
+        assert_eq!(parser.next_field_str().unwrap(), "xxx");
+        assert_eq!(parser.next_field_u32_opt().unwrap(), None);
+        assert_eq!(parser.next_field_u32_opt().unwrap(), None);
         Ok(())
     }
 }

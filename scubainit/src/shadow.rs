@@ -1,5 +1,5 @@
-use crate::entfiles::{EntFileReader, EntFileWriter, Entry, ReadEntryError};
-use crate::util::{maybe_parse, to_string_or_empty};
+use crate::entfiles::{EntFileReader, EntFileWriter, EntLineParser, Entry, ReadEntryError};
+use crate::util::to_string_or_empty;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct ShadowEntry {
@@ -20,19 +20,16 @@ pub type ShadowFileWriter<'a> = EntFileWriter<'a, ShadowEntry>;
 impl Entry for ShadowEntry {
     fn from_line(line: &str) -> Result<ShadowEntry, ReadEntryError> {
         // https://man7.org/linux/man-pages/man5/shadow.5.html
-        let mut parts = line.split(":");
-        let mut next_field = || parts.next().ok_or(ReadEntryError::Invalid);
-
-        // Any integer parsing errors result in the entire entry being skipped via the final .ok()?
+        let mut parser = EntLineParser::new(line);
         Ok(ShadowEntry {
-            name: next_field()?.to_string(),
-            passwd: next_field()?.to_string(),
-            last_change_date: maybe_parse(next_field()?).map_err(ReadEntryError::ParseInt)?,
-            min_password_age: maybe_parse(next_field()?).map_err(ReadEntryError::ParseInt)?,
-            max_password_age: maybe_parse(next_field()?).map_err(ReadEntryError::ParseInt)?,
-            warn_period: maybe_parse(next_field()?).map_err(ReadEntryError::ParseInt)?,
-            inact_period: maybe_parse(next_field()?).map_err(ReadEntryError::ParseInt)?,
-            expire_date: maybe_parse(next_field()?).map_err(ReadEntryError::ParseInt)?,
+            name: parser.next_field_string()?,
+            passwd: parser.next_field_string()?,
+            last_change_date: parser.next_field_u32_opt()?,
+            min_password_age: parser.next_field_u32_opt()?,
+            max_password_age: parser.next_field_u32_opt()?,
+            warn_period: parser.next_field_u32_opt()?,
+            inact_period: parser.next_field_u32_opt()?,
+            expire_date: parser.next_field_u32_opt()?,
             // 9th field unused
         })
     }
