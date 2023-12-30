@@ -14,8 +14,8 @@ pub struct ShadowEntry {
     // reserved
 }
 
-pub type ShadowFileReader<'a> = EntFileReader<'a, ShadowEntry>;
-pub type ShadowFileWriter<'a> = EntFileWriter<'a, ShadowEntry>;
+pub type ShadowFileReader = EntFileReader<ShadowEntry>;
+pub type ShadowFileWriter = EntFileWriter<ShadowEntry>;
 
 impl Entry for ShadowEntry {
     fn from_line(line: &str) -> Result<ShadowEntry, ReadEntryError> {

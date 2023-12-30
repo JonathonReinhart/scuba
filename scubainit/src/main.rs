@@ -112,8 +112,8 @@ impl UserInfo {
         let file = open_read_append(ETC_GROUP)?;
 
         // Try to find a conflicting group (one matching name or gid).
-        let reader = groups::GroupFileReader::new(&file);
-        for grp in reader {
+        let mut reader = groups::GroupFileReader::new(file);
+        for grp in &mut reader {
             let grp = grp?;
             let name_matches = grp.name.as_str() == group_name;
             let gid_matches = grp.gid == gid;
@@ -131,6 +131,8 @@ impl UserInfo {
             }
         }
 
+        let file = reader.into_inner();
+
         // Okay, add group
         let grp = groups::GroupEntry {
             name: group_name.to_owned(),
@@ -138,7 +140,7 @@ impl UserInfo {
             gid,
             members: Vec::new(),
         };
-        let mut writer = groups::GroupFileWriter::new(&file);
+        let mut writer = groups::GroupFileWriter::new(file);
         Ok(writer.write(&grp)?)
     }
 
@@ -150,8 +152,8 @@ impl UserInfo {
         let file = open_read_append(ETC_PASSWD)?;
 
         // Try to find a conflicting user (one matching name or uid).
-        let reader = passwd::PasswdFileReader::new(&file);
-        for pwd in reader {
+        let mut reader = passwd::PasswdFileReader::new(file);
+        for pwd in &mut reader {
             let pwd = pwd?;
             let name_matches = pwd.name.as_str() == user_name;
             let uid_matches = pwd.uid == uid;
@@ -169,6 +171,8 @@ impl UserInfo {
             }
         }
 
+        let file = reader.into_inner();
+
         // Okay, add user
         let home_dir_path = self.home_dir();
         let home_dir_str = home_dir_path.to_str().context("Invalid home_dir")?;
@@ -181,7 +185,7 @@ impl UserInfo {
             home_dir: home_dir_str.to_owned(),
             shell: DEFAULT_SHELL.to_owned(),
         };
-        let mut writer = passwd::PasswdFileWriter::new(&file);
+        let mut writer = passwd::PasswdFileWriter::new(file);
         Ok(writer.write(&user)?)
     }
 
@@ -192,14 +196,16 @@ impl UserInfo {
         let file = open_read_append(ETC_SHADOW)?;
 
         // Try to find a conflicting user (one matching name).
-        let reader = shadow::ShadowFileReader::new(&file);
-        for sp in reader {
+        let mut reader = shadow::ShadowFileReader::new(file);
+        for sp in &mut reader {
             let sp = sp?;
             if sp.name.as_str() == user_name {
                 // Already exists; we don't really care about its values
                 return Ok(());
             }
         }
+
+        let file = reader.into_inner();
 
         // Okay, add shadow entry
         let entry = shadow::ShadowEntry {
@@ -212,7 +218,7 @@ impl UserInfo {
             inact_period: None,
             expire_date: None,
         };
-        let mut writer = shadow::ShadowFileWriter::new(&file);
+        let mut writer = shadow::ShadowFileWriter::new(file);
         Ok(writer.write(&entry)?)
     }
 
