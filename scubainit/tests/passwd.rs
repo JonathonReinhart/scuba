@@ -33,7 +33,7 @@ fn test_passwd1() -> Result<()> {
     let file = fs::File::open("testdata/passwd1")?;
     let mut reader = PasswdFileReader::new(&file);
 
-    let pw = reader.next().unwrap();
+    let pw = reader.next().unwrap()?;
     assert_eq!(pw.name, "moe");
     assert_eq!(pw.passwd, "x");
     assert_eq!(pw.uid, 1001);
@@ -42,7 +42,7 @@ fn test_passwd1() -> Result<()> {
     assert_eq!(pw.home_dir, "/home/moe");
     assert_eq!(pw.shell, "/bin/zsh");
 
-    let pw = reader.next().unwrap();
+    let pw = reader.next().unwrap()?;
     assert_eq!(pw.name, "larry");
     assert_eq!(pw.passwd, "x");
     assert_eq!(pw.uid, 1002);
@@ -51,7 +51,7 @@ fn test_passwd1() -> Result<()> {
     assert_eq!(pw.home_dir, "/home/larry");
     assert_eq!(pw.shell, "/bin/ksh");
 
-    let pw = reader.next().unwrap();
+    let pw = reader.next().unwrap()?;
     assert_eq!(pw.name, "shemp");
     assert_eq!(pw.passwd, "x");
     assert_eq!(pw.uid, 1003);
@@ -91,7 +91,7 @@ fn test_write_read() -> Result<()> {
     file.rewind()?;
 
     let mut reader = PasswdFileReader::new(&file);
-    let ent_r = reader.next().unwrap();
+    let ent_r = reader.next().unwrap()?;
 
     assert_eq!(ent_w, ent_r);
     Ok(())
@@ -114,10 +114,10 @@ fn test_read_write() -> Result<()> {
         // Now read
         let mut reader = PasswdFileReader::new(&file);
 
-        let r = reader.next().unwrap();
+        let r = reader.next().unwrap()?;
         assert_eq!(r.name, "moe");
 
-        let r = reader.next().unwrap();
+        let r = reader.next().unwrap()?;
         assert_eq!(r.name, "larry");
 
         // Now write

@@ -113,6 +113,7 @@ impl UserInfo {
         // Try to find a conflicting group (one matching name or gid).
         let reader = groups::GroupFileReader::new(&file);
         for grp in reader {
+            let grp = grp?;
             let name_matches = grp.name.as_str() == group_name;
             let gid_matches = grp.gid == gid;
 
@@ -150,6 +151,7 @@ impl UserInfo {
         // Try to find a conflicting user (one matching name or uid).
         let reader = passwd::PasswdFileReader::new(&file);
         for pwd in reader {
+            let pwd = pwd?;
             let name_matches = pwd.name.as_str() == user_name;
             let uid_matches = pwd.uid == uid;
 
@@ -191,6 +193,7 @@ impl UserInfo {
         // Try to find a conflicting user (one matching name).
         let reader = shadow::ShadowFileReader::new(&file);
         for sp in reader {
+            let sp = sp?;
             if sp.name.as_str() == user_name {
                 // Already exists; we don't really care about its values
                 return Ok(());

@@ -35,7 +35,7 @@ fn test_shadow1() -> Result<()> {
     let mut reader = ShadowFileReader::new(&file);
 
     // root:$y$j9T$zzzzzzzzzzzzzzz:18881:0:99999:7:::
-    let result = reader.next().unwrap();
+    let result = reader.next().unwrap()?;
     assert_eq!(result.name, "root");
     assert_eq!(result.passwd, "$y$j9T$zzzzzzzzzzzzzzz");
     assert_eq!(result.last_change_date, Some(18881));
@@ -46,7 +46,7 @@ fn test_shadow1() -> Result<()> {
     assert_eq!(result.expire_date, None);
 
     // systemd-timesync:*:18881:0:99999:7:::
-    let result = reader.next().unwrap();
+    let result = reader.next().unwrap()?;
     assert_eq!(result.name, "systemd-timesync");
     assert_eq!(result.passwd, "*");
     assert_eq!(result.last_change_date, Some(18881));
@@ -87,7 +87,7 @@ fn test_write_read() -> Result<()> {
     file.rewind()?;
 
     let mut reader = ShadowFileReader::new(&file);
-    let ent_r = reader.next().unwrap();
+    let ent_r = reader.next().unwrap()?;
 
     assert_eq!(ent_w, ent_r);
     Ok(())
@@ -110,10 +110,10 @@ fn test_read_write() -> Result<()> {
         // Now read
         let mut reader = ShadowFileReader::new(&file);
 
-        let r = reader.next().unwrap();
+        let r = reader.next().unwrap()?;
         assert_eq!(r.name, "root");
 
-        let r = reader.next().unwrap();
+        let r = reader.next().unwrap()?;
         assert_eq!(r.name, "systemd-timesync");
 
         // Now write
