@@ -32,19 +32,19 @@ fn test_group1() -> Result<()> {
     let file = fs::File::open("testdata/group1")?;
     let mut reader = GroupFileReader::new(&file);
 
-    let g = reader.next().unwrap();
+    let g = reader.next().unwrap()?;
     assert_eq!(g.name, "foo");
     assert_eq!(g.passwd, "x");
     assert_eq!(g.gid, 1234);
     assert_eq!(g.members.as_slice(), ["moe", "larry", "shemp"]);
 
-    let g = reader.next().unwrap();
+    let g = reader.next().unwrap()?;
     assert_eq!(g.name, "bar");
     assert_eq!(g.passwd, "x");
     assert_eq!(g.gid, 2345);
     assert_eq!(g.members.as_slice(), ["moe"]);
 
-    let g = reader.next().unwrap();
+    let g = reader.next().unwrap()?;
     assert_eq!(g.name, "snap");
     assert_eq!(g.passwd, "x");
     assert_eq!(g.gid, 3456);
@@ -82,7 +82,7 @@ fn test_write_read() -> Result<()> {
     file.rewind()?;
 
     let mut reader = GroupFileReader::new(&file);
-    let ent_r = reader.next().unwrap();
+    let ent_r = reader.next().unwrap()?;
 
     assert_eq!(ent_w, ent_r);
     Ok(())
@@ -105,10 +105,10 @@ fn test_read_write() -> Result<()> {
         // Now read
         let mut reader = GroupFileReader::new(&file);
 
-        let r = reader.next().unwrap();
+        let r = reader.next().unwrap()?;
         assert_eq!(r.name, "foo");
 
-        let r = reader.next().unwrap();
+        let r = reader.next().unwrap()?;
         assert_eq!(r.name, "bar");
 
         // Now write

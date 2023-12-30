@@ -1,4 +1,4 @@
-use crate::entfiles::{EntFileReader, EntFileWriter, Entry};
+use crate::entfiles::{EntFileReader, EntFileWriter, Entry, ReadEntryError};
 use crate::util::split_csv_str;
 
 #[derive(Debug, Eq, PartialEq)]
@@ -13,16 +13,17 @@ pub type GroupFileReader<'a> = EntFileReader<'a, GroupEntry>;
 pub type GroupFileWriter<'a> = EntFileWriter<'a, GroupEntry>;
 
 impl Entry for GroupEntry {
-    fn from_line(line: &str) -> Option<GroupEntry> {
+    fn from_line(line: &str) -> Result<GroupEntry, ReadEntryError> {
         // https://man7.org/linux/man-pages/man5/group.5.html
         //     group_name:password:GID:user_list
         let mut parts = line.split(":");
+        let mut next_field = || parts.next().ok_or(ReadEntryError::Invalid);
 
-        Some(GroupEntry {
-            name: parts.next()?.to_string(),
-            passwd: parts.next()?.to_string(),
-            gid: parts.next()?.parse().ok()?,
-            members: split_csv_str(parts.next()?),
+        Ok(GroupEntry {
+            name: next_field()?.to_string(),
+            passwd: next_field()?.to_string(),
+            gid: next_field()?.parse().map_err(ReadEntryError::ParseInt)?,
+            members: split_csv_str(next_field()?),
         })
     }
 
