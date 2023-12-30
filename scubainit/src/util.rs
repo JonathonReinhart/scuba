@@ -19,23 +19,6 @@ pub fn short_write() -> std::io::Error {
     std::io::Error::new(std::io::ErrorKind::Other, "Short write")
 }
 
-/// Parses a string, or return None if empty.
-/// Arguments:
-///   input: The string to be parsed.
-/// Returns:
-///   Err if there was an error parsing the int.
-///   Ok(None) if the string was empty.
-///   Ok(Some(value)) if the string was a valid int.
-pub fn maybe_parse<T: std::str::FromStr>(
-    input: &str,
-) -> Result<Option<T>, <T as std::str::FromStr>::Err> {
-    if input.is_empty() {
-        Ok(None)
-    } else {
-        Ok(Some(input.parse()?))
-    }
-}
-
 /// Splits a comma-separated string into a vector of strings.
 /// Note that an emump input string results in an empty vector
 /// (as opposed to a vector with a single empty string element).
@@ -111,13 +94,6 @@ mod tests {
 
     fn not_set(name: &str) -> bool {
         env::var(name).is_err()
-    }
-
-    #[test]
-    fn maybe_parse_works() {
-        assert!(maybe_parse::<u32>("zzz").is_err());
-        assert_eq!(maybe_parse::<u32>(""), Ok(None));
-        assert_eq!(maybe_parse::<u32>("1234"), Ok(Some(1234)));
     }
 
     #[test]
