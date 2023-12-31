@@ -9,8 +9,8 @@ pub struct GroupEntry {
     pub members: Vec<String>,
 }
 
-pub type GroupFileReader<'a> = EntFileReader<'a, GroupEntry>;
-pub type GroupFileWriter<'a> = EntFileWriter<'a, GroupEntry>;
+pub type GroupFileReader = EntFileReader<GroupEntry>;
+pub type GroupFileWriter = EntFileWriter<GroupEntry>;
 
 impl Entry for GroupEntry {
     fn from_line(line: &str) -> Result<GroupEntry, ReadEntryError> {

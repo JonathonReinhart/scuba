@@ -21,7 +21,7 @@ fn get_sample_ent() -> GroupEntry {
 #[test]
 fn test_group_empty() -> Result<()> {
     let file = fs::File::open("testdata/group_empty")?;
-    let mut reader = GroupFileReader::new(&file);
+    let mut reader = GroupFileReader::new(file);
     assert!(reader.next().is_none());
     Ok(())
 }
@@ -29,7 +29,7 @@ fn test_group_empty() -> Result<()> {
 #[test]
 fn test_group1() -> Result<()> {
     let file = fs::File::open("testdata/group1")?;
-    let mut reader = GroupFileReader::new(&file);
+    let mut reader = GroupFileReader::new(file);
 
     let g = reader.next().unwrap()?;
     assert_eq!(g.name, "foo");
@@ -55,12 +55,13 @@ fn test_group1() -> Result<()> {
 
 #[test]
 fn test_write() -> Result<()> {
-    let mut file = tempfile::tempfile()?;
-    let mut writer = GroupFileWriter::new(&file);
+    let file = tempfile::tempfile()?;
+    let mut writer = GroupFileWriter::new(file);
 
     let ent = get_sample_ent();
     writer.write(&ent)?;
 
+    let mut file = writer.into_inner();
     file.rewind()?;
 
     let mut buffer = String::with_capacity(128);
@@ -72,15 +73,16 @@ fn test_write() -> Result<()> {
 
 #[test]
 fn test_write_read() -> Result<()> {
-    let mut file = tempfile::tempfile()?;
+    let file = tempfile::tempfile()?;
 
-    let mut writer = GroupFileWriter::new(&file);
+    let mut writer = GroupFileWriter::new(file);
     let ent_w = get_sample_ent();
     writer.write(&ent_w)?;
 
+    let mut file = writer.into_inner();
     file.rewind()?;
 
-    let mut reader = GroupFileReader::new(&file);
+    let mut reader = GroupFileReader::new(file);
     let ent_r = reader.next().unwrap()?;
 
     assert_eq!(ent_w, ent_r);
@@ -102,7 +104,7 @@ fn test_read_write() -> Result<()> {
         let file = open_read_append(content.path())?;
 
         // Now read
-        let mut reader = GroupFileReader::new(&file);
+        let mut reader = GroupFileReader::new(file);
 
         let r = reader.next().unwrap()?;
         assert_eq!(r.name, "foo");
@@ -110,8 +112,10 @@ fn test_read_write() -> Result<()> {
         let r = reader.next().unwrap()?;
         assert_eq!(r.name, "bar");
 
+        let file = reader.into_inner();
+
         // Now write
-        let mut writer = GroupFileWriter::new(&file);
+        let mut writer = GroupFileWriter::new(file);
         let new_ent = get_sample_ent();
         writer.write(&new_ent)?;
     }

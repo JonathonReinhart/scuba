@@ -23,7 +23,7 @@ fn get_sample_ent() -> PasswdEntry {
 #[test]
 fn test_passwd_empty() -> Result<()> {
     let file = fs::File::open("testdata/passwd_empty")?;
-    let mut reader = PasswdFileReader::new(&file);
+    let mut reader = PasswdFileReader::new(file);
     assert!(reader.next().is_none());
     Ok(())
 }
@@ -31,7 +31,7 @@ fn test_passwd_empty() -> Result<()> {
 #[test]
 fn test_passwd1() -> Result<()> {
     let file = fs::File::open("testdata/passwd1")?;
-    let mut reader = PasswdFileReader::new(&file);
+    let mut reader = PasswdFileReader::new(file);
 
     let pw = reader.next().unwrap()?;
     assert_eq!(pw.name, "moe");
@@ -66,11 +66,12 @@ fn test_passwd1() -> Result<()> {
 
 #[test]
 fn test_write() -> Result<()> {
-    let mut file = tempfile::tempfile()?;
-    let mut writer = PasswdFileWriter::new(&file);
+    let file = tempfile::tempfile()?;
+    let mut writer = PasswdFileWriter::new(file);
     let ent = get_sample_ent();
     writer.write(&ent)?;
 
+    let mut file = writer.into_inner();
     file.rewind()?;
 
     let mut buffer = String::with_capacity(128);
@@ -82,15 +83,16 @@ fn test_write() -> Result<()> {
 
 #[test]
 fn test_write_read() -> Result<()> {
-    let mut file = tempfile::tempfile()?;
+    let file = tempfile::tempfile()?;
 
-    let mut writer = PasswdFileWriter::new(&file);
+    let mut writer = PasswdFileWriter::new(file);
     let ent_w = get_sample_ent();
     writer.write(&ent_w)?;
 
+    let mut file = writer.into_inner();
     file.rewind()?;
 
-    let mut reader = PasswdFileReader::new(&file);
+    let mut reader = PasswdFileReader::new(file);
     let ent_r = reader.next().unwrap()?;
 
     assert_eq!(ent_w, ent_r);
@@ -112,7 +114,7 @@ fn test_read_write() -> Result<()> {
         let file = open_read_append(content.path())?;
 
         // Now read
-        let mut reader = PasswdFileReader::new(&file);
+        let mut reader = PasswdFileReader::new(file);
 
         let r = reader.next().unwrap()?;
         assert_eq!(r.name, "moe");
@@ -120,8 +122,10 @@ fn test_read_write() -> Result<()> {
         let r = reader.next().unwrap()?;
         assert_eq!(r.name, "larry");
 
+        let file = reader.into_inner();
+
         // Now write
-        let mut writer = PasswdFileWriter::new(&file);
+        let mut writer = PasswdFileWriter::new(file);
         let new_ent = get_sample_ent();
         writer.write(&new_ent)?;
     }

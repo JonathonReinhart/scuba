@@ -24,7 +24,7 @@ fn get_sample_ent() -> ShadowEntry {
 #[test]
 fn test_shadow_empty() -> Result<()> {
     let file = fs::File::open("testdata/shadow_empty")?;
-    let mut reader = ShadowFileReader::new(&file);
+    let mut reader = ShadowFileReader::new(file);
     assert!(reader.next().is_none());
     Ok(())
 }
@@ -32,7 +32,7 @@ fn test_shadow_empty() -> Result<()> {
 #[test]
 fn test_shadow1() -> Result<()> {
     let file = fs::File::open("testdata/shadow1")?;
-    let mut reader = ShadowFileReader::new(&file);
+    let mut reader = ShadowFileReader::new(file);
 
     // root:$y$j9T$zzzzzzzzzzzzzzz:18881:0:99999:7:::
     let result = reader.next().unwrap()?;
@@ -62,11 +62,12 @@ fn test_shadow1() -> Result<()> {
 
 #[test]
 fn test_write() -> Result<()> {
-    let mut file = tempfile::tempfile()?;
-    let mut writer = ShadowFileWriter::new(&file);
+    let file = tempfile::tempfile()?;
+    let mut writer = ShadowFileWriter::new(file);
     let ent = get_sample_ent();
     writer.write(&ent)?;
 
+    let mut file = writer.into_inner();
     file.rewind()?;
 
     let mut buffer = String::with_capacity(128);
@@ -78,15 +79,16 @@ fn test_write() -> Result<()> {
 
 #[test]
 fn test_write_read() -> Result<()> {
-    let mut file = tempfile::tempfile()?;
+    let file = tempfile::tempfile()?;
 
-    let mut writer = ShadowFileWriter::new(&file);
+    let mut writer = ShadowFileWriter::new(file);
     let ent_w = get_sample_ent();
     writer.write(&ent_w)?;
 
+    let mut file = writer.into_inner();
     file.rewind()?;
 
-    let mut reader = ShadowFileReader::new(&file);
+    let mut reader = ShadowFileReader::new(file);
     let ent_r = reader.next().unwrap()?;
 
     assert_eq!(ent_w, ent_r);
@@ -108,7 +110,7 @@ fn test_read_write() -> Result<()> {
         let file = open_read_append(content.path())?;
 
         // Now read
-        let mut reader = ShadowFileReader::new(&file);
+        let mut reader = ShadowFileReader::new(file);
 
         let r = reader.next().unwrap()?;
         assert_eq!(r.name, "root");
@@ -116,8 +118,10 @@ fn test_read_write() -> Result<()> {
         let r = reader.next().unwrap()?;
         assert_eq!(r.name, "systemd-timesync");
 
+        let file = reader.into_inner();
+
         // Now write
-        let mut writer = ShadowFileWriter::new(&file);
+        let mut writer = ShadowFileWriter::new(file);
         let new_ent = get_sample_ent();
         writer.write(&new_ent)?;
     }

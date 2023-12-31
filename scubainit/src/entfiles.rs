@@ -86,21 +86,28 @@ impl<'a> EntLineParser<'a> {
 ////////////////////////////////////////////////////////////////////////////////
 // EntFileReader
 
-pub struct EntFileReader<'a, T> {
-    reader: BufReader<&'a File>,
+pub struct EntFileReader<T> {
+    reader: BufReader<File>,
     marker: PhantomData<T>, // T must be used
 }
 
-impl<T> EntFileReader<'_, T> {
-    pub fn new(file: &File) -> EntFileReader<T> {
+impl<T> EntFileReader<T> {
+    pub fn new(file: File) -> EntFileReader<T> {
         EntFileReader {
             reader: BufReader::new(file),
             marker: PhantomData,
         }
     }
+
+    /// Unwraps this `EntFileReader<T>`, returning the underlying File.
+    ///
+    /// Note that the position of the File is undefined.
+    pub fn into_inner(self) -> File {
+        self.reader.into_inner()
+    }
 }
 
-impl<T: Entry> Iterator for EntFileReader<'_, T> {
+impl<T: Entry> Iterator for EntFileReader<T> {
     type Item = Result<T, ReadEntryError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -130,17 +137,24 @@ impl<T: Entry> Iterator for EntFileReader<'_, T> {
 ////////////////////////////////////////////////////////////////////////////////
 // EntFileWriter
 
-pub struct EntFileWriter<'a, T> {
-    file: &'a File,
+pub struct EntFileWriter<T> {
+    file: File,
     marker: PhantomData<T>, // T must be used
 }
 
-impl<T: Entry> EntFileWriter<'_, T> {
-    pub fn new(file: &File) -> EntFileWriter<T> {
+impl<T: Entry> EntFileWriter<T> {
+    pub fn new(file: File) -> EntFileWriter<T> {
         EntFileWriter {
             file: file,
             marker: PhantomData,
         }
+    }
+
+    /// Unwraps this `EntFileWriter<T>`, returning the underlying File.
+    ///
+    /// Note that the position of the File is undefined.
+    pub fn into_inner(self) -> File {
+        self.file
     }
 
     pub fn write(&mut self, entry: &T) -> std::io::Result<()> {

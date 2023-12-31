@@ -11,8 +11,8 @@ pub struct PasswdEntry {
     pub shell: String, // TODO: Option<String>
 }
 
-pub type PasswdFileReader<'a> = EntFileReader<'a, PasswdEntry>;
-pub type PasswdFileWriter<'a> = EntFileWriter<'a, PasswdEntry>;
+pub type PasswdFileReader = EntFileReader<PasswdEntry>;
+pub type PasswdFileWriter = EntFileWriter<PasswdEntry>;
 
 impl Entry for PasswdEntry {
     fn from_line(line: &str) -> Result<PasswdEntry, ReadEntryError> {
