@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 use std::marker::PhantomData;
+use thiserror::Error;
 
 use crate::util::short_write;
 
@@ -12,35 +13,16 @@ pub trait Entry: Sized {
 ////////////////////////////////////////////////////////////////////////////////
 // ReadEntryError
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum ReadEntryError {
-    Io(std::io::Error),
-    ParseInt(std::num::ParseIntError),
+    #[error("error reading entry from file")]
+    Io(#[from] std::io::Error),
+
+    #[error("an integer field could not be parsed")]
+    ParseInt(#[from] std::num::ParseIntError),
+
+    #[error("the entry line is invalid")]
     Invalid,
-}
-
-impl std::fmt::Display for ReadEntryError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match *self {
-            // The wrapped error contains additional information and is available
-            // via the source() method.
-            ReadEntryError::Io(_) => write!(f, "error reading entry from file"),
-
-            ReadEntryError::ParseInt(..) => write!(f, "an integer field could not be parsed"),
-
-            ReadEntryError::Invalid => write!(f, "the entry line is invalid"),
-        }
-    }
-}
-
-impl std::error::Error for ReadEntryError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match *self {
-            ReadEntryError::Io(ref e) => Some(e),
-            ReadEntryError::ParseInt(ref e) => Some(e),
-            _ => None,
-        }
-    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
