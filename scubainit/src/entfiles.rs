@@ -104,11 +104,11 @@ impl<T: Entry> Iterator for EntFileReader<T> {
             if n == 0 {
                 return None; // EOF
             }
-            if line.starts_with("#") {
+            if line.starts_with('#') {
                 continue;
             }
             let line = line.trim_end();
-            if line.len() == 0 {
+            if line.is_empty() {
                 continue;
             }
             return Some(T::from_line(line));
@@ -127,7 +127,7 @@ pub struct EntFileWriter<T> {
 impl<T: Entry> EntFileWriter<T> {
     pub fn new(file: File) -> EntFileWriter<T> {
         EntFileWriter {
-            file: file,
+            file,
             marker: PhantomData,
         }
     }

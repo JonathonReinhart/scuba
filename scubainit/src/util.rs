@@ -23,10 +23,10 @@ pub fn short_write() -> std::io::Error {
 /// Note that an empty input string results in an empty vector
 /// (as opposed to a vector with a single empty string element).
 pub fn split_csv_str(input: &str) -> Vec<String> {
-    if input.len() > 0 {
-        input.split(",").map(|x| x.to_string()).collect()
-    } else {
+    if input.is_empty() {
         Vec::new()
+    } else {
+        input.split(',').map(|x| x.to_string()).collect()
     }
 }
 

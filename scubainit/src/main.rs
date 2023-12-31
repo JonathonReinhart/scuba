@@ -70,7 +70,7 @@ fn run_scubainit() -> Result<()> {
     }
 
     let argv = &env::args_os().skip(1).collect::<Vec<_>>();
-    if argv.len() < 1 {
+    if argv.is_empty() {
         bail!("Missing command");
     }
     let program = &argv[0];
@@ -178,7 +178,7 @@ impl UserInfo {
         let user = passwd::PasswdEntry {
             name: user_name.to_owned(),
             passwd: INVALID_PASSWORD.to_owned(),
-            uid: uid,
+            uid,
             gid: self.gid,
             gecos: user_name.to_owned(),
             home_dir: home_dir_str.to_owned(),
