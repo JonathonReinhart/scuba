@@ -3,7 +3,7 @@ all: scuba/scubainit
 
 .PHONY: scubainit  # Defer dependency-tracking to Cargo
 scubainit:
-	make -C $@
+	make -C $@ test scubainit
 
 # Copy the binary into the scuba python package
 scuba/scubainit: scubainit
