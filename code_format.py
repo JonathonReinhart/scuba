@@ -2,11 +2,15 @@
 import argparse
 import black
 import subprocess
+from pathlib import Path
+
+PROJECT_DIR = Path(__file__).parent.resolve()
+SCUBAINIT_DIR = PROJECT_DIR / "scubainit"
 
 
 def _run_black(fix: bool) -> bool:
     args = [
-        ".",
+        str(PROJECT_DIR),
     ]
 
     if not fix:
@@ -38,7 +42,7 @@ def _rust_fmt(fix: bool) -> bool:
             "--check",
         ]
 
-    status = subprocess.call(args, cwd="scubainit")
+    status = subprocess.call(args, cwd=SCUBAINIT_DIR)
     if status == 0:
         print("Ok")
         return True
