@@ -2,11 +2,11 @@ from __future__ import annotations
 import copy
 import dataclasses
 import os
+import pprint
 import shutil
 import sys
 import tempfile
 from grp import getgrgid
-from io import StringIO
 from pathlib import Path
 from pwd import getpwuid
 from typing import cast, Any, Dict, Iterable, List, Optional, Sequence, Tuple, Union
@@ -117,44 +117,18 @@ class ScubaDive:
             shutil.rmtree(self.__scubadir_hostpath)
 
     def __str__(self) -> str:
-        s = StringIO()
-
-        indent = "  "
-        level = 0
-
-        def writehdr(name: str) -> None:
-            writeln(s, f"{indent * level}{name}:")
-
-        def writelist(name: str, vals: Optional[Iterable[Any]]) -> None:
-            writehdr(name)
-            for val in vals or ():
-                writeln(s, f"{indent * (level + 1)}{val}")
-
-        def writescl(name: str, val: Union[None, bool, float, str, Path]) -> None:
-            writeln(s, f"{indent * level}{name + ':':<14s}{val}")
-
-        writeln(s, "ScubaDive")
-        level += 1
-
-        writescl("verbose", self.verbose)
-        writescl("as_root", self.as_root)
-        writescl("workdir", self.workdir)
-
-        writelist("options", self.options)
-        writelist("docker_args", self.docker_args)
-        writelist("env_vars", (f"{name}={val}" for name, val in self.env_vars.items()))
-        writelist(
-            "volumes", (f"{hp} => {cp} {opt}" for hp, cp, opt in self.__get_vol_opts())
+        data = dict(
+            verbose=self.verbose,
+            as_root=self.as_root,
+            workdir=str(self.workdir),
+            options=self.options,
+            docker_args=self.docker_args,
+            env_vars=self.env_vars,
+            volumes=[f"{hp} => {cp} {opt}" for hp, cp, opt in self.__get_vol_opts()],
+            context=dataclasses.asdict(self.context),
         )
-
-        writehdr("context")
-        level += 1
-        writelist("script", self.context.script)
-        writescl("image", self.context.image)
-        writelist("docker_args", self.context.docker_args)
-        writelist("volumes", self.context.volumes)
-
-        return s.getvalue()
+        # TODO(#242) Use sort_dicts=False in Python >= 3.8
+        return "ScubaDive\n" + pprint.pformat(data, width=100)
 
     @property
     def is_remote_docker(self) -> bool:
