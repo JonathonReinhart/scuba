@@ -1,7 +1,7 @@
 import scuba.version
 from setuptools import setup, Command
 from distutils.command.build import build
-from setuptools.command.sdist import sdist
+from setuptools.command.develop import develop
 from subprocess import check_call
 import os
 
@@ -27,7 +27,13 @@ class build_scubainit(Command):
 class build_hook(build):
     def run(self):
         self.run_command("build_scubainit")
-        build.run(self)
+        super().run()
+
+
+class develop(develop):
+    def run(self):
+        self.run_command("build_scubainit")
+        super().run()
 
 
 ################################################################################
@@ -70,5 +76,6 @@ setup(
     cmdclass={
         "build_scubainit": build_scubainit,
         "build": build_hook,
+        "develop": develop,
     },
 )
