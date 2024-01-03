@@ -17,6 +17,8 @@ classifiers = [
 ]
 dependencies = [
     "PyYAML",
+    # TODO(#242): Remove when Python 3.7 support is removed.
+    "importlib_metadata; python_version<'3.8'",
 ]
 description = "Simplify use of Docker containers for building software"
 keywords = ["docker"]
@@ -42,6 +44,8 @@ changelog = "https://github.com/JonathonReinhart/scuba/blob/main/CHANGELOG.md"
 requires = [
     "wheel",
     "setuptools >= 42.0.0",
+    # TODO(#242): Remove when Python 3.7 support is removed.
+    "importlib_metadata; python_version<'3.8'",
 ]
 
 

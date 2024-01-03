@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+### Changed
+- Removed use of deprecated `pkg_resources` (#247)
+
+
 ## [2.12.0] - 2023-09-15
 ### Added
 - Enable the use of relative paths in a volume hostpath (#227)
