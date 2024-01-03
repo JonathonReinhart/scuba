@@ -5,7 +5,6 @@ PyYAML
 pytest
 pytest-cov
 types-PyYAML
-types-pkg-resources
 coverage
 black~=23.0  # Must match .github/workflows/black.yml
 -r docs/requirements.txt

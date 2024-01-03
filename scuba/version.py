@@ -67,19 +67,17 @@ def get_version() -> str:
     if not git_archive_rev.startswith("$"):
         return f"{BASE_VERSION}+g{git_archive_rev}"
 
-    # Package resource
     # Otherwise, we're either installed (e.g. via pip), or running from
     # an 'sdist' source distribution, and have a local PKG_INFO file.
-    import pkg_resources
 
-    try:
-        return pkg_resources.get_distribution(DIST_SPEC).version
-    except pkg_resources.DistributionNotFound:
-        pass
+    # TODO(#242): Remove backport when Python 3.7 support is removed.
+    if sys.version_info >= (3, 8):
+        import importlib.metadata as importlib_metadata
+    else:
+        import importlib_metadata  # backport
 
-    # This shouldn't be able to happen
-    sys.stderr.write("WARNING: Failed to determine version!\n")
-    return BASE_VERSION
+    # Can raise importlib.metadata.PackageNotFoundError
+    return importlib_metadata.version(DIST_SPEC)
 
 
 __version__ = get_version()
