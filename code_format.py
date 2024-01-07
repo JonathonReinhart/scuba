@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 import argparse
 import black
+import subprocess
+from pathlib import Path
+
+PROJECT_DIR = Path(__file__).parent.resolve()
+SCUBAINIT_DIR = PROJECT_DIR / "scubainit"
 
 
 def _run_black(fix: bool) -> bool:
     args = [
-        ".",
+        str(PROJECT_DIR),
     ]
 
     if not fix:
@@ -25,6 +30,27 @@ def _run_black(fix: bool) -> bool:
     raise Exception(f"Unexpected exit status: {status}")
 
 
+def _rust_fmt(fix: bool) -> bool:
+    args = [
+        "cargo",
+        "fmt",
+    ]
+
+    if not fix:
+        # check only
+        args += [
+            "--check",
+        ]
+
+    status = subprocess.call(args, cwd=SCUBAINIT_DIR)
+    if status == 0:
+        print("Ok")
+        return True
+    if status == 1:
+        return False
+    raise Exception(f"Unexpected exit status: {status}")
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -38,10 +64,17 @@ def _parse_args() -> argparse.Namespace:
 def main() -> None:
     args = _parse_args()
 
-    print(f"{'Fixing' if args.fix else 'Checking'} code formatting...")
-    ok = _run_black(args.fix)
+    ok = True
+
+    print(f"\n{'Fixing' if args.fix else 'Checking'} Python code formatting...")
+    ok &= _run_black(args.fix)
+
+    print(f"\n{'Fixing' if args.fix else 'Checking'} Rust code formatting...")
+    ok &= _rust_fmt(args.fix)
+
     if not ok:
         print("\nTo fix, rerun with --fix")
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
