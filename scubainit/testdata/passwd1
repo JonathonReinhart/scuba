@@ -1,0 +1,7 @@
+moe:x:1001:1001:Moe Howard:/home/moe:/bin/zsh
+
+# Blank lines and comments are okay
+larry:x:1002:1002:Larry Fine:/home/larry:/bin/ksh
+shemp:x:1003:1003:Shemp Howard:/home/shemp:/bin/fish
+
+# Done!

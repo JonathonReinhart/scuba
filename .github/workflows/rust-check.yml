@@ -1,0 +1,23 @@
+name: Rust Checks
+
+# Run this workflow whenever a PR is created or pushed to.
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Run tests
+      run: make -C scubainit test
+
+    - name: Run lint
+      run: make -C scubainit lint
+
+    - name: Code format
+      run: make -C scubainit fmt
