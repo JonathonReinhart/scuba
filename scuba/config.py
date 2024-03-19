@@ -10,8 +10,8 @@ from typing import overload
 import yaml
 import yaml.nodes
 
-from .constants import *
-from .utils import *
+from .constants import DEFAULT_SHELL, SCUBA_YML
+from .utils import expand_env_vars, parse_env_var
 from .dockerutil import make_vol_opt
 
 CfgNode = Any
