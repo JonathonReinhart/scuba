@@ -1,11 +1,11 @@
 # coding=utf-8
-from unittest import mock
-import pytest
-
 from pathlib import Path
+import pytest
 import subprocess
 from typing import Sequence
-from .const import *
+from unittest import mock
+
+from .const import ALT_DOCKER_IMAGE, DOCKER_IMAGE
 
 import scuba.dockerutil as uut
 

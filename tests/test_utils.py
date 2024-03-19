@@ -1,11 +1,11 @@
-import shlex
+import io
 from itertools import chain
 import os
-import io
+import pytest
+import shlex
 from typing import List, Sequence
 
-from .utils import *
-import pytest
+from .utils import assert_seq_equal
 
 import scuba.utils
 

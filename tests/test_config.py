@@ -1,12 +1,13 @@
 # coding=utf-8
-from .utils import *
-import pytest
-
 import logging
 import os
 from os.path import join
 from pathlib import Path
+import pytest
 from shutil import rmtree
+from unittest import mock
+
+from .utils import assert_paths_equal, assert_vol
 
 import scuba.config
 
