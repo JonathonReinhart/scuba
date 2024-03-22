@@ -11,7 +11,7 @@ import yaml
 import yaml.nodes
 
 from .constants import DEFAULT_SHELL, SCUBA_YML
-from .utils import expand_env_vars, parse_env_var
+from . import utils
 from .dockerutil import make_vol_opt
 
 CfgNode = Any
@@ -190,6 +190,32 @@ def find_config() -> Tuple[Path, Path, ScubaConfig]:
             )
 
 
+def _expand_env_vars(in_str: str) -> str:
+    """Wraps utils.expand_env_vars() to convert errors
+
+    Args:
+      in_str: Input string.
+
+    Returns:
+      The input string with environment variables expanded.
+
+    Raises:
+      ConfigError: If a referenced environment variable is not set.
+      ConfigError: An environment variable reference could not be parsed.
+    """
+    try:
+        return utils.expand_env_vars(in_str)
+    except KeyError as err:
+        # pylint: disable=raise-missing-from
+        raise ConfigError(
+            f"Unset environment variable {err.args[0]!r} used in {in_str!r}"
+        )
+    except ValueError as ve:
+        raise ConfigError(
+            f"Unable to expand string '{in_str}' due to parsing errors"
+        ) from ve
+
+
 def _process_script_node(node: CfgNode, name: str) -> List[str]:
     """Process a script-type node
 
@@ -236,7 +262,7 @@ def _process_environment(node: CfgNode, name: str) -> Environment:
             result[k] = str(v)
     elif isinstance(node, list):
         for e in node:
-            k, v = parse_env_var(e)
+            k, v = utils.parse_env_var(e)
             result[k] = v
     else:
         raise ConfigError(
@@ -332,18 +358,16 @@ def _get_volumes(
 
     vols = {}
     for cpath_str, v in voldata.items():
-        cpath = _expand_path(cpath_str)  # no base_dir; container path must be absolute.
+        cpath_str = _expand_env_vars(cpath_str)
+        cpath = _absoluteify_path(cpath_str)  # container path must be absolute.
         vols[cpath] = ScubaVolume.from_dict(cpath, v, scuba_root)
     return vols
 
 
-def _expand_path(in_str: str, base_dir: Optional[Path] = None) -> Path:
-    """Expand variables in a path string and make it absolute.
+def _absoluteify_path(in_str: str, base_dir: Optional[Path] = None) -> Path:
+    """Take a path string and make it absolute.
 
-    Environment variable references (e.g. $FOO and ${FOO}) are expanded using
-    the host environment.
-
-    After environment variable expansion, absolute paths are returned as-is.
+    Absolute paths are returned as-is.
     Relative paths must start with ./ or ../ and are joined to base_dir, if
     provided.
 
@@ -356,26 +380,13 @@ def _expand_path(in_str: str, base_dir: Optional[Path] = None) -> Path:
 
     Raises:
       ValueError: If base_dir is provided but not absolute.
-      ConfigError: If a referenced environment variable is not set.
-      ConfigError: An environment variable reference could not be parsed.
       ConfigError: A relative path does not start with "./" or "../".
       ConfigError: A relative path is given when base_dir is not provided.
     """
     if base_dir is not None and not base_dir.is_absolute():
         raise ValueError(f"base_dir is not absolute: {base_dir}")
 
-    try:
-        path_str = expand_env_vars(in_str)
-    except KeyError as ke:
-        # pylint: disable=raise-missing-from
-        raise ConfigError(
-            f"Unset environment variable {ke.args[0]!r} used in {in_str!r}"
-        )
-    except ValueError as ve:
-        raise ConfigError(
-            f"Unable to expand string '{in_str}' due to parsing errors"
-        ) from ve
-
+    path_str = _expand_env_vars(in_str)
     path = Path(path_str)
 
     if not path.is_absolute():
@@ -414,9 +425,10 @@ class ScubaVolume:
         # volumes:
         #   /foo: /host/foo
         if isinstance(node, str):
+            node = _expand_env_vars(node)
             return cls(
                 container_path=cpath,
-                host_path=_expand_path(node, scuba_root),
+                host_path=_absoluteify_path(node, scuba_root),
             )
 
         # Complex form
@@ -428,9 +440,10 @@ class ScubaVolume:
             hpath = node.get("hostpath")
             if hpath is None:
                 raise ConfigError(f"Volume {cpath} must have a 'hostpath' subkey")
+            hpath = _expand_env_vars(hpath)
             return cls(
                 container_path=cpath,
-                host_path=_expand_path(hpath, scuba_root),
+                host_path=_absoluteify_path(hpath, scuba_root),
                 options=_get_delimited_str_list(node, "options", ","),
             )
 
