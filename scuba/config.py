@@ -19,6 +19,8 @@ CfgData = Dict[str, CfgNode]
 Environment = Dict[str, str]
 _T = TypeVar("_T")
 
+VOLUME_NAME_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]+$")
+
 
 class ConfigError(Exception):
     pass
@@ -410,8 +412,13 @@ def _absoluteify_path(in_str: str, base_dir: Optional[Path] = None) -> Path:
 @dataclasses.dataclass(frozen=True)
 class ScubaVolume:
     container_path: Path
-    host_path: Path  # TODO: Optional for anonymous volume
+    host_path: Optional[Path] = None
+    volume_name: Optional[str] = None
     options: List[str] = dataclasses.field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        if sum(bool(x) for x in (self.host_path, self.volume_name)) != 1:
+            raise ValueError("Exactly one of host_path, volume_name must be set")
 
     @classmethod
     def from_dict(
@@ -423,12 +430,26 @@ class ScubaVolume:
 
         # Simple form:
         # volumes:
-        #   /foo: /host/foo
+        #   /foo: foo-volume  # volume name
+        #   /bar: /host/bar   # absolute path
+        #   /snap: ./snap     # relative path
         if isinstance(node, str):
             node = _expand_env_vars(node)
+
+            # Absolute or relative path
+            valid_prefixes = ("/", "./", "../")
+            if any(node.startswith(pfx) for pfx in valid_prefixes):
+                return cls(
+                    container_path=cpath,
+                    host_path=_absoluteify_path(node, scuba_root),
+                )
+
+            # Volume name
+            if not VOLUME_NAME_PATTERN.match(node):
+                raise ConfigError(f"Invalid volume name: {node!r}")
             return cls(
                 container_path=cpath,
-                host_path=_absoluteify_path(node, scuba_root),
+                volume_name=node,
             )
 
         # Complex form
@@ -436,21 +457,42 @@ class ScubaVolume:
         #   /foo:
         #     hostpath: /host/foo
         #     options: ro,z
+        #   /bar:
+        #     name: bar-volume
         if isinstance(node, dict):
             hpath = node.get("hostpath")
-            if hpath is None:
-                raise ConfigError(f"Volume {cpath} must have a 'hostpath' subkey")
-            hpath = _expand_env_vars(hpath)
-            return cls(
-                container_path=cpath,
-                host_path=_absoluteify_path(hpath, scuba_root),
-                options=_get_delimited_str_list(node, "options", ","),
-            )
+            name = node.get("name")
+            options = _get_delimited_str_list(node, "options", ",")
+
+            if sum(bool(x) for x in (hpath, name)) != 1:
+                raise ConfigError(
+                    f"Volume {cpath} must have exactly one of"
+                    " 'hostpath' or 'name' subkey"
+                )
+
+            if hpath is not None:
+                hpath = _expand_env_vars(hpath)
+                return cls(
+                    container_path=cpath,
+                    host_path=_absoluteify_path(hpath, scuba_root),
+                    options=options,
+                )
+
+            if name is not None:
+                return cls(
+                    container_path=cpath,
+                    volume_name=_expand_env_vars(name),
+                    options=options,
+                )
 
         raise ConfigError(f"{cpath}: must be string or dict")
 
     def get_vol_opt(self) -> str:
-        return make_vol_opt(self.host_path, self.container_path, self.options)
+        if self.host_path:
+            return make_vol_opt(self.host_path, self.container_path, self.options)
+        if self.volume_name:
+            return make_vol_opt(self.volume_name, self.container_path, self.options)
+        raise Exception("host_path or volume_name must be set")
 
 
 @dataclasses.dataclass(frozen=True)

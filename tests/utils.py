@@ -48,6 +48,8 @@ def assert_vol(
     v = vols[cpath]
     assert isinstance(v, ScubaVolume)
     assert_paths_equal(v.container_path, cpath)
+    assert v.volume_name is None
+    assert v.host_path is not None
     assert_paths_equal(v.host_path, hpath)
     assert v.options == options
 

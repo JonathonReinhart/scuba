@@ -29,7 +29,7 @@ SCUBAINIT_EXIT_FAIL = 99
 
 
 @pytest.mark.usefixtures("in_tmp_path")
-class TestMain:
+class TestMainBase:
     def run_scuba(self, args, exp_retval=0, mock_isatty=False, stdin=None):
         """Run scuba, checking its return value
 
@@ -87,6 +87,8 @@ class TestMain:
                     sys.stdout = old_stdout
                     sys.stderr = old_stderr
 
+
+class TestMain(TestMainBase):
     def test_basic(self) -> None:
         """Verify basic scuba functionality"""
 
@@ -1133,3 +1135,47 @@ class TestMain:
 
         out, _ = self.run_scuba(["cat", "/userdir/test.txt"])
         assert out == test_message
+
+
+class TestMainNamedVolumes(TestMainBase):
+    VOLUME_NAME = "foo-volume"
+
+    def _rm_volume(self) -> None:
+        result = subprocess.run(
+            ["docker", "volume", "rm", self.VOLUME_NAME],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 1 and re.match(r".*no such volume.*", result.stderr):
+            return
+        result.check_returncode()
+
+    def setup_method(self, method) -> None:
+        self._rm_volume()
+
+    def teardown_method(self, method) -> None:
+        self._rm_volume()
+
+    def test_volumes_named(self) -> None:
+        """Verify named volumes can be used"""
+        VOL_PATH = Path("/foo")
+        TEST_PATH = VOL_PATH / "test.txt"
+        TEST_STR = "it works!"
+
+        with open(".scuba.yml", "w") as f:
+            f.write(
+                f"""
+                image: {DOCKER_IMAGE}
+                hooks:
+                  root: chmod 777 {VOL_PATH}
+                volumes:
+                  {VOL_PATH}: {self.VOLUME_NAME}
+                """
+            )
+
+        # Inoke scuba once: Write a file to the named volume
+        self.run_scuba(["/bin/sh", "-c", f"echo {TEST_STR} > {TEST_PATH}"])
+
+        # Invoke scuba again: Verify the file is still there
+        out, _ = self.run_scuba(["/bin/sh", "-c", f"cat {TEST_PATH}"])
+        assert_str_equalish(out, TEST_STR)

@@ -147,25 +147,40 @@ style <https://yaml.org/spec/1.2/spec.html#id2788097>`_:
 
 The optional ``volumes`` node *(added in v2.9.0)* allows additional
 `bind-mounts <https://docs.docker.com/storage/bind-mounts/>`_ to be specified.
+As of v2.13.0, `named volumes <https://docs.docker.com/storage/volumes/>`_
+are also supported.
+
 ``volumes`` is a mapping (dictionary) where each key is the container-path.
-In the simple form, the value is a string, the host-path to be bind-mounted:
+In the simple form, the value is a string, which can be:
+
+* An absolute or relative path which results in a bind-mount.
+* A Docker volume name.
 
 .. code-block:: yaml
+   :caption: Example of simple-form volumes
 
     volumes:
-      /var/lib/foo: /host/foo
-      /var/lib/bar: ./bar
+      /var/lib/foo: /host/foo  # bind-mount: absolute path
+      /var/lib/bar: ./bar      # bind-mount: path relative to .scuba.yml dir
+      /var/log: persist-logs   # named volume
 
-In the complex form, the value is a mapping which must contain a ``hostpath``
-subkey. It can also contain an ``options`` subkey with a comma-separated list
-of volume options:
+In the complex form, the value is a mapping with the following supported keys:
+
+* ``hostpath``: An absolute or relative path specifying a host bind-mount.
+* ``name``: The name of a named Docker volume.
+* ``options``: A comma-separated list of volume options.
+
+``hostpath`` and ``name`` are mutually-exclusive and one must be specified.
 
 .. code-block:: yaml
+   :caption: Example of complex-form volumes
 
     volumes:
       /var/lib/foo:
-        hostpath: /host/foo
+        hostpath: /host/foo   # bind-mount
         options: ro,cached
+      /var/log:
+        name: persist-logs    # named volume
 
 The paths (host or container) used in volume mappings can contain environment
 variables **which are expanded in the host environment**. For example, this
@@ -182,17 +197,31 @@ configuration error.
 
 Volume container paths must be absolute.
 
-Volume host paths can be absolute or relative. If a relative path is used, it
-is interpreted as relative to the directory in which ``.scuba.yml`` is found.
-To avoid ambiguity, relative paths must start with ``./`` or ``../``.
+Bind-mount host paths can be absolute or relative. If a relative path is used,
+it is interpreted as relative to the directory in which ``.scuba.yml`` is
+found.  To avoid ambiguity with a named volume, relative paths must start with
+``./`` or ``../``.
 
-Volume host directories which do not already exist are created as the current
-user before creating the container.
+Bind-mount host directories which do not already exist are created as the
+current user before creating the container.
 
 .. note::
    Because variable expansion is now applied to all volume paths, if one
    desires to use a literal ``$`` character in a path, it must be written as
    ``$$``.
+
+.. note::
+   Docker named volumes are created with ``drwxr-xr-x`` (0755) permissions.
+   If scuba is not run with ``--root``, the scuba user will be unable to write
+   to this directory. As a workaround, one can use a :ref:`root hook
+   <conf_hooks>` to change permissions on the directory.
+
+   .. code-block:: yaml
+
+      volumes:
+        /foo: foo-volume
+      hooks:
+        root: chmod 777 /foo
 
 
 .. _conf_aliases:
