@@ -25,6 +25,7 @@ from .utils import (
 )
 
 
+SCUBA_YML = Path(".scuba.yml")
 SCUBAINIT_EXIT_FAIL = 99
 
 
@@ -94,9 +95,7 @@ class MainTest:
 class TestMainBasic(MainTest):
     def test_basic(self) -> None:
         """Verify basic scuba functionality"""
-
-        with open(".scuba.yml", "w") as f:
-            f.write(f"image: {DOCKER_IMAGE}\n")
+        SCUBA_YML.write_text(f"image: {DOCKER_IMAGE}")
 
         args = ["/bin/echo", "-n", "my output"]
         out, _ = run_scuba(args)
@@ -105,27 +104,21 @@ class TestMainBasic(MainTest):
 
     def test_no_cmd(self) -> None:
         """Verify scuba works with no given command"""
-
-        with open(".scuba.yml", "w") as f:
-            f.write("image: scuba/hello\n")
+        SCUBA_YML.write_text("image: scuba/hello")
 
         out, _ = run_scuba([])
         assert_str_equalish(out, "Hello world")
 
     def test_no_image_cmd(self) -> None:
         """Verify scuba gracefully handles an image with no Cmd and no user command"""
-
-        with open(".scuba.yml", "w") as f:
-            f.write("image: scuba/scratch\n")
+        SCUBA_YML.write_text("image: scuba/scratch")
 
         # ScubaError -> exit(128)
         out, _ = run_scuba([], expect_return=128)
 
     def test_handle_get_image_command_error(self) -> None:
         """Verify scuba handles a get_image_command error"""
-
-        with open(".scuba.yml", "w") as f:
-            f.write(f"image: {DOCKER_IMAGE}\n")
+        SCUBA_YML.write_text("image: {DOCKER_IMAGE}")
 
         def mocked_gic(*args, **kw):
             raise scuba.dockerutil.DockerError("mock error")
@@ -138,27 +131,24 @@ class TestMainBasic(MainTest):
 
     def test_config_error(self) -> None:
         """Verify config errors are handled gracefully"""
-
-        with open(".scuba.yml", "w") as f:
-            f.write("invalid_key: is no good\n")
+        SCUBA_YML.write_text("invalid_key: is no good")
 
         # ConfigError -> exit(128)
         run_scuba([], expect_return=128)
 
     def test_multiline_alias_no_args_error(self) -> None:
         """Verify config errors from passing arguments to multi-line alias are caught"""
-        with open(".scuba.yml", "w") as f:
-            f.write(
-                f"""
-                image: {DOCKER_IMAGE}
-                aliases:
-                  multi:
-                    script:
-                      - echo multi
-                      - echo line
-                      - echo alias
-                """
-            )
+        SCUBA_YML.write_text(
+            f"""
+            image: {DOCKER_IMAGE}
+            aliases:
+              multi:
+                script:
+                  - echo multi
+                  - echo line
+                  - echo alias
+            """
+        )
 
         # ConfigError -> exit(128)
         run_scuba(["multi", "with", "args"], expect_return=128)
@@ -174,9 +164,7 @@ class TestMainBasic(MainTest):
 
     def test_no_docker(self, monkeypatch) -> None:
         """Verify scuba gracefully handles docker not being installed"""
-
-        with open(".scuba.yml", "w") as f:
-            f.write(f"image: {DOCKER_IMAGE}\n")
+        SCUBA_YML.write_text(f"image: {DOCKER_IMAGE}")
 
         args = ["/bin/echo", "-n", "my output"]
 
@@ -186,9 +174,7 @@ class TestMainBasic(MainTest):
     @mock.patch("subprocess.call")
     def test_dry_run(self, subproc_call_mock):
         """Verify scuba handles --dry-run and --verbose"""
-
-        with open(".scuba.yml", "w") as f:
-            f.write(f"image: {DOCKER_IMAGE}\n")
+        SCUBA_YML.write_text(f"image: {DOCKER_IMAGE}")
 
         args = ["--dry-run", "--verbose", "/bin/false"]
 
@@ -200,11 +186,9 @@ class TestMainBasic(MainTest):
 
     def test_args(self) -> None:
         """Verify scuba handles cmdline args"""
+        SCUBA_YML.write_text(f"image: {DOCKER_IMAGE}")
 
-        with open(".scuba.yml", "w") as f:
-            f.write(f"image: {DOCKER_IMAGE}\n")
-
-        with open("test.sh", "w") as f:
+        with open("test.sh", "w") as f:  # TODO Path.write_text()
             f.write("#!/bin/sh\n")
             f.write('for a in "$@"; do echo $a; done\n')
         make_executable("test.sh")
@@ -217,10 +201,7 @@ class TestMainBasic(MainTest):
 
     def test_created_file_ownership(self) -> None:
         """Verify files created under scuba have correct ownership"""
-
-        with open(".scuba.yml", "w") as f:
-            f.write(f"image: {DOCKER_IMAGE}\n")
-
+        SCUBA_YML.write_text(f"image: {DOCKER_IMAGE}")
         filename = "newfile.txt"
 
         run_scuba(["/bin/touch", filename])
@@ -232,9 +213,7 @@ class TestMainBasic(MainTest):
 
 class TestMainStdinStdout(MainTest):
     def _setup_test_tty(self) -> None:
-        with open(".scuba.yml", "w") as f:
-            f.write(f"image: {DOCKER_IMAGE}\n")
-
+        SCUBA_YML.write_text(f"image: {DOCKER_IMAGE}")
         with open("check_tty.sh", "w") as f:
             f.write("#!/bin/sh\n")
             f.write('if [ -t 1 ]; then echo "isatty"; else echo "notatty"; fi\n')
@@ -260,8 +239,7 @@ class TestMainStdinStdout(MainTest):
 
     def test_redirect_stdin(self) -> None:
         """Verify stdin redirection works"""
-        with open(".scuba.yml", "w") as f:
-            f.write(f"image: {DOCKER_IMAGE}\n")
+        SCUBA_YML.write_text(f"image: {DOCKER_IMAGE}")
 
         test_str = "hello world"
         with TemporaryFile(prefix="scubatest-stdin", mode="w+t") as stdin:
@@ -281,8 +259,7 @@ class TestMainUser(MainTest):
         expected_groupname,
         scuba_args=[],
     ):
-        with open(".scuba.yml", "w") as f:
-            f.write(f"image: {DOCKER_IMAGE}\n")
+        SCUBA_YML.write_text(f"image: {DOCKER_IMAGE}")
 
         args = scuba_args + [
             "/bin/sh",
@@ -335,17 +312,16 @@ class TestMainUser(MainTest):
 
     def test_user_root_alias(self) -> None:
         """Verify that aliases can set whether the container is run as root"""
-        with open(".scuba.yml", "w") as f:
-            f.write(
-                f"""
-                image: {DOCKER_IMAGE}
-                aliases:
-                  root_test:
-                    root: true
-                    script:
-                      - echo $(id -u) $(id -un) $(id -g) $(id -gn)
-                """
-            )
+        SCUBA_YML.write_text(
+            f"""
+            image: {DOCKER_IMAGE}
+            aliases:
+              root_test:
+                root: true
+                script:
+                  - echo $(id -u) $(id -un) $(id -g) $(id -gn)
+            """
+        )
 
         out, _ = run_scuba(["root_test"])
         uid, username, gid, groupname = out.split()
@@ -357,17 +333,16 @@ class TestMainUser(MainTest):
 
         # No one should ever specify 'root: false' in an alias, but Scuba should behave
         # correctly if they do
-        with open(".scuba.yml", "w") as f:
-            f.write(
-                f"""
-                image: {DOCKER_IMAGE}
-                aliases:
-                  no_root_test:
-                    root: false
-                    script:
-                      - echo $(id -u) $(id -un) $(id -g) $(id -gn)
-                """
-            )
+        SCUBA_YML.write_text(
+            f"""
+            image: {DOCKER_IMAGE}
+            aliases:
+              no_root_test:
+                root: false
+                script:
+                  - echo $(id -u) $(id -un) $(id -g) $(id -gn)
+            """
+        )
 
         out, _ = run_scuba(["no_root_test"])
         uid, username, gid, groupname = out.split()
@@ -380,8 +355,7 @@ class TestMainUser(MainTest):
 
 class TestMainHomedir(MainTest):
     def _test_home_writable(self, scuba_args=[]):
-        with open(".scuba.yml", "w") as f:
-            f.write(f"image: {DOCKER_IMAGE}\n")
+        SCUBA_YML.write_text(f"image: {DOCKER_IMAGE}")
 
         args = scuba_args + [
             "/bin/sh",
@@ -417,9 +391,7 @@ class TestMainHomedir(MainTest):
 class TestMainDockerArgs(MainTest):
     def test_arbitrary_docker_args(self) -> None:
         """Verify -d successfully passes arbitrary docker arguments"""
-
-        with open(".scuba.yml", "w") as f:
-            f.write(f"image: {DOCKER_IMAGE}\n")
+        SCUBA_YML.write_text(f"image: {DOCKER_IMAGE}")
 
         data = "Lorem ipsum dolor sit amet"
         data_path = "/lorem/ipsum"
@@ -449,9 +421,12 @@ class TestMainDockerArgs(MainTest):
             expfiles.add(name)
             return f'-v "{dummy.absolute()}:{tgtdir}/{name}"\n'
 
-        with open(".scuba.yml", "w") as f:
-            f.write(f"image: {DOCKER_IMAGE}\n")
-            f.write("docker_args: " + mount_dummy("one"))
+        SCUBA_YML.write_text(
+            f"""
+            image: {DOCKER_IMAGE}
+            docker_args: {mount_dummy('one')}
+            """
+        )
 
         args = [
             "-d=" + mount_dummy("two"),
@@ -471,29 +446,36 @@ class TestMainAliasScripts(MainTest):
         os.mkdir("foo")
         with open("foo/bar.txt", "w") as f:
             f.write(test_string)
-        with open(".scuba.yml", "w") as f:
-            f.write(f"image: {DOCKER_IMAGE}\n")
-            f.write("aliases:\n")
-            f.write("  alias1:\n")
-            f.write("    script:\n")
-            f.write("      - cd foo && cat bar.txt\n")
+
+        SCUBA_YML.write_text(
+            f"""
+            image: {DOCKER_IMAGE}
+            aliases:
+              alias1:
+                script:
+                  - cd foo && cat bar.txt
+            """
+        )
 
         out, _ = run_scuba(["alias1"])
         assert_str_equalish(test_string, out)
 
     def test_nested_sript(self) -> None:
         """Verify nested scripts works"""
-        with open(".scuba.yml", "w") as f:
-            f.write(f"image: {DOCKER_IMAGE}\n")
-            f.write("aliases:\n")
-            f.write("  foo:\n")
-            f.write("    script:\n")
-            f.write('      - echo "This"\n')
-            f.write('      - - echo "list"\n')
-            f.write('        - echo "is"\n')
-            f.write('        - echo "nested"\n')
-            f.write('        - - echo "kinda"\n')
-            f.write('          - echo "crazy"\n')
+        SCUBA_YML.write_text(
+            f"""
+            image: {DOCKER_IMAGE}
+            aliases:
+              foo:
+                script:
+                  - echo "This"
+                  - - echo "list"
+                    - echo "is"
+                    - echo "nested"
+                    - - echo "kinda"
+                      - echo "crazy"
+            """
+        )
 
         test_str = "This list is nested kinda crazy"
         out, _ = run_scuba(["foo"])
@@ -505,42 +487,38 @@ class TestMainAliasScripts(MainTest):
 class TestMainEntrypoint(MainTest):
     def test_image_entrypoint(self) -> None:
         """Verify scuba doesn't interfere with the configured image ENTRYPOINT"""
-
-        with open(".scuba.yml", "w") as f:
-            f.write("image: scuba/entrypoint-test")
+        SCUBA_YML.write_text("image: scuba/entrypoint-test")
 
         out, _ = run_scuba(["cat", "entrypoint_works.txt"])
         assert_str_equalish("success", out)
 
     def test_image_entrypoint_multiline(self) -> None:
         """Verify entrypoints are handled correctly with multi-line scripts"""
-        with open(".scuba.yml", "w") as f:
-            f.write(
-                """
-                image: scuba/entrypoint-test
-                aliases:
-                  testalias:
-                    script:
-                      - cat entrypoint_works.txt
-                      - echo $ENTRYPOINT_WORKS
-                """
-            )
+        SCUBA_YML.write_text(
+            """
+            image: scuba/entrypoint-test
+            aliases:
+              testalias:
+                script:
+                  - cat entrypoint_works.txt
+                  - echo $ENTRYPOINT_WORKS
+            """
+        )
 
         out, _ = run_scuba(["testalias"])
         assert_str_equalish("\n".join(["success"] * 2), out)
 
     def test_entrypoint_override(self) -> None:
         """Verify --entrypoint override works"""
-        with open(".scuba.yml", "w") as f:
-            f.write(
-                """
-                image: scuba/entrypoint-test
-                aliases:
-                  testalias:
-                    script:
-                      - echo $ENTRYPOINT_WORKS
-                """
-            )
+        SCUBA_YML.write_text(
+            """
+            image: scuba/entrypoint-test
+            aliases:
+              testalias:
+                script:
+                  - echo $ENTRYPOINT_WORKS
+            """
+        )
 
         test_str = "This is output from the overridden entrypoint"
 
@@ -559,16 +537,15 @@ class TestMainEntrypoint(MainTest):
 
     def test_entrypoint_override_none(self) -> None:
         """Verify --entrypoint override (to nothing) works"""
-        with open(".scuba.yml", "w") as f:
-            f.write(
-                """
-                image: scuba/entrypoint-test
-                aliases:
-                  testalias:
-                    script:
-                      - echo $ENTRYPOINT_WORKS
-                """
-            )
+        SCUBA_YML.write_text(
+            """
+            image: scuba/entrypoint-test
+            aliases:
+              testalias:
+                script:
+                  - echo $ENTRYPOINT_WORKS
+            """
+        )
 
         args = [
             "--entrypoint",
@@ -583,13 +560,12 @@ class TestMainEntrypoint(MainTest):
 
     def test_yaml_entrypoint_override(self) -> None:
         """Verify entrypoint in .scuba.yml works"""
-        with open(".scuba.yml", "w") as f:
-            f.write(
-                """
-                image: scuba/entrypoint-test
-                entrypoint: "./new.sh"
-                """
-            )
+        SCUBA_YML.write_text(
+            """
+            image: scuba/entrypoint-test
+            entrypoint: "./new.sh"
+            """
+        )
 
         test_str = "This is output from the overridden entrypoint"
 
@@ -606,17 +582,16 @@ class TestMainEntrypoint(MainTest):
 
     def test_yaml_entrypoint_override_none(self) -> None:
         """Verify "none" entrypoint in .scuba.yml works"""
-        with open(".scuba.yml", "w") as f:
-            f.write(
-                """
-                image: scuba/entrypoint-test
-                entrypoint:
-                aliases:
-                  testalias:
-                    script:
-                      - echo $ENTRYPOINT_WORKS
-                """
-            )
+        SCUBA_YML.write_text(
+            """
+            image: scuba/entrypoint-test
+            entrypoint:
+            aliases:
+              testalias:
+                script:
+                  - echo $ENTRYPOINT_WORKS
+            """
+        )
 
         args = [
             "testalias",
@@ -631,10 +606,10 @@ class TestMainEntrypoint(MainTest):
 class TestMainImageOverride(MainTest):
     def test_image_override(self) -> None:
         """Verify --image works"""
-
-        with open(".scuba.yml", "w") as f:
+        SCUBA_YML.write_text(
             # This image does not exist
-            f.write("image: scuba/notheredoesnotexistbb7e344f9722\n")
+            "image: scuba/notheredoesnotexistbb7e344f9722"
+        )
 
         args = [
             "--image",
@@ -647,21 +622,19 @@ class TestMainImageOverride(MainTest):
 
     def test_image_override_with_alias(self) -> None:
         """Verify --image works with aliases"""
-
-        with open(".scuba.yml", "w") as f:
+        SCUBA_YML.write_text(
             # These images do not exist
-            f.write(
-                """
-                image: scuba/notheredoesnotexistbb7e344f9722
-                aliases:
-                  testalias:
-                    image: scuba/notheredoesnotexist765205d09dea
-                    script:
-                      - echo multi
-                      - echo line
-                      - echo alias
-                """
-            )
+            """
+            image: scuba/notheredoesnotexistbb7e344f9722
+            aliases:
+              testalias:
+                image: scuba/notheredoesnotexist765205d09dea
+                script:
+                  - echo multi
+                  - echo line
+                  - echo alias
+            """
+        )
 
         args = [
             "--image",
@@ -688,10 +661,13 @@ class TestMainImageOverride(MainTest):
 
 class TestMainHooks(MainTest):
     def _test_one_hook(self, hookname, hookcmd, cmd, expect_return=0):
-        with open(".scuba.yml", "w") as f:
-            f.write(f"image: {DOCKER_IMAGE}\n")
-            f.write("hooks:\n")
-            f.write(f"  {hookname}: {hookcmd}\n")
+        SCUBA_YML.write_text(
+            f"""
+            image: {DOCKER_IMAGE}
+            hooks:
+              {hookname}: {hookcmd}
+            """
+        )
 
         args = ["/bin/sh", "-c", cmd]
         return run_scuba(args, expect_return=expect_return)
@@ -732,8 +708,7 @@ class TestMainHooks(MainTest):
 class TestMainEnvironment(MainTest):
     def test_env_var_keyval(self) -> None:
         """Verify -e KEY=VAL works"""
-        with open(".scuba.yml", "w") as f:
-            f.write(f"image: {DOCKER_IMAGE}\n")
+        SCUBA_YML.write_text(f"image: {DOCKER_IMAGE}")
         args = [
             "-e",
             "KEY=VAL",
@@ -746,8 +721,7 @@ class TestMainEnvironment(MainTest):
 
     def test_env_var_key_only(self, monkeypatch):
         """Verify -e KEY works"""
-        with open(".scuba.yml", "w") as f:
-            f.write(f"image: {DOCKER_IMAGE}\n")
+        SCUBA_YML.write_text(f"image: {DOCKER_IMAGE}")
         args = [
             "-e",
             "KEY",
@@ -761,30 +735,29 @@ class TestMainEnvironment(MainTest):
 
     def test_env_var_sources(self, monkeypatch):
         """Verify scuba handles all possible environment variable sources"""
-        with open(".scuba.yml", "w") as f:
-            f.write(
-                rf"""
-                image: {DOCKER_IMAGE}
+        SCUBA_YML.write_text(
+            rf"""
+            image: {DOCKER_IMAGE}
+            environment:
+              FOO: Top-level
+              BAR: 42
+              EXTERNAL_2:
+            aliases:
+              al:
+                script:
+                  - echo "FOO=\"$FOO\""
+                  - echo "BAR=\"$BAR\""
+                  - echo "MORE=\"$MORE\""
+                  - echo "EXTERNAL_1=\"$EXTERNAL_1\""
+                  - echo "EXTERNAL_2=\"$EXTERNAL_2\""
+                  - echo "EXTERNAL_3=\"$EXTERNAL_3\""
+                  - echo "BAZ=\"$BAZ\""
                 environment:
-                  FOO: Top-level
-                  BAR: 42
-                  EXTERNAL_2:
-                aliases:
-                  al:
-                    script:
-                      - echo "FOO=\"$FOO\""
-                      - echo "BAR=\"$BAR\""
-                      - echo "MORE=\"$MORE\""
-                      - echo "EXTERNAL_1=\"$EXTERNAL_1\""
-                      - echo "EXTERNAL_2=\"$EXTERNAL_2\""
-                      - echo "EXTERNAL_3=\"$EXTERNAL_3\""
-                      - echo "BAZ=\"$BAZ\""
-                    environment:
-                      FOO: Overridden
-                      MORE: Hello world
-                      EXTERNAL_3:
-                """
-            )
+                  FOO: Overridden
+                  MORE: Hello world
+                  EXTERNAL_3:
+            """
+        )
 
         args = [
             "-e",
@@ -815,8 +788,7 @@ class TestMainEnvironment(MainTest):
 
     def test_builtin_env__SCUBA_ROOT(self, in_tmp_path):
         """Verify SCUBA_ROOT is set in container"""
-        with open(".scuba.yml", "w") as f:
-            f.write(f"image: {DOCKER_IMAGE}\n")
+        SCUBA_YML.write_text(f"image: {DOCKER_IMAGE}")
 
         args = ["/bin/sh", "-c", "echo $SCUBA_ROOT"]
         out, _ = run_scuba(args)
@@ -827,16 +799,15 @@ class TestMainEnvironment(MainTest):
 class TestMainShellOverride(MainTest):
     def test_use_top_level_shell_override(self) -> None:
         """Verify that the shell can be overriden at the top level"""
-        with open(".scuba.yml", "w") as f:
-            f.write(
-                f"""
-                image: {DOCKER_IMAGE}
-                shell: /bin/bash
-                aliases:
-                  check_shell:
-                    script: readlink -f /proc/$$/exe
-                """
-            )
+        SCUBA_YML.write_text(
+            f"""
+            image: {DOCKER_IMAGE}
+            shell: /bin/bash
+            aliases:
+              check_shell:
+                script: readlink -f /proc/$$/exe
+            """
+        )
 
         out, _ = run_scuba(["check_shell"])
         # If we failed to override, the shebang would be #!/bin/sh
@@ -844,18 +815,17 @@ class TestMainShellOverride(MainTest):
 
     def test_alias_level_shell_override(self) -> None:
         """Verify that the shell can be overriden at the alias level without affecting other aliases"""
-        with open(".scuba.yml", "w") as f:
-            f.write(
-                f"""
-                image: {DOCKER_IMAGE}
-                aliases:
-                  shell_override:
-                    shell: /bin/bash
-                    script: readlink -f /proc/$$/exe
-                  default_shell:
-                    script: readlink -f /proc/$$/exe
-                """
-            )
+        SCUBA_YML.write_text(
+            f"""
+            image: {DOCKER_IMAGE}
+            aliases:
+              shell_override:
+                shell: /bin/bash
+                script: readlink -f /proc/$$/exe
+              default_shell:
+                script: readlink -f /proc/$$/exe
+            """
+        )
         out, _ = run_scuba(["shell_override"])
         assert_str_equalish("/bin/bash", out)
 
@@ -866,16 +836,14 @@ class TestMainShellOverride(MainTest):
 
     def test_cli_shell_override(self) -> None:
         """Verify that the shell can be overriden by the CLI"""
-        with open(".scuba.yml", "w") as f:
-            f.write(
-                f"""
-                image: {DOCKER_IMAGE}
-                aliases:
-                  default_shell:
-                    script: readlink -f /proc/$$/exe
-                """
-            )
-
+        SCUBA_YML.write_text(
+            f"""
+            image: {DOCKER_IMAGE}
+            aliases:
+              default_shell:
+                script: readlink -f /proc/$$/exe
+            """
+        )
         out, _ = run_scuba(["--shell", "/bin/bash", "default_shell"])
         assert_str_equalish("/bin/bash", out)
 
@@ -885,44 +853,41 @@ class TestMainShellOverride(MainTest):
         # Top-level SCUBA_YML shell << alias-level SCUBA_YML shell << CLI-specified shell
 
         # Test top-level << alias-level
-        with open(".scuba.yml", "w") as f:
-            f.write(
-                f"""
-                image: {DOCKER_IMAGE}
-                shell: /bin/this_does_not_exist
-                aliases:
-                  shell_override:
-                    shell: /bin/bash
-                    script: readlink -f /proc/$$/exe
-                """
-            )
+        SCUBA_YML.write_text(
+            f"""
+            image: {DOCKER_IMAGE}
+            shell: /bin/this_does_not_exist
+            aliases:
+              shell_override:
+                shell: /bin/bash
+                script: readlink -f /proc/$$/exe
+            """
+        )
         out, _ = run_scuba(["shell_override"])
         assert_str_equalish("/bin/bash", out)
 
         # Test alias-level << CLI
-        with open(".scuba.yml", "w") as f:
-            f.write(
-                f"""
-                image: {DOCKER_IMAGE}
-                aliases:
-                  shell_overridden:
-                    shell: /bin/this_is_not_a_real_shell
-                    script: readlink -f /proc/$$/exe
-                """
-            )
+        SCUBA_YML.write_text(
+            f"""
+            image: {DOCKER_IMAGE}
+            aliases:
+              shell_overridden:
+                shell: /bin/this_is_not_a_real_shell
+                script: readlink -f /proc/$$/exe
+            """
+        )
         out, _ = run_scuba(["--shell", "/bin/bash", "shell_overridden"])
         assert_str_equalish("/bin/bash", out)
 
         # Test top-level << CLI
-        with open(".scuba.yml", "w") as f:
-            f.write(
-                f"""
-                image: {DOCKER_IMAGE}
-                shell: /bin/this_is_not_a_real_shell
-                aliases:
-                  shell_check: readlink -f /proc/$$/exe
-                """
-            )
+        SCUBA_YML.write_text(
+            f"""
+            image: {DOCKER_IMAGE}
+            shell: /bin/this_is_not_a_real_shell
+            aliases:
+              shell_check: readlink -f /proc/$$/exe
+            """
+        )
         out, _ = run_scuba(["--shell", "/bin/bash", "shell_check"])
         assert_str_equalish("/bin/bash", out)
 
@@ -940,19 +905,18 @@ class TestMainVolumes(MainTest):
         aliasdata.mkdir()
         (aliasdata / "thing").write_text("from the alias\n")
 
-        with open(".scuba.yml", "w") as f:
-            f.write(
-                f"""
-                image: {DOCKER_IMAGE}
+        SCUBA_YML.write_text(
+            f"""
+            image: {DOCKER_IMAGE}
+            volumes:
+              /topdata: {topdata.absolute()}
+            aliases:
+              doit:
                 volumes:
-                  /topdata: {topdata.absolute()}
-                aliases:
-                  doit:
-                    volumes:
-                      /aliasdata: {aliasdata.absolute()}
-                    script: "cat /topdata/thing /aliasdata/thing"
-                """
-            )
+                  /aliasdata: {aliasdata.absolute()}
+                script: "cat /topdata/thing /aliasdata/thing"
+            """
+        )
 
         out, _ = run_scuba(["doit"])
         out = out.splitlines()
@@ -970,19 +934,18 @@ class TestMainVolumes(MainTest):
         aliasdata.mkdir()
         (aliasdata / "thing").write_text("from the alias\n")
 
-        with open(".scuba.yml", "w") as f:
-            f.write(
-                f"""
-                image: {DOCKER_IMAGE}
+        SCUBA_YML.write_text(
+            f"""
+            image: {DOCKER_IMAGE}
+            volumes:
+              /data: {topdata.absolute()}
+            aliases:
+              doit:
                 volumes:
-                  /data: {topdata.absolute()}
-                aliases:
-                  doit:
-                    volumes:
-                      /data: {aliasdata.absolute()}
-                    script: "cat /data/thing"
-                """
-            )
+                  /data: {aliasdata.absolute()}
+                script: "cat /data/thing"
+            """
+        )
 
         # Run a non-alias command
         out, _ = run_scuba(["cat", "/data/thing"])
@@ -1000,14 +963,13 @@ class TestMainVolumes(MainTest):
         userdir = Path("./user")
         testfile = userdir / "test.txt"
 
-        with open(".scuba.yml", "w") as f:
-            f.write(
-                f"""
-                image: {DOCKER_IMAGE}
-                volumes:
-                  /userdir: {userdir.absolute()}
-                """
-            )
+        SCUBA_YML.write_text(
+            f"""
+            image: {DOCKER_IMAGE}
+            volumes:
+              /userdir: {userdir.absolute()}
+            """
+        )
 
         run_scuba(["touch", "/userdir/test.txt"])
 
@@ -1026,18 +988,17 @@ class TestMainVolumes(MainTest):
 
         rootdir.mkdir()
 
-        with open(".scuba.yml", "w") as f:
-            f.write(
-                f"""
-                image: {DOCKER_IMAGE}
-                volumes:
-                  /userdir: {userdir.absolute()}
-                aliases:
-                   doit:
-                      root: true
-                      script: "touch /userdir/test.txt"
-                """
-            )
+        SCUBA_YML.write_text(
+            f"""
+            image: {DOCKER_IMAGE}
+            volumes:
+              /userdir: {userdir.absolute()}
+            aliases:
+               doit:
+                  root: true
+                  script: "touch /userdir/test.txt"
+            """
+        )
 
         try:
             # Prevent current user from creating directory
@@ -1063,14 +1024,13 @@ class TestMainVolumes(MainTest):
         # rootdir is not a dir, it's a file
         rootdir.write_text("lied about the dir")
 
-        with open(".scuba.yml", "w") as f:
-            f.write(
-                f"""
-                image: {DOCKER_IMAGE}
-                volumes:
-                  /userdir: {userdir.absolute()}
-                """
-            )
+        SCUBA_YML.write_text(
+            f"""
+            image: {DOCKER_IMAGE}
+            volumes:
+              /userdir: {userdir.absolute()}
+            """
+        )
 
         run_scuba(["touch", "/userdir/test.txt"], expect_return=128)
 
@@ -1084,14 +1044,13 @@ class TestMainVolumes(MainTest):
         test_message = "Relative paths work"
         (userdir / "test.txt").write_text(test_message)
 
-        with open(".scuba.yml", "w") as f:
-            f.write(
-                f"""
-                image: {DOCKER_IMAGE}
-                volumes:
-                  /userdir: ./{userdir}
-                """
-            )
+        SCUBA_YML.write_text(
+            f"""
+            image: {DOCKER_IMAGE}
+            volumes:
+              /userdir: ./{userdir}
+            """
+        )
 
         # Invoke scuba from a different subdir, for good measure.
         otherdir = Path("way/down/here")
@@ -1126,14 +1085,13 @@ class TestMainVolumes(MainTest):
 
         # Change to the project subdir and write the .scuba.yml file there.
         os.chdir(projdir)
-        with open(".scuba.yml", "w") as f:
-            f.write(
-                f"""
-                image: {DOCKER_IMAGE}
-                volumes:
-                  /userdir: ../../../{userdir}
-                """
-            )
+        SCUBA_YML.write_text(
+            f"""
+            image: {DOCKER_IMAGE}
+            volumes:
+              /userdir: ../../../{userdir}
+            """
+        )
 
         out, _ = run_scuba(["cat", "/userdir/test.txt"])
         assert out == test_message
@@ -1164,16 +1122,15 @@ class TestMainNamedVolumes(MainTest):
         TEST_PATH = VOL_PATH / "test.txt"
         TEST_STR = "it works!"
 
-        with open(".scuba.yml", "w") as f:
-            f.write(
-                f"""
-                image: {DOCKER_IMAGE}
-                hooks:
-                  root: chmod 777 {VOL_PATH}
-                volumes:
-                  {VOL_PATH}: {self.VOLUME_NAME}
-                """
-            )
+        SCUBA_YML.write_text(
+            f"""
+            image: {DOCKER_IMAGE}
+            hooks:
+              root: chmod 777 {VOL_PATH}
+            volumes:
+              {VOL_PATH}: {self.VOLUME_NAME}
+            """
+        )
 
         # Inoke scuba once: Write a file to the named volume
         run_scuba(["/bin/sh", "-c", f"echo {TEST_STR} > {TEST_PATH}"])
