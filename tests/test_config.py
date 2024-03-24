@@ -264,24 +264,27 @@ class TestLoadConfig(ConfigTest):
         GITLAB_YML.write_text("image: dummian:8.2")
         invalid_config(config_text=f"image: !from_yaml {GITLAB_YML}")
 
-    def __test_load_config_safe(self, bad_yaml_path) -> None:
-        with open(bad_yaml_path, "w") as f:
-            f.write("danger:\n")
-            f.write("  - !!python/object/apply:print [Danger]\n")
-            f.write("  - !!python/object/apply:sys.exit [66]\n")
-
+    def __test_load_config_safe(self, bad_yaml_path: Path) -> None:
+        bad_yaml_path.write_text(
+            """
+            danger:
+              - !!python/object/apply:print [Danger]
+              - !!python/object/apply:sys.exit [66]
+            """
+        )
         pat = "could not determine a constructor for the tag.*python/object/apply"
         with pytest.raises(scuba.config.ConfigError, match=pat) as ctx:
             load_config()
 
     def test_load_config_safe(self) -> None:
         """load_config safely loads yaml"""
-        self.__test_load_config_safe(".scuba.yml")
+        self.__test_load_config_safe(SCUBA_YML)
 
     def test_load_config_safe_external(self) -> None:
         """load_config safely loads yaml from external files"""
-        SCUBA_YML.write_text("image: !from_yaml .external.yml danger")
-        self.__test_load_config_safe(".external.yml")
+        external_yml = Path(".external.yml")
+        SCUBA_YML.write_text(f"image: !from_yaml {external_yml} danger")
+        self.__test_load_config_safe(external_yml)
 
 
 class TestConfigHooks(ConfigTest):
@@ -651,16 +654,16 @@ class TestConfigDockerArgs(ConfigTest):
 
     def test_alias_docker_args_override_from_yaml(self) -> None:
         """!override tag can be applied before a !from_yaml tag"""
-        with open("args.yml", "w") as f:
-            f.write("args: -v /tmp/:/tmp/\n")
+        args_yml = Path("args.yml")
+        args_yml.write_text("args: -v /tmp/:/tmp/")
 
         config = load_config(
-            config_text=r"""
+            config_text=rf"""
             image: na
             docker_args: --privileged
             aliases:
               testalias:
-                docker_args: !override '!from_yaml args.yml args'
+                docker_args: !override '!from_yaml {args_yml} args'
                 script:
                   - ugh
             """
@@ -672,16 +675,16 @@ class TestConfigDockerArgs(ConfigTest):
 
     def test_alias_docker_args_from_yaml_override(self) -> None:
         """!override tag can be applied inside of a !from_yaml tag"""
-        with open("args.yml", "w") as f:
-            f.write("args: !override -v /tmp/:/tmp/\n")
+        args_yml = Path("args.yml")
+        args_yml.write_text("args: !override -v /tmp/:/tmp/")
 
         config = load_config(
-            config_text=r"""
+            config_text=rf"""
             image: na
             docker_args: --privileged
             aliases:
               testalias:
-                docker_args: !from_yaml args.yml args
+                docker_args: !from_yaml {args_yml} args
                 script:
                   - ugh
             """
