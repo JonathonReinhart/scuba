@@ -21,6 +21,11 @@ def load_config() -> scuba.config.ScubaConfig:
     return scuba.config.load_config(SCUBA_YML, Path.cwd())
 
 
+def invalid_config(*, error_match=None):
+    with pytest.raises(scuba.config.ConfigError, match=error_match) as e:
+        load_config()
+
+
 class TestCommonScriptSchema:
     def test_simple(self) -> None:
         """Simple form: value is a string"""
@@ -62,9 +67,7 @@ class TestCommonScriptSchema:
 
 @pytest.mark.usefixtures("in_tmp_path")
 class ConfigTest:
-    def _invalid_config(self, match=None):
-        with pytest.raises(scuba.config.ConfigError, match=match) as e:
-            load_config()
+    pass
 
 
 class TestFindConfig(ConfigTest):
@@ -131,7 +134,7 @@ class TestLoadConfig(ConfigTest):
             """
         )
 
-        self._invalid_config()
+        invalid_config()
 
     def test_load_config_minimal(self) -> None:
         """load_config loads a minimal config"""
@@ -166,7 +169,7 @@ class TestLoadConfig(ConfigTest):
             """
         )
 
-        self._invalid_config()
+        invalid_config()
 
     def test_load_config_image_from_yaml(self) -> None:
         """load_config loads a config using !from_yaml"""
@@ -248,13 +251,13 @@ class TestLoadConfig(ConfigTest):
             """
         )
         SCUBA_YML.write_text(f"image: !from_yaml {GITLAB_YML} somewhere.NONEXISTANT")
-        self._invalid_config()
+        invalid_config()
 
     def test_load_config_image_from_yaml_missing_file(self) -> None:
         """load_config raises ConfigError when !from_yaml references nonexistant file"""
         SCUBA_YML.write_text("image: !from_yaml .NONEXISTANT.yml image")
 
-        self._invalid_config()
+        invalid_config()
 
     def test_load_config_image_from_yaml_unicode_args(self) -> None:
         """load_config !from_yaml works with unicode args"""
@@ -267,7 +270,7 @@ class TestLoadConfig(ConfigTest):
         """load_config raises ConfigError when !from_yaml has missing args"""
         GITLAB_YML.write_text("image: dummian:8.2")
         SCUBA_YML.write_text(f"image: !from_yaml {GITLAB_YML}")
-        self._invalid_config()
+        invalid_config()
 
     def __test_load_config_safe(self, bad_yaml_path) -> None:
         with open(bad_yaml_path, "w") as f:
@@ -323,7 +326,7 @@ class TestConfigHooks(ConfigTest):
                 - a 'script'
             """
         )
-        self._invalid_config()
+        invalid_config()
 
     def test_hooks_missing_script(self) -> None:
         """hooks with dict, but missing "script" are invalid"""
@@ -335,7 +338,7 @@ class TestConfigHooks(ConfigTest):
                 not_script: missing "script" key
             """
         )
-        self._invalid_config()
+        invalid_config()
 
 
 class TestConfigEnv(ConfigTest):
@@ -347,7 +350,7 @@ class TestConfigEnv(ConfigTest):
             environment: 666
             """
         )
-        self._invalid_config("must be list or mapping")
+        invalid_config(error_match="must be list or mapping")
 
     def test_env_top_dict(self, monkeypatch) -> None:
         """Top-level environment can be loaded (dict)"""
@@ -467,7 +470,7 @@ class TestConfigEntrypoint(ConfigTest):
             entrypoint: 666
             """
         )
-        self._invalid_config("must be a string")
+        invalid_config(error_match="must be a string")
 
     def test_entrypoint_emptry_string(self) -> None:
         """Entrypoint can be set to an empty string"""
@@ -555,7 +558,7 @@ class TestConfigDockerArgs(ConfigTest):
             docker_args: 666
             """
         )
-        self._invalid_config("must be a string")
+        invalid_config(error_match="must be a string")
 
     def test_docker_args_null(self) -> None:
         """docker_args can be set to null"""
@@ -758,7 +761,7 @@ class TestConfigVolumes(ConfigTest):
             volumes: 666
             """
         )
-        self._invalid_config("must be a dict")
+        invalid_config(error_match="must be a dict")
 
     def test_invalid_list(self) -> None:
         """volume of incorrect type (list) raises ConfigError"""
@@ -770,7 +773,7 @@ class TestConfigVolumes(ConfigTest):
                 - a list makes no sense
             """
         )
-        self._invalid_config("must be string or dict")
+        invalid_config(error_match="must be string or dict")
 
     def test_null_volume_type(self) -> None:
         """volume of None type raises ConfigError"""
@@ -783,7 +786,7 @@ class TestConfigVolumes(ConfigTest):
               /bar:
             """
         )
-        self._invalid_config("hostpath")
+        invalid_config(error_match="hostpath")
 
     def test_complex_missing_hostpath(self) -> None:
         """volume of incorrect type raises ConfigError"""
@@ -797,7 +800,7 @@ class TestConfigVolumes(ConfigTest):
                 options: hostpath,is,missing
             """
         )
-        self._invalid_config("hostpath")
+        invalid_config(error_match="hostpath")
 
     def test_simple_bind(self) -> None:
         """volumes can be set using the simple form"""
@@ -938,7 +941,7 @@ class TestConfigVolumes(ConfigTest):
               $TEST_VAR1/foo: /host/foo
             """
         )
-        self._invalid_config("TEST_VAR1")
+        invalid_config(error_match="TEST_VAR1")
 
     def test_hostpath_rel(self, monkeypatch, in_tmp_path) -> None:
         """volume hostpath can be relative to scuba_root (top dir)"""
@@ -1013,7 +1016,7 @@ class TestConfigVolumes(ConfigTest):
                 hostpath: foo  # Forbidden
             """
         )
-        self._invalid_config("Relative path must start with ./ or ../")
+        invalid_config(error_match="Relative path must start with ./ or ../")
 
     def test_hostpath_rel_in_env(self, monkeypatch, in_tmp_path) -> None:
         """volume definitions can contain environment variables, including relative path portions"""
@@ -1040,7 +1043,7 @@ class TestConfigVolumes(ConfigTest):
               foo: /what/now
             """
         )
-        self._invalid_config("Relative path not allowed: foo")
+        invalid_config(error_match="Relative path not allowed: foo")
 
     def test_simple_named_volume(self) -> None:
         """volumes simple form can specify a named volume"""
@@ -1113,7 +1116,7 @@ class TestConfigVolumes(ConfigTest):
                 name: $FOO_VOLUME
             """
         )
-        self._invalid_config("Unset environment variable")
+        invalid_config(error_match="Unset environment variable")
 
     def test_complex_invalid_hostpath(self) -> None:
         """volumes complex form cannot specify an invalid hostpath"""
@@ -1125,7 +1128,7 @@ class TestConfigVolumes(ConfigTest):
                 hostpath: foo-volume
             """
         )
-        self._invalid_config("Relative path must start with ./ or ../")
+        invalid_config(error_match="Relative path must start with ./ or ../")
 
     def test_complex_hostpath_and_name(self) -> None:
         """volumes complex form cannot specify a named volume and hostpath"""
@@ -1138,8 +1141,8 @@ class TestConfigVolumes(ConfigTest):
                 name: foo-volume
             """
         )
-        self._invalid_config(
-            "Volume /foo must have exactly one of 'hostpath' or 'name' subkey"
+        invalid_config(
+            error_match="Volume /foo must have exactly one of 'hostpath' or 'name' subkey"
         )
 
     def test_complex_empty(self) -> None:
@@ -1151,6 +1154,6 @@ class TestConfigVolumes(ConfigTest):
               /foo:
             """
         )
-        self._invalid_config(
-            "Volume /foo must have exactly one of 'hostpath' or 'name' subkey"
+        invalid_config(
+            error_match="Volume /foo must have exactly one of 'hostpath' or 'name' subkey"
         )
