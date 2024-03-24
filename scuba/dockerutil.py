@@ -132,17 +132,22 @@ def get_image_entrypoint(image: str) -> Optional[Sequence[str]]:
 
 
 def make_vol_opt(
-    hostdir: Path,
+    hostdir_or_volname: Union[Path, str],
     contdir: Path,
     options: Optional[Sequence[str]] = None,
 ) -> str:
     """Generate a docker volume option"""
-    if not hostdir.is_absolute():
-        raise ValueError(f"hostdir not absolute: {hostdir}")
+    if isinstance(hostdir_or_volname, Path):
+        hostdir: Path = hostdir_or_volname
+        if not hostdir.is_absolute():
+            # NOTE: As of Docker Engine version 23, you can use relative paths
+            # on the host. But we have no minimum Docker version, so we don't
+            # rely on this.
+            raise ValueError(f"hostdir not absolute: {hostdir}")
     if not contdir.is_absolute():
         raise ValueError(f"contdir not absolute: {contdir}")
 
-    vol = f"--volume={hostdir}:{contdir}"
+    vol = f"--volume={hostdir_or_volname}:{contdir}"
     if options:
         assert not isinstance(options, str)
         vol += ":" + ",".join(options)

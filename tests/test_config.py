@@ -10,6 +10,7 @@ from unittest import mock
 from .utils import assert_paths_equal, assert_vol
 
 import scuba.config
+from scuba.config import ScubaVolume
 
 
 def load_config() -> scuba.config.ScubaConfig:
@@ -878,7 +879,7 @@ class TestConfig:
 
         self._invalid_config("hostpath")
 
-    def test_volumes_simple_volume(self) -> None:
+    def test_volumes_simple_bind(self) -> None:
         """volumes can be set using the simple form"""
         with open(".scuba.yml", "w") as f:
             f.write(
@@ -895,7 +896,7 @@ class TestConfig:
 
         assert_vol(config.volumes, "/cpath", "/hpath")
 
-    def test_volumes_complex(self) -> None:
+    def test_volumes_complex_bind(self) -> None:
         """volumes can be set using the complex form"""
         with open(".scuba.yml", "w") as f:
             f.write(
@@ -919,6 +920,27 @@ class TestConfig:
         assert_vol(vols, "/foo", "/host/foo")
         assert_vol(vols, "/bar", "/host/bar")
         assert_vol(vols, "/snap", "/host/snap", ["z", "ro"])
+
+    def test_volumes_complex_named_volume(self) -> None:
+        """volumes complex form can specify a named volume"""
+        with open(".scuba.yml", "w") as f:
+            f.write(
+                r"""
+                image: na
+                volumes:
+                  /foo:
+                    name: foo-volume
+                """
+            )
+
+        config = load_config()
+        assert config.volumes is not None
+        assert len(config.volumes) == 1
+        vol = config.volumes[Path("/foo")]
+
+        assert isinstance(vol, ScubaVolume)
+        assert_paths_equal(vol.container_path, "/foo")
+        assert vol.volume_name == "foo-volume"
 
     def test_alias_volumes_set(self) -> None:
         """docker_args can be set via alias"""
@@ -1076,20 +1098,6 @@ class TestConfig:
         assert config.volumes is not None
         assert_vol(config.volumes, "/foo", in_tmp_path / "foo_up_here")
 
-    def test_volumes_hostpath_rel_req_dot_simple(
-        self, monkeypatch, in_tmp_path
-    ) -> None:
-        """relaitve volume hostpath (simple form) must start with ./ or ../"""
-        with open(".scuba.yml", "w") as f:
-            f.write(
-                r"""
-                image: na
-                volumes:
-                  /one: foo  # Forbidden
-                """
-            )
-        self._invalid_config("Relative path must start with ./ or ../")
-
     def test_volumes_hostpath_rel_requires_dot_complex(
         self, monkeypatch, in_tmp_path
     ) -> None:
@@ -1134,3 +1142,124 @@ class TestConfig:
                 """
             )
         self._invalid_config("Relative path not allowed: foo")
+
+    def test_volumes_simple_named_volume(self) -> None:
+        """volumes simple form can specify a named volume"""
+        with open(".scuba.yml", "w") as f:
+            f.write(
+                r"""
+                image: na
+                volumes:
+                  /foo: foo-volume
+                """
+            )
+
+        config = load_config()
+        assert config.volumes is not None
+        assert len(config.volumes) == 1
+        vol = config.volumes[Path("/foo")]
+
+        assert isinstance(vol, ScubaVolume)
+        assert_paths_equal(vol.container_path, "/foo")
+        assert vol.volume_name == "foo-volume"
+
+    def test_volumes_simple_named_volume_env(self, monkeypatch) -> None:
+        """volumes simple form can specify a named volume via env var"""
+        with open(".scuba.yml", "w") as f:
+            f.write(
+                r"""
+                image: na
+                volumes:
+                  /foo: $FOO_VOLUME
+                """
+            )
+
+        monkeypatch.setenv("FOO_VOLUME", "foo-volume")
+
+        config = load_config()
+        assert config.volumes is not None
+        assert len(config.volumes) == 1
+        vol = config.volumes[Path("/foo")]
+
+        assert isinstance(vol, ScubaVolume)
+        assert_paths_equal(vol.container_path, "/foo")
+        assert vol.volume_name == "foo-volume"
+
+    def test_volumes_complex_named_volume_env(self, monkeypatch) -> None:
+        """volumes complex form can specify a named volume via env var"""
+        with open(".scuba.yml", "w") as f:
+            f.write(
+                r"""
+                image: na
+                volumes:
+                  /foo:
+                    name: $FOO_VOLUME
+                """
+            )
+
+        monkeypatch.setenv("FOO_VOLUME", "foo-volume")
+
+        config = load_config()
+        assert config.volumes is not None
+        assert len(config.volumes) == 1
+        vol = config.volumes[Path("/foo")]
+
+        assert isinstance(vol, ScubaVolume)
+        assert_paths_equal(vol.container_path, "/foo")
+        assert vol.volume_name == "foo-volume"
+
+    def test_volumes_complex_named_volume_env_unset(self) -> None:
+        """volumes complex form fails on unset env var"""
+        with open(".scuba.yml", "w") as f:
+            f.write(
+                r"""
+                image: na
+                volumes:
+                  /foo:
+                    name: $FOO_VOLUME
+                """
+            )
+        self._invalid_config("Unset environment variable")
+
+    def test_volumes_complex_invalid_hostpath(self) -> None:
+        """volumes complex form cannot specify an invalid hostpath"""
+        with open(".scuba.yml", "w") as f:
+            f.write(
+                r"""
+                image: na
+                volumes:
+                  /foo:
+                    hostpath: foo-volume
+                """
+            )
+        self._invalid_config("Relative path must start with ./ or ../")
+
+    def test_volumes_complex_hostpath_and_name(self) -> None:
+        """volumes complex form cannot specify a named volume and hostpath"""
+        with open(".scuba.yml", "w") as f:
+            f.write(
+                r"""
+                image: na
+                volumes:
+                  /foo:
+                    hostpath: /bar
+                    name: foo-volume
+                """
+            )
+        self._invalid_config(
+            "Volume /foo must have exactly one of 'hostpath' or 'name' subkey"
+        )
+
+    def test_volumes_complex_empty(self) -> None:
+        """volumes complex form cannot be empty"""
+        with open(".scuba.yml", "w") as f:
+            f.write(
+                r"""
+                image: na
+                volumes:
+                  /foo:
+                """
+            )
+        self._invalid_config(
+            "Volume /foo must have exactly one of 'hostpath' or 'name' subkey"
+        )

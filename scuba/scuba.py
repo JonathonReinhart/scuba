@@ -165,7 +165,7 @@ class ScubaDive:
             return
 
         for vol in self.context.volumes.values():
-            if vol.host_path.exists():
+            if vol.host_path is None or vol.host_path.exists():
                 continue
 
             try:
