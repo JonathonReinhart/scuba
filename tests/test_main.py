@@ -172,7 +172,7 @@ class TestMainBasic(MainTest):
         assert name == "scuba"
         assert ver == scuba.__version__
 
-    def test_no_docker(self) -> None:
+    def test_no_docker(self, monkeypatch) -> None:
         """Verify scuba gracefully handles docker not being installed"""
 
         with open(".scuba.yml", "w") as f:
@@ -180,13 +180,8 @@ class TestMainBasic(MainTest):
 
         args = ["/bin/echo", "-n", "my output"]
 
-        old_PATH = os.environ["PATH"]
-        os.environ["PATH"] = ""  # TODO: Use monkeypatch
-
-        try:
-            _, err = run_scuba(args, expect_return=2)
-        finally:
-            os.environ["PATH"] = old_PATH
+        monkeypatch.setenv("PATH", "")
+        _, err = run_scuba(args, expect_return=2)
 
     @mock.patch("subprocess.call")
     def test_dry_run(self, subproc_call_mock):
