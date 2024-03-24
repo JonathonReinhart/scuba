@@ -30,7 +30,7 @@ SCUBAINIT_EXIT_FAIL = 99
 
 @pytest.mark.usefixtures("in_tmp_path")
 class MainTest:
-    def run_scuba(self, args, exp_retval=0, mock_isatty=False, stdin=None):
+    def run_scuba(self, args, *, expect_return=0, mock_isatty=False, stdin=None):
         """Run scuba, checking its return value
 
         Returns scuba/docker stdout data.
@@ -78,7 +78,7 @@ class MainTest:
                     logging.info("scuba stderr:\n" + stderr_data)
 
                     # Verify the return value was as expected
-                    assert exp_retval == retcode
+                    assert expect_return == retcode
 
                     return stdout_data, stderr_data
 
@@ -116,7 +116,7 @@ class TestMainBasic(MainTest):
             f.write("image: scuba/scratch\n")
 
         # ScubaError -> exit(128)
-        out, _ = self.run_scuba([], 128)
+        out, _ = self.run_scuba([], expect_return=128)
 
     def test_handle_get_image_command_error(self) -> None:
         """Verify scuba handles a get_image_command error"""
@@ -131,7 +131,7 @@ class TestMainBasic(MainTest):
         # http://www.voidspace.org.uk/python/mock/patch.html#where-to-patch
         with mock.patch("scuba.scuba.get_image_command", side_effect=mocked_gic):
             # DockerError -> exit(128)
-            self.run_scuba([], 128)
+            self.run_scuba([], expect_return=128)
 
     def test_config_error(self) -> None:
         """Verify config errors are handled gracefully"""
@@ -140,7 +140,7 @@ class TestMainBasic(MainTest):
             f.write("invalid_key: is no good\n")
 
         # ConfigError -> exit(128)
-        self.run_scuba([], 128)
+        self.run_scuba([], expect_return=128)
 
     def test_multiline_alias_no_args_error(self) -> None:
         """Verify config errors from passing arguments to multi-line alias are caught"""
@@ -158,7 +158,7 @@ class TestMainBasic(MainTest):
             )
 
         # ConfigError -> exit(128)
-        self.run_scuba(["multi", "with", "args"], 128)
+        self.run_scuba(["multi", "with", "args"], expect_return=128)
 
     def test_version(self) -> None:
         """Verify scuba prints its version for -v"""
@@ -181,7 +181,7 @@ class TestMainBasic(MainTest):
         os.environ["PATH"] = ""  # TODO: Use monkeypatch
 
         try:
-            _, err = self.run_scuba(args, 2)
+            _, err = self.run_scuba(args, expect_return=2)
         finally:
             os.environ["PATH"] = old_PATH
 
@@ -689,14 +689,14 @@ class TestMainImageOverride(MainTest):
 
 
 class TestMainHooks(MainTest):
-    def _test_one_hook(self, hookname, hookcmd, cmd, exp_retval=0):
+    def _test_one_hook(self, hookname, hookcmd, cmd, expect_return=0):
         with open(".scuba.yml", "w") as f:
             f.write(f"image: {DOCKER_IMAGE}\n")
             f.write("hooks:\n")
             f.write(f"  {hookname}: {hookcmd}\n")
 
         args = ["/bin/sh", "-c", cmd]
-        return self.run_scuba(args, exp_retval=exp_retval)
+        return self.run_scuba(args, expect_return=expect_return)
 
     def _test_hook_runs_as(self, hookname, exp_uid, exp_gid) -> None:
         out, _ = self._test_one_hook(
@@ -726,7 +726,7 @@ class TestMainHooks(MainTest):
             "root",
             f"exit {testval}",
             "dont care",
-            exp_retval=SCUBAINIT_EXIT_FAIL,
+            expect_return=SCUBAINIT_EXIT_FAIL,
         )
         assert re.match(f"^scubainit: .* exited with status {testval}$", err)
 
@@ -1074,7 +1074,7 @@ class TestMainVolumes(MainTest):
                 """
             )
 
-        self.run_scuba(["touch", "/userdir/test.txt"], 128)
+        self.run_scuba(["touch", "/userdir/test.txt"], expect_return=128)
 
     def test_volumes_host_path_rel(self) -> None:
         """Volume host paths can be relative"""
