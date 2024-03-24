@@ -5,6 +5,7 @@ from os.path import join
 from pathlib import Path
 import pytest
 from shutil import rmtree
+from typing import Optional
 from unittest import mock
 
 from .utils import assert_paths_equal, assert_vol
@@ -17,13 +18,19 @@ SCUBA_YML = Path(".scuba.yml")
 GITLAB_YML = Path(".gitlab.yml")
 
 
-def load_config() -> scuba.config.ScubaConfig:
+def load_config(*, config_text: Optional[str] = None) -> scuba.config.ScubaConfig:
+    if config_text is not None:
+        SCUBA_YML.write_text(config_text)
     return scuba.config.load_config(SCUBA_YML, Path.cwd())
 
 
-def invalid_config(*, error_match=None):
+def invalid_config(
+    *,
+    config_text: Optional[str] = None,
+    error_match: Optional[str] = None,
+) -> None:
     with pytest.raises(scuba.config.ConfigError, match=error_match) as e:
-        load_config()
+        load_config(config_text=config_text)
 
 
 class TestCommonScriptSchema:
@@ -119,41 +126,34 @@ class TestFindConfig(ConfigTest):
 class TestLoadConfig(ConfigTest):
     def test_load_config_no_image(self) -> None:
         """load_config raises ConfigError if the config is empty and image is referenced"""
-        SCUBA_YML.write_text("")
-
-        config = load_config()
+        config = load_config(config_text="")
         with pytest.raises(scuba.config.ConfigError):
             img = config.image
 
     def test_load_unexpected_node(self) -> None:
         """load_config raises ConfigError on unexpected config node"""
-        SCUBA_YML.write_text(
-            """
+        invalid_config(
+            config_text="""
             image: bosybux
             unexpected_node_123456: value
             """
         )
 
-        invalid_config()
-
     def test_load_config_minimal(self) -> None:
         """load_config loads a minimal config"""
-        SCUBA_YML.write_text("image: bosybux")
-        config = load_config()
+        config = load_config(config_text="image: bosybux")
         assert config.image == "bosybux"
 
     def test_load_config_with_aliases(self) -> None:
         """load_config loads a config with aliases"""
-        SCUBA_YML.write_text(
-            """
+        config = load_config(
+            config_text="""
             image: bosybux
             aliases:
               foo: bar
               snap: crackle pop
             """
         )
-
-        config = load_config()
         assert config.image == "bosybux"
         assert len(config.aliases) == 2
         assert config.aliases["foo"].script == ["bar"]
@@ -161,22 +161,18 @@ class TestLoadConfig(ConfigTest):
 
     def test_load_config__no_spaces_in_aliases(self) -> None:
         """load_config refuses spaces in aliases"""
-        SCUBA_YML.write_text(
-            """
+        invalid_config(
+            config_text="""
             image: bosybux
             aliases:
               this has spaces: whatever
             """
         )
 
-        invalid_config()
-
     def test_load_config_image_from_yaml(self) -> None:
         """load_config loads a config using !from_yaml"""
         GITLAB_YML.write_text("image: dummian:8.2")
-        SCUBA_YML.write_text(f"image: !from_yaml {GITLAB_YML} image")
-
-        config = load_config()
+        config = load_config(config_text=f"image: !from_yaml {GITLAB_YML} image")
         assert config.image == "dummian:8.2"
 
     def test_load_config_image_from_yaml_nested_keys(self) -> None:
@@ -188,9 +184,9 @@ class TestLoadConfig(ConfigTest):
                 here: dummian:8.2
             """
         )
-        SCUBA_YML.write_text(f"image: !from_yaml {GITLAB_YML} somewhere.down.here")
-
-        config = load_config()
+        config = load_config(
+            config_text=f"image: !from_yaml {GITLAB_YML} somewhere.down.here"
+        )
         assert config.image == "dummian:8.2"
 
     def test_load_config_image_from_yaml_nested_keys_with_escaped_characters(
@@ -204,11 +200,9 @@ class TestLoadConfig(ConfigTest):
                 here: dummian:8.2
             """
         )
-        SCUBA_YML.write_text(
-            f'image: !from_yaml {GITLAB_YML} "\\.its.somewhere\\.down.here"\n'
+        config = load_config(
+            config_text=f'image: !from_yaml {GITLAB_YML} "\\.its.somewhere\\.down.here"\n'
         )
-
-        config = load_config()
         assert config.image == "dummian:8.2"
 
     def test_load_config_from_yaml_cached_file(self) -> None:
@@ -234,6 +228,7 @@ class TestLoadConfig(ConfigTest):
         )
 
         with mock.patch.object(Path, "open", autospec=True, side_effect=Path.open) as m:
+            # Write config separately so its open() call is not counted here.
             config = load_config()
 
         # Assert that GITLAB_YML was only opened once
@@ -250,27 +245,24 @@ class TestLoadConfig(ConfigTest):
               down:
             """
         )
-        SCUBA_YML.write_text(f"image: !from_yaml {GITLAB_YML} somewhere.NONEXISTANT")
-        invalid_config()
+        invalid_config(
+            config_text=f"image: !from_yaml {GITLAB_YML} somewhere.NONEXISTANT"
+        )
 
     def test_load_config_image_from_yaml_missing_file(self) -> None:
         """load_config raises ConfigError when !from_yaml references nonexistant file"""
-        SCUBA_YML.write_text("image: !from_yaml .NONEXISTANT.yml image")
-
-        invalid_config()
+        invalid_config(config_text="image: !from_yaml .NONEXISTANT.yml image")
 
     def test_load_config_image_from_yaml_unicode_args(self) -> None:
         """load_config !from_yaml works with unicode args"""
         GITLAB_YML.write_text("𝕦𝕟𝕚𝕔𝕠𝕕𝕖: 𝕨𝕠𝕣𝕜𝕤:𝕠𝕜")
-        SCUBA_YML.write_text(f"image: !from_yaml {GITLAB_YML} 𝕦𝕟𝕚𝕔𝕠𝕕𝕖")
-        config = load_config()
+        config = load_config(config_text=f"image: !from_yaml {GITLAB_YML} 𝕦𝕟𝕚𝕔𝕠𝕕𝕖")
         assert config.image == "𝕨𝕠𝕣𝕜𝕤:𝕠𝕜"
 
     def test_load_config_image_from_yaml_missing_arg(self) -> None:
         """load_config raises ConfigError when !from_yaml has missing args"""
         GITLAB_YML.write_text("image: dummian:8.2")
-        SCUBA_YML.write_text(f"image: !from_yaml {GITLAB_YML}")
-        invalid_config()
+        invalid_config(config_text=f"image: !from_yaml {GITLAB_YML}")
 
     def __test_load_config_safe(self, bad_yaml_path) -> None:
         with open(bad_yaml_path, "w") as f:
@@ -295,8 +287,8 @@ class TestLoadConfig(ConfigTest):
 class TestConfigHooks(ConfigTest):
     def test_hooks_mixed(self) -> None:
         """hooks of mixed forms are valid"""
-        SCUBA_YML.write_text(
-            """
+        config = load_config(
+            config_text="""
             image: na
             hooks:
               root:
@@ -306,9 +298,6 @@ class TestConfigHooks(ConfigTest):
               user: id
             """
         )
-
-        config = load_config()
-
         assert config.hooks.get("root") == [
             'echo "This runs before we switch users"',
             "id",
@@ -317,8 +306,8 @@ class TestConfigHooks(ConfigTest):
 
     def test_hooks_invalid_list(self) -> None:
         """hooks with list not under "script" key are invalid"""
-        SCUBA_YML.write_text(
-            """
+        invalid_config(
+            config_text="""
             image: na
             hooks:
               user:
@@ -326,36 +315,36 @@ class TestConfigHooks(ConfigTest):
                 - a 'script'
             """
         )
-        invalid_config()
 
     def test_hooks_missing_script(self) -> None:
         """hooks with dict, but missing "script" are invalid"""
-        SCUBA_YML.write_text(
-            """
+        invalid_config(
+            config_text="""
             image: na
             hooks:
               user:
                 not_script: missing "script" key
             """
         )
-        invalid_config()
 
 
 class TestConfigEnv(ConfigTest):
     def test_env_invalid(self) -> None:
         """Environment must be dict or list of strings"""
-        SCUBA_YML.write_text(
-            r"""
+        invalid_config(
+            config_text=r"""
             image: na
             environment: 666
-            """
+            """,
+            error_match="must be list or mapping",
         )
-        invalid_config(error_match="must be list or mapping")
 
     def test_env_top_dict(self, monkeypatch) -> None:
         """Top-level environment can be loaded (dict)"""
-        SCUBA_YML.write_text(
-            r"""
+        monkeypatch.setenv("EXTERNAL", "Outside world")
+        monkeypatch.delenv("EXTERNAL_NOTSET", raising=False)
+        config = load_config(
+            config_text=r"""
             image: na
             environment:
               FOO: This is foo
@@ -369,12 +358,6 @@ class TestConfigEnv(ConfigTest):
               EXTERNAL_NOTSET:      # Missing in os env
             """
         )
-
-        monkeypatch.setenv("EXTERNAL", "Outside world")
-        monkeypatch.delenv("EXTERNAL_NOTSET", raising=False)
-
-        config = load_config()
-
         expect = dict(
             FOO="This is foo",
             FOO_WITH_QUOTES='"Quoted foo"',
@@ -390,8 +373,10 @@ class TestConfigEnv(ConfigTest):
 
     def test_env_top_list(self, monkeypatch) -> None:
         """Top-level environment can be loaded (list)"""
-        SCUBA_YML.write_text(
-            r"""
+        monkeypatch.setenv("EXTERNAL", "Outside world")
+        monkeypatch.delenv("EXTERNAL_NOTSET", raising=False)
+        config = load_config(
+            config_text=r"""
             image: na
             environment:
               - FOO=This is foo                 # No quotes
@@ -404,12 +389,6 @@ class TestConfigEnv(ConfigTest):
               - EXTERNAL_NOTSET                 # Missing in os env
             """
         )
-
-        monkeypatch.setenv("EXTERNAL", "Outside world")
-        monkeypatch.delenv("EXTERNAL_NOTSET", raising=False)
-
-        config = load_config()
-
         expect = dict(
             FOO="This is foo",
             FOO_WITH_QUOTES='"Quoted foo"',
@@ -424,8 +403,8 @@ class TestConfigEnv(ConfigTest):
 
     def test_env_alias(self) -> None:
         """Alias can have environment"""
-        SCUBA_YML.write_text(
-            r"""
+        config = load_config(
+            config_text=r"""
             image: na
             aliases:
               al:
@@ -435,9 +414,6 @@ class TestConfigEnv(ConfigTest):
                   MORE: Hello world
             """
         )
-
-        config = load_config()
-
         assert config.aliases["al"].environment == dict(
             FOO="Overridden",
             MORE="Hello world",
@@ -447,57 +423,53 @@ class TestConfigEnv(ConfigTest):
 class TestConfigEntrypoint(ConfigTest):
     def test_entrypoint_not_set(self) -> None:
         """Entrypoint can be missing"""
-        SCUBA_YML.write_text("image: na")
-        config = load_config()
+        config = load_config(config_text="image: na")
         assert config.entrypoint is None
 
     def test_entrypoint_null(self) -> None:
         """Entrypoint can be set to null"""
-        SCUBA_YML.write_text(
-            r"""
+        config = load_config(
+            config_text=r"""
             image: na
             entrypoint:
             """
         )
-        config = load_config()
         assert config.entrypoint == ""  # Null => empty string
 
     def test_entrypoint_invalid(self) -> None:
         """Entrypoint of incorrect type raises ConfigError"""
-        SCUBA_YML.write_text(
-            r"""
+        invalid_config(
+            config_text=r"""
             image: na
             entrypoint: 666
-            """
+            """,
+            error_match="must be a string",
         )
-        invalid_config(error_match="must be a string")
 
-    def test_entrypoint_emptry_string(self) -> None:
+    def test_entrypoint_empty_string(self) -> None:
         """Entrypoint can be set to an empty string"""
-        SCUBA_YML.write_text(
-            r"""
+        config = load_config(
+            config_text=r"""
             image: na
             entrypoint: ""
             """
         )
-        config = load_config()
         assert config.entrypoint == ""
 
     def test_entrypoint_set(self) -> None:
         """Entrypoint can be set"""
-        SCUBA_YML.write_text(
-            r"""
+        config = load_config(
+            config_text=r"""
             image: na
             entrypoint: my_ep
             """
         )
-        config = load_config()
         assert config.entrypoint == "my_ep"
 
     def test_alias_entrypoint_null(self) -> None:
         """Entrypoint can be set to null via alias"""
-        SCUBA_YML.write_text(
-            r"""
+        config = load_config(
+            config_text=r"""
             image: na
             entrypoint: na_ep
             aliases:
@@ -507,13 +479,12 @@ class TestConfigEntrypoint(ConfigTest):
                   - ugh
             """
         )
-        config = load_config()
         assert config.aliases["testalias"].entrypoint == ""  # Null => empty string
 
     def test_alias_entrypoint_empty_string(self) -> None:
         """Entrypoint can be set to an empty string via alias"""
-        SCUBA_YML.write_text(
-            r"""
+        config = load_config(
+            config_text=r"""
             image: na
             entrypoint: na_ep
             aliases:
@@ -523,13 +494,12 @@ class TestConfigEntrypoint(ConfigTest):
                   - ugh
             """
         )
-        config = load_config()
         assert config.aliases["testalias"].entrypoint == ""
 
     def test_alias_entrypoint(self) -> None:
         """Entrypoint can be set via alias"""
-        SCUBA_YML.write_text(
-            r"""
+        config = load_config(
+            config_text=r"""
             image: na
             entrypoint: na_ep
             aliases:
@@ -539,75 +509,69 @@ class TestConfigEntrypoint(ConfigTest):
                   - ugh
             """
         )
-        config = load_config()
         assert config.aliases["testalias"].entrypoint == "use_this_ep"
 
 
 class TestConfigDockerArgs(ConfigTest):
     def test_docker_args_not_set(self) -> None:
         """docker_args can be missing"""
-        SCUBA_YML.write_text("image: na")
-        config = load_config()
+        config = load_config(config_text="image: na")
         assert config.docker_args is None
 
     def test_docker_args_invalid(self) -> None:
         """docker_args of incorrect type raises ConfigError"""
-        SCUBA_YML.write_text(
-            r"""
+        invalid_config(
+            config_text=r"""
             image: na
             docker_args: 666
-            """
+            """,
+            error_match="must be a string",
         )
-        invalid_config(error_match="must be a string")
 
     def test_docker_args_null(self) -> None:
         """docker_args can be set to null"""
-        SCUBA_YML.write_text(
-            r"""
+        config = load_config(
+            config_text=r"""
             image: na
             docker_args:
             """
         )
-        config = load_config()
         assert config.docker_args == []
 
     def test_docker_args_set_empty_string(self) -> None:
         """docker_args can be set to empty string"""
-        SCUBA_YML.write_text(
-            r"""
+        config = load_config(
+            config_text=r"""
             image: na
             docker_args: ''
             """
         )
-        config = load_config()
         assert config.docker_args == []  # '' -> [] after shlex.split()
 
     def test_docker_args_set(self) -> None:
         """docker_args can be set"""
-        SCUBA_YML.write_text(
-            r"""
+        config = load_config(
+            config_text=r"""
             image: na
             docker_args: --privileged
             """
         )
-        config = load_config()
         assert config.docker_args == ["--privileged"]
 
     def test_docker_args_set_multi(self) -> None:
         """docker_args can be set to multiple args"""
-        SCUBA_YML.write_text(
-            r"""
+        config = load_config(
+            config_text=r"""
             image: na
             docker_args: --privileged -v /tmp/:/tmp/
             """
         )
-        config = load_config()
         assert config.docker_args == ["--privileged", "-v", "/tmp/:/tmp/"]
 
     def test_alias_docker_args_null(self) -> None:
         """docker_args can be set to null via alias"""
-        SCUBA_YML.write_text(
-            r"""
+        config = load_config(
+            config_text=r"""
             image: na
             docker_args: --privileged
             aliases:
@@ -617,13 +581,12 @@ class TestConfigDockerArgs(ConfigTest):
                   - ugh
             """
         )
-        config = load_config()
         assert config.aliases["testalias"].docker_args == []
 
     def test_alias_docker_args_empty_string(self) -> None:
         """docker_args can be set to empty string via alias"""
-        SCUBA_YML.write_text(
-            r"""
+        config = load_config(
+            config_text=r"""
             image: na
             docker_args: --privileged
             aliases:
@@ -633,13 +596,12 @@ class TestConfigDockerArgs(ConfigTest):
                   - ugh
             """
         )
-        config = load_config()
         assert config.aliases["testalias"].docker_args == []
 
     def test_alias_docker_args_set(self) -> None:
         """docker_args can be set via alias"""
-        SCUBA_YML.write_text(
-            r"""
+        config = load_config(
+            config_text=r"""
             image: na
             docker_args: --privileged
             aliases:
@@ -649,13 +611,12 @@ class TestConfigDockerArgs(ConfigTest):
                   - ugh
             """
         )
-        config = load_config()
         assert config.aliases["testalias"].docker_args == ["-v", "/tmp/:/tmp/"]
 
     def test_alias_docker_args_override(self) -> None:
         """docker_args can be tagged for override"""
-        SCUBA_YML.write_text(
-            r"""
+        config = load_config(
+            config_text=r"""
             image: na
             docker_args: --privileged
             aliases:
@@ -665,7 +626,6 @@ class TestConfigDockerArgs(ConfigTest):
                   - ugh
             """
         )
-        config = load_config()
         assert config.aliases["testalias"].docker_args == ["-v", "/tmp/:/tmp/"]
         assert isinstance(
             config.aliases["testalias"].docker_args, scuba.config.OverrideMixin
@@ -673,8 +633,8 @@ class TestConfigDockerArgs(ConfigTest):
 
     def test_alias_docker_args_override_implicit_null(self) -> None:
         """docker_args can be overridden with an implicit null value"""
-        SCUBA_YML.write_text(
-            r"""
+        config = load_config(
+            config_text=r"""
             image: na
             docker_args: --privileged
             aliases:
@@ -684,7 +644,6 @@ class TestConfigDockerArgs(ConfigTest):
                   - ugh
             """
         )
-        config = load_config()
         assert config.aliases["testalias"].docker_args == []
         assert isinstance(
             config.aliases["testalias"].docker_args, scuba.config.OverrideMixin
@@ -695,8 +654,8 @@ class TestConfigDockerArgs(ConfigTest):
         with open("args.yml", "w") as f:
             f.write("args: -v /tmp/:/tmp/\n")
 
-        SCUBA_YML.write_text(
-            r"""
+        config = load_config(
+            config_text=r"""
             image: na
             docker_args: --privileged
             aliases:
@@ -706,7 +665,6 @@ class TestConfigDockerArgs(ConfigTest):
                   - ugh
             """
         )
-        config = load_config()
         assert config.aliases["testalias"].docker_args == ["-v", "/tmp/:/tmp/"]
         assert isinstance(
             config.aliases["testalias"].docker_args, scuba.config.OverrideMixin
@@ -717,8 +675,8 @@ class TestConfigDockerArgs(ConfigTest):
         with open("args.yml", "w") as f:
             f.write("args: !override -v /tmp/:/tmp/\n")
 
-        SCUBA_YML.write_text(
-            r"""
+        config = load_config(
+            config_text=r"""
             image: na
             docker_args: --privileged
             aliases:
@@ -728,7 +686,6 @@ class TestConfigDockerArgs(ConfigTest):
                   - ugh
             """
         )
-        config = load_config()
         assert config.aliases["testalias"].docker_args == ["-v", "/tmp/:/tmp/"]
         assert isinstance(
             config.aliases["testalias"].docker_args, scuba.config.OverrideMixin
@@ -738,80 +695,77 @@ class TestConfigDockerArgs(ConfigTest):
 class TestConfigVolumes(ConfigTest):
     def test_not_set(self) -> None:
         """volumes can be missing"""
-        SCUBA_YML.write_text("image: na")
-        config = load_config()
+        config = load_config(config_text="image: na")
         assert config.volumes is None
 
     def test_null(self) -> None:
         """volumes can be set to null"""
-        SCUBA_YML.write_text(
-            r"""
+        config = load_config(
+            config_text=r"""
             image: na
             volumes:
             """
         )
-        config = load_config()
         assert config.volumes == None
 
     def test_invalid_int(self) -> None:
         """volumes of incorrect type (int) raises ConfigError"""
-        SCUBA_YML.write_text(
-            r"""
+        invalid_config(
+            config_text=r"""
             image: na
             volumes: 666
-            """
+            """,
+            error_match="must be a dict",
         )
-        invalid_config(error_match="must be a dict")
 
     def test_invalid_list(self) -> None:
         """volume of incorrect type (list) raises ConfigError"""
-        SCUBA_YML.write_text(
-            r"""
+        invalid_config(
+            config_text=r"""
             image: na
             volumes:
               /foo:
                 - a list makes no sense
-            """
+            """,
+            error_match="must be string or dict",
         )
-        invalid_config(error_match="must be string or dict")
 
     def test_null_volume_type(self) -> None:
         """volume of None type raises ConfigError"""
         # NOTE: In the future, we might want to support this as a volume
         #       (non-bindmount, e.g. '-v /somedata'), or as tmpfs
-        SCUBA_YML.write_text(
-            r"""
+        invalid_config(
+            config_text=r"""
             image: na
             volumes:
               /bar:
-            """
+            """,
+            error_match="hostpath",
         )
-        invalid_config(error_match="hostpath")
 
     def test_complex_missing_hostpath(self) -> None:
         """volume of incorrect type raises ConfigError"""
         # NOTE: In the future, we might want to support this as a volume
         #       (non-bindmount, e.g. '-v /somedata'), or as tmpfs
-        SCUBA_YML.write_text(
-            r"""
+        invalid_config(
+            config_text=r"""
             image: na
             volumes:
               /bar:
                 options: hostpath,is,missing
-            """
+            """,
+            error_match="hostpath",
         )
-        invalid_config(error_match="hostpath")
 
     def test_simple_bind(self) -> None:
         """volumes can be set using the simple form"""
-        SCUBA_YML.write_text(
-            r"""
+        config = load_config(
+            config_text=r"""
             image: na
             volumes:
               /cpath: /hpath
             """
         )
-        config = load_config()
         assert config.volumes is not None
         assert len(config.volumes) == 1
 
@@ -819,8 +773,8 @@ class TestConfigVolumes(ConfigTest):
 
     def test_complex_bind(self) -> None:
         """volumes can be set using the complex form"""
-        SCUBA_YML.write_text(
-            r"""
+        config = load_config(
+            config_text=r"""
             image: na
             volumes:
               /foo: /host/foo
@@ -831,7 +785,6 @@ class TestConfigVolumes(ConfigTest):
                 options: z,ro
             """
         )
-        config = load_config()
         vols = config.volumes
         assert vols is not None
         assert len(vols) == 3
@@ -842,15 +795,14 @@ class TestConfigVolumes(ConfigTest):
 
     def test_complex_named_volume(self) -> None:
         """volumes complex form can specify a named volume"""
-        SCUBA_YML.write_text(
-            r"""
+        config = load_config(
+            config_text=r"""
             image: na
             volumes:
               /foo:
                 name: foo-volume
             """
         )
-        config = load_config()
         assert config.volumes is not None
         assert len(config.volumes) == 1
         vol = config.volumes[Path("/foo")]
@@ -861,8 +813,8 @@ class TestConfigVolumes(ConfigTest):
 
     def test_via_alias(self) -> None:
         """volumes can be set via alias"""
-        SCUBA_YML.write_text(
-            r"""
+        config = load_config(
+            config_text=r"""
             image: na
             aliases:
               testalias:
@@ -875,7 +827,6 @@ class TestConfigVolumes(ConfigTest):
                     options: z,ro
             """
         )
-        config = load_config()
         vols = config.aliases["testalias"].volumes
         assert vols is not None
         assert len(vols) == 2
@@ -887,14 +838,13 @@ class TestConfigVolumes(ConfigTest):
         """volume definitions can contain environment variables"""
         monkeypatch.setenv("TEST_VOL_PATH", "/bar/baz")
         monkeypatch.setenv("TEST_VOL_PATH2", "/moo/doo")
-        SCUBA_YML.write_text(
-            r"""
+        config = load_config(
+            config_text=r"""
             image: na
             volumes:
               $TEST_VOL_PATH/foo: ${TEST_VOL_PATH2}/foo
             """
         )
-        config = load_config()
         vols = config.volumes
         assert vols is not None
         assert len(vols) == 1
@@ -907,8 +857,8 @@ class TestConfigVolumes(ConfigTest):
         monkeypatch.setenv("TEST_TMP", "/tmp")
         monkeypatch.setenv("TEST_MAIL", "/var/spool/mail/testuser")
 
-        SCUBA_YML.write_text(
-            r"""
+        config = load_config(
+            config_text=r"""
             image: na
             volumes:
               $TEST_HOME/.config: ${TEST_HOME}/.config
@@ -919,7 +869,6 @@ class TestConfigVolumes(ConfigTest):
                 options: z,ro
             """
         )
-        config = load_config()
         vols = config.volumes
         assert vols is not None
         assert len(vols) == 3
@@ -934,14 +883,14 @@ class TestConfigVolumes(ConfigTest):
         """Volume definitions cannot include unset env vars"""
         # Ensure that the entry does not exist in the environment
         monkeypatch.delenv("TEST_VAR1", raising=False)
-        SCUBA_YML.write_text(
-            r"""
+        invalid_config(
+            config_text=r"""
             image: na
             volumes:
               $TEST_VAR1/foo: /host/foo
-            """
+            """,
+            error_match="TEST_VAR1",
         )
-        invalid_config(error_match="TEST_VAR1")
 
     def test_hostpath_rel(self, monkeypatch, in_tmp_path) -> None:
         """volume hostpath can be relative to scuba_root (top dir)"""
@@ -1008,27 +957,26 @@ class TestConfigVolumes(ConfigTest):
 
     def test_hostpath_rel_requires_dot_complex(self, monkeypatch, in_tmp_path) -> None:
         """relaitve volume hostpath (complex form) must start with ./ or ../"""
-        SCUBA_YML.write_text(
-            r"""
+        invalid_config(
+            config_text=r"""
             image: na
             volumes:
               /one:
                 hostpath: foo  # Forbidden
-            """
+            """,
+            error_match="Relative path must start with ./ or ../",
         )
-        invalid_config(error_match="Relative path must start with ./ or ../")
 
     def test_hostpath_rel_in_env(self, monkeypatch, in_tmp_path) -> None:
         """volume definitions can contain environment variables, including relative path portions"""
         monkeypatch.setenv("PREFIX", "./")
-        SCUBA_YML.write_text(
-            r"""
+        config = load_config(
+            config_text=r"""
             image: na
             volumes:
               /foo: ${PREFIX}/foo
             """
         )
-        config = load_config()
         vols = config.volumes
         assert vols is not None
         assert len(vols) == 1
@@ -1036,25 +984,24 @@ class TestConfigVolumes(ConfigTest):
         assert_vol(vols, "/foo", in_tmp_path / "foo")
 
     def test_contpath_rel(self, monkeypatch, in_tmp_path) -> None:
-        SCUBA_YML.write_text(
-            r"""
+        invalid_config(
+            config_text=r"""
             image: na
             volumes:
               foo: /what/now
-            """
+            """,
+            error_match="Relative path not allowed: foo",
         )
-        invalid_config(error_match="Relative path not allowed: foo")
 
     def test_simple_named_volume(self) -> None:
         """volumes simple form can specify a named volume"""
-        SCUBA_YML.write_text(
-            r"""
+        config = load_config(
+            config_text=r"""
             image: na
             volumes:
               /foo: foo-volume
             """
         )
-        config = load_config()
         assert config.volumes is not None
         assert len(config.volumes) == 1
         vol = config.volumes[Path("/foo")]
@@ -1065,17 +1012,14 @@ class TestConfigVolumes(ConfigTest):
 
     def test_simple_named_volume_env(self, monkeypatch) -> None:
         """volumes simple form can specify a named volume via env var"""
-        SCUBA_YML.write_text(
-            r"""
+        monkeypatch.setenv("FOO_VOLUME", "foo-volume")
+        config = load_config(
+            config_text=r"""
             image: na
             volumes:
               /foo: $FOO_VOLUME
             """
         )
-
-        monkeypatch.setenv("FOO_VOLUME", "foo-volume")
-
-        config = load_config()
         assert config.volumes is not None
         assert len(config.volumes) == 1
         vol = config.volumes[Path("/foo")]
@@ -1086,18 +1030,15 @@ class TestConfigVolumes(ConfigTest):
 
     def test_complex_named_volume_env(self, monkeypatch) -> None:
         """volumes complex form can specify a named volume via env var"""
-        SCUBA_YML.write_text(
-            r"""
+        monkeypatch.setenv("FOO_VOLUME", "foo-volume")
+        config = load_config(
+            config_text=r"""
             image: na
             volumes:
               /foo:
                 name: $FOO_VOLUME
             """
         )
-
-        monkeypatch.setenv("FOO_VOLUME", "foo-volume")
-
-        config = load_config()
         assert config.volumes is not None
         assert len(config.volumes) == 1
         vol = config.volumes[Path("/foo")]
@@ -1108,52 +1049,48 @@ class TestConfigVolumes(ConfigTest):
 
     def test_complex_named_volume_env_unset(self) -> None:
         """volumes complex form fails on unset env var"""
-        SCUBA_YML.write_text(
-            r"""
+        invalid_config(
+            config_text=r"""
             image: na
             volumes:
               /foo:
                 name: $FOO_VOLUME
-            """
+            """,
+            error_match="Unset environment variable",
         )
-        invalid_config(error_match="Unset environment variable")
 
     def test_complex_invalid_hostpath(self) -> None:
         """volumes complex form cannot specify an invalid hostpath"""
-        SCUBA_YML.write_text(
-            r"""
+        invalid_config(
+            config_text=r"""
             image: na
             volumes:
               /foo:
                 hostpath: foo-volume
-            """
+            """,
+            error_match="Relative path must start with ./ or ../",
         )
-        invalid_config(error_match="Relative path must start with ./ or ../")
 
     def test_complex_hostpath_and_name(self) -> None:
         """volumes complex form cannot specify a named volume and hostpath"""
-        SCUBA_YML.write_text(
-            r"""
+        invalid_config(
+            config_text=r"""
             image: na
             volumes:
               /foo:
                 hostpath: /bar
                 name: foo-volume
-            """
-        )
-        invalid_config(
-            error_match="Volume /foo must have exactly one of 'hostpath' or 'name' subkey"
+            """,
+            error_match="Volume /foo must have exactly one of 'hostpath' or 'name' subkey",
         )
 
     def test_complex_empty(self) -> None:
         """volumes complex form cannot be empty"""
-        SCUBA_YML.write_text(
-            r"""
+        invalid_config(
+            config_text=r"""
             image: na
             volumes:
               /foo:
-            """
-        )
-        invalid_config(
-            error_match="Volume /foo must have exactly one of 'hostpath' or 'name' subkey"
+            """,
+            error_match="Volume /foo must have exactly one of 'hostpath' or 'name' subkey",
         )
