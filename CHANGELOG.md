@@ -5,9 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 ### Added
 - Added support for Python 3.12 (#244)
+- Add explicit support for mounting named volumes (#250)
+  - This officially restores and extends the (unsupported) pre-v2.12 behavior.
 
 ### Changed
 - Removed use of deprecated `pkg_resources` (#247)
+- Rewrote scubainit in Rust (#232)
 
 
 ## [2.12.0] - 2023-09-15
