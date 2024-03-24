@@ -28,64 +28,67 @@ from .utils import (
 SCUBAINIT_EXIT_FAIL = 99
 
 
+def run_scuba(args, *, expect_return=0, mock_isatty=False, stdin=None):
+    """Run scuba, checking its return value
+
+    Returns scuba/docker stdout data.
+    """
+
+    # Capture both scuba and docker's stdout/stderr,
+    # just as the user would see it.
+    with TemporaryFile(prefix="scubatest-stdout", mode="w+t") as stdout:
+        with TemporaryFile(prefix="scubatest-stderr", mode="w+t") as stderr:
+            if mock_isatty:
+                stdout = PseudoTTY(stdout)
+                stderr = PseudoTTY(stderr)
+
+            old_stdin = sys.stdin
+            old_stdout = sys.stdout
+            old_stderr = sys.stderr
+
+            if stdin is None:
+                sys.stdin = open(os.devnull, "w")
+            else:
+                sys.stdin = stdin
+            sys.stdout = stdout
+            sys.stderr = stderr
+
+            try:
+                """
+                Call scuba's main(), and expect it to either exit()
+                with a given return code, or return (implying an exit
+                status of 0).
+                """
+                try:
+                    main.main(argv=args)
+                except SystemExit as sysexit:
+                    retcode = sysexit.code
+                else:
+                    retcode = 0
+
+                stdout.seek(0)
+                stderr.seek(0)
+
+                stdout_data = stdout.read()
+                stderr_data = stderr.read()
+
+                logging.info("scuba stdout:\n" + stdout_data)
+                logging.info("scuba stderr:\n" + stderr_data)
+
+                # Verify the return value was as expected
+                assert expect_return == retcode
+
+                return stdout_data, stderr_data
+
+            finally:
+                sys.stdin = old_stdin
+                sys.stdout = old_stdout
+                sys.stderr = old_stderr
+
+
 @pytest.mark.usefixtures("in_tmp_path")
 class MainTest:
-    def run_scuba(self, args, *, expect_return=0, mock_isatty=False, stdin=None):
-        """Run scuba, checking its return value
-
-        Returns scuba/docker stdout data.
-        """
-
-        # Capture both scuba and docker's stdout/stderr,
-        # just as the user would see it.
-        with TemporaryFile(prefix="scubatest-stdout", mode="w+t") as stdout:
-            with TemporaryFile(prefix="scubatest-stderr", mode="w+t") as stderr:
-                if mock_isatty:
-                    stdout = PseudoTTY(stdout)
-                    stderr = PseudoTTY(stderr)
-
-                old_stdin = sys.stdin
-                old_stdout = sys.stdout
-                old_stderr = sys.stderr
-
-                if stdin is None:
-                    sys.stdin = open(os.devnull, "w")
-                else:
-                    sys.stdin = stdin
-                sys.stdout = stdout
-                sys.stderr = stderr
-
-                try:
-                    """
-                    Call scuba's main(), and expect it to either exit()
-                    with a given return code, or return (implying an exit
-                    status of 0).
-                    """
-                    try:
-                        main.main(argv=args)
-                    except SystemExit as sysexit:
-                        retcode = sysexit.code
-                    else:
-                        retcode = 0
-
-                    stdout.seek(0)
-                    stderr.seek(0)
-
-                    stdout_data = stdout.read()
-                    stderr_data = stderr.read()
-
-                    logging.info("scuba stdout:\n" + stdout_data)
-                    logging.info("scuba stderr:\n" + stderr_data)
-
-                    # Verify the return value was as expected
-                    assert expect_return == retcode
-
-                    return stdout_data, stderr_data
-
-                finally:
-                    sys.stdin = old_stdin
-                    sys.stdout = old_stdout
-                    sys.stderr = old_stderr
+    pass
 
 
 class TestMainBasic(MainTest):
@@ -96,7 +99,7 @@ class TestMainBasic(MainTest):
             f.write(f"image: {DOCKER_IMAGE}\n")
 
         args = ["/bin/echo", "-n", "my output"]
-        out, _ = self.run_scuba(args)
+        out, _ = run_scuba(args)
 
         assert_str_equalish("my output", out)
 
@@ -106,7 +109,7 @@ class TestMainBasic(MainTest):
         with open(".scuba.yml", "w") as f:
             f.write("image: scuba/hello\n")
 
-        out, _ = self.run_scuba([])
+        out, _ = run_scuba([])
         assert_str_equalish(out, "Hello world")
 
     def test_no_image_cmd(self) -> None:
@@ -116,7 +119,7 @@ class TestMainBasic(MainTest):
             f.write("image: scuba/scratch\n")
 
         # ScubaError -> exit(128)
-        out, _ = self.run_scuba([], expect_return=128)
+        out, _ = run_scuba([], expect_return=128)
 
     def test_handle_get_image_command_error(self) -> None:
         """Verify scuba handles a get_image_command error"""
@@ -131,7 +134,7 @@ class TestMainBasic(MainTest):
         # http://www.voidspace.org.uk/python/mock/patch.html#where-to-patch
         with mock.patch("scuba.scuba.get_image_command", side_effect=mocked_gic):
             # DockerError -> exit(128)
-            self.run_scuba([], expect_return=128)
+            run_scuba([], expect_return=128)
 
     def test_config_error(self) -> None:
         """Verify config errors are handled gracefully"""
@@ -140,7 +143,7 @@ class TestMainBasic(MainTest):
             f.write("invalid_key: is no good\n")
 
         # ConfigError -> exit(128)
-        self.run_scuba([], expect_return=128)
+        run_scuba([], expect_return=128)
 
     def test_multiline_alias_no_args_error(self) -> None:
         """Verify config errors from passing arguments to multi-line alias are caught"""
@@ -158,12 +161,12 @@ class TestMainBasic(MainTest):
             )
 
         # ConfigError -> exit(128)
-        self.run_scuba(["multi", "with", "args"], expect_return=128)
+        run_scuba(["multi", "with", "args"], expect_return=128)
 
     def test_version(self) -> None:
         """Verify scuba prints its version for -v"""
 
-        out, err = self.run_scuba(["-v"])
+        out, err = run_scuba(["-v"])
 
         name, ver = out.split()
         assert name == "scuba"
@@ -181,7 +184,7 @@ class TestMainBasic(MainTest):
         os.environ["PATH"] = ""  # TODO: Use monkeypatch
 
         try:
-            _, err = self.run_scuba(args, expect_return=2)
+            _, err = run_scuba(args, expect_return=2)
         finally:
             os.environ["PATH"] = old_PATH
 
@@ -194,7 +197,7 @@ class TestMainBasic(MainTest):
 
         args = ["--dry-run", "--verbose", "/bin/false"]
 
-        _, err = self.run_scuba(args)
+        _, err = run_scuba(args)
 
         assert not subproc_call_mock.called
 
@@ -213,7 +216,7 @@ class TestMainBasic(MainTest):
 
         lines = ["here", "are", "some args"]
 
-        out, _ = self.run_scuba(["./test.sh"] + lines)
+        out, _ = run_scuba(["./test.sh"] + lines)
 
         assert_seq_equal(out.splitlines(), lines)
 
@@ -225,7 +228,7 @@ class TestMainBasic(MainTest):
 
         filename = "newfile.txt"
 
-        self.run_scuba(["/bin/touch", filename])
+        run_scuba(["/bin/touch", filename])
 
         st = os.stat(filename)
         assert st.st_uid == os.getuid()
@@ -247,7 +250,7 @@ class TestMainStdinStdout(MainTest):
         """Verify docker allocates tty if stdout is a tty."""
         self._setup_test_tty()
 
-        out, _ = self.run_scuba(["./check_tty.sh"], mock_isatty=True)
+        out, _ = run_scuba(["./check_tty.sh"], mock_isatty=True)
 
         assert_str_equalish(out, "isatty")
 
@@ -256,7 +259,7 @@ class TestMainStdinStdout(MainTest):
         """Verify docker doesn't allocate tty if stdout is not a tty."""
         self._setup_test_tty()
 
-        out, _ = self.run_scuba(["./check_tty.sh"])
+        out, _ = run_scuba(["./check_tty.sh"])
 
         assert_str_equalish(out, "notatty")
 
@@ -269,7 +272,7 @@ class TestMainStdinStdout(MainTest):
         with TemporaryFile(prefix="scubatest-stdin", mode="w+t") as stdin:
             stdin.write(test_str)
             stdin.seek(0)
-            out, _ = self.run_scuba(["cat"], stdin=stdin)
+            out, _ = run_scuba(["cat"], stdin=stdin)
 
         assert_str_equalish(out, test_str)
 
@@ -291,7 +294,7 @@ class TestMainUser(MainTest):
             "-c",
             "echo $(id -u) $(id -un) $(id -g) $(id -gn)",
         ]
-        out, _ = self.run_scuba(args)
+        out, _ = run_scuba(args)
 
         uid, username, gid, groupname = out.split()
         uid = int(uid)
@@ -349,7 +352,7 @@ class TestMainUser(MainTest):
                 """
             )
 
-        out, _ = self.run_scuba(["root_test"])
+        out, _ = run_scuba(["root_test"])
         uid, username, gid, groupname = out.split()
 
         assert int(uid) == 0
@@ -371,7 +374,7 @@ class TestMainUser(MainTest):
                 """
             )
 
-        out, _ = self.run_scuba(["no_root_test"])
+        out, _ = run_scuba(["no_root_test"])
         uid, username, gid, groupname = out.split()
 
         assert int(uid) == os.getuid()
@@ -390,7 +393,7 @@ class TestMainHomedir(MainTest):
             "-c",
             "echo success >> ~/testfile; cat ~/testfile",
         ]
-        out, _ = self.run_scuba(args)
+        out, _ = run_scuba(args)
 
         assert_str_equalish(out, "success")
 
@@ -435,7 +438,7 @@ class TestMainDockerArgs(MainTest):
                 "cat",
                 data_path,
             ]
-            out, _ = self.run_scuba(args)
+            out, _ = run_scuba(args)
 
         assert_str_equalish(out, data)
 
@@ -460,7 +463,7 @@ class TestMainDockerArgs(MainTest):
             "ls",
             tgtdir,
         ]
-        out, _ = self.run_scuba(args)
+        out, _ = run_scuba(args)
 
         files = set(out.splitlines())
         assert files == expfiles
@@ -480,7 +483,7 @@ class TestMainAliasScripts(MainTest):
             f.write("    script:\n")
             f.write("      - cd foo && cat bar.txt\n")
 
-        out, _ = self.run_scuba(["alias1"])
+        out, _ = run_scuba(["alias1"])
         assert_str_equalish(test_string, out)
 
     def test_nested_sript(self) -> None:
@@ -498,7 +501,7 @@ class TestMainAliasScripts(MainTest):
             f.write('          - echo "crazy"\n')
 
         test_str = "This list is nested kinda crazy"
-        out, _ = self.run_scuba(["foo"])
+        out, _ = run_scuba(["foo"])
 
         out = out.replace("\n", " ")
         assert_str_equalish(out, test_str)
@@ -511,7 +514,7 @@ class TestMainEntrypoint(MainTest):
         with open(".scuba.yml", "w") as f:
             f.write("image: scuba/entrypoint-test")
 
-        out, _ = self.run_scuba(["cat", "entrypoint_works.txt"])
+        out, _ = run_scuba(["cat", "entrypoint_works.txt"])
         assert_str_equalish("success", out)
 
     def test_image_entrypoint_multiline(self) -> None:
@@ -528,7 +531,7 @@ class TestMainEntrypoint(MainTest):
                 """
             )
 
-        out, _ = self.run_scuba(["testalias"])
+        out, _ = run_scuba(["testalias"])
         assert_str_equalish("\n".join(["success"] * 2), out)
 
     def test_entrypoint_override(self) -> None:
@@ -556,7 +559,7 @@ class TestMainEntrypoint(MainTest):
             os.path.abspath("new.sh"),
             "true",
         ]
-        out, _ = self.run_scuba(args)
+        out, _ = run_scuba(args)
         assert_str_equalish(test_str, out)
 
     def test_entrypoint_override_none(self) -> None:
@@ -577,7 +580,7 @@ class TestMainEntrypoint(MainTest):
             "",
             "testalias",
         ]
-        out, _ = self.run_scuba(args)
+        out, _ = run_scuba(args)
 
         # Verify that ENTRYPOINT_WORKS was not set by the entrypoint
         # (because it didn't run)
@@ -603,7 +606,7 @@ class TestMainEntrypoint(MainTest):
         args = [
             "true",
         ]
-        out, _ = self.run_scuba(args)
+        out, _ = run_scuba(args)
         assert_str_equalish(test_str, out)
 
     def test_yaml_entrypoint_override_none(self) -> None:
@@ -623,7 +626,7 @@ class TestMainEntrypoint(MainTest):
         args = [
             "testalias",
         ]
-        out, _ = self.run_scuba(args)
+        out, _ = run_scuba(args)
 
         # Verify that ENTRYPOINT_WORKS was not set by the entrypoint
         # (because it didn't run)
@@ -644,7 +647,7 @@ class TestMainImageOverride(MainTest):
             "echo",
             "success",
         ]
-        out, _ = self.run_scuba(args)
+        out, _ = run_scuba(args)
         assert_str_equalish("success", out)
 
     def test_image_override_with_alias(self) -> None:
@@ -670,7 +673,7 @@ class TestMainImageOverride(MainTest):
             DOCKER_IMAGE,
             "testalias",
         ]
-        out, _ = self.run_scuba(args)
+        out, _ = run_scuba(args)
         assert_str_equalish("multi\nline\nalias", out)
 
     def test_yml_not_needed_with_image_override(self) -> None:
@@ -684,7 +687,7 @@ class TestMainImageOverride(MainTest):
             "echo",
             "success",
         ]
-        out, _ = self.run_scuba(args)
+        out, _ = run_scuba(args)
         assert_str_equalish("success", out)
 
 
@@ -696,7 +699,7 @@ class TestMainHooks(MainTest):
             f.write(f"  {hookname}: {hookcmd}\n")
 
         args = ["/bin/sh", "-c", cmd]
-        return self.run_scuba(args, expect_return=expect_return)
+        return run_scuba(args, expect_return=expect_return)
 
     def _test_hook_runs_as(self, hookname, exp_uid, exp_gid) -> None:
         out, _ = self._test_one_hook(
@@ -743,7 +746,7 @@ class TestMainEnvironment(MainTest):
             "-c",
             "echo $KEY",
         ]
-        out, _ = self.run_scuba(args)
+        out, _ = run_scuba(args)
         assert_str_equalish(out, "VAL")
 
     def test_env_var_key_only(self, monkeypatch):
@@ -758,7 +761,7 @@ class TestMainEnvironment(MainTest):
             "echo $KEY",
         ]
         monkeypatch.setenv("KEY", "mockedvalue")
-        out, _ = self.run_scuba(args)
+        out, _ = run_scuba(args)
         assert_str_equalish(out, "mockedvalue")
 
     def test_env_var_sources(self, monkeypatch):
@@ -800,7 +803,7 @@ class TestMainEnvironment(MainTest):
         monkeypatch.setenv("EXTERNAL_2", "External value 2")
         monkeypatch.setenv("EXTERNAL_3", "External value 3")
 
-        out, _ = self.run_scuba(args)
+        out, _ = run_scuba(args)
 
         # Convert key/pair output to dictionary
         result = dict(pair.split("=", 1) for pair in shlex.split(out))
@@ -821,7 +824,7 @@ class TestMainEnvironment(MainTest):
             f.write(f"image: {DOCKER_IMAGE}\n")
 
         args = ["/bin/sh", "-c", "echo $SCUBA_ROOT"]
-        out, _ = self.run_scuba(args)
+        out, _ = run_scuba(args)
 
         assert_str_equalish(in_tmp_path, out)
 
@@ -840,7 +843,7 @@ class TestMainShellOverride(MainTest):
                 """
             )
 
-        out, _ = self.run_scuba(["check_shell"])
+        out, _ = run_scuba(["check_shell"])
         # If we failed to override, the shebang would be #!/bin/sh
         assert_str_equalish("/bin/bash", out)
 
@@ -858,10 +861,10 @@ class TestMainShellOverride(MainTest):
                     script: readlink -f /proc/$$/exe
                 """
             )
-        out, _ = self.run_scuba(["shell_override"])
+        out, _ = run_scuba(["shell_override"])
         assert_str_equalish("/bin/bash", out)
 
-        out, _ = self.run_scuba(["default_shell"])
+        out, _ = run_scuba(["default_shell"])
         # The way that we check the shell uses the resolved symlink of /bin/sh,
         # which is /bin/dash on Debian
         assert out.strip() in ["/bin/sh", "/bin/dash"]
@@ -878,7 +881,7 @@ class TestMainShellOverride(MainTest):
                 """
             )
 
-        out, _ = self.run_scuba(["--shell", "/bin/bash", "default_shell"])
+        out, _ = run_scuba(["--shell", "/bin/bash", "default_shell"])
         assert_str_equalish("/bin/bash", out)
 
     def test_shell_override_precedence(self) -> None:
@@ -898,7 +901,7 @@ class TestMainShellOverride(MainTest):
                     script: readlink -f /proc/$$/exe
                 """
             )
-        out, _ = self.run_scuba(["shell_override"])
+        out, _ = run_scuba(["shell_override"])
         assert_str_equalish("/bin/bash", out)
 
         # Test alias-level << CLI
@@ -912,7 +915,7 @@ class TestMainShellOverride(MainTest):
                     script: readlink -f /proc/$$/exe
                 """
             )
-        out, _ = self.run_scuba(["--shell", "/bin/bash", "shell_overridden"])
+        out, _ = run_scuba(["--shell", "/bin/bash", "shell_overridden"])
         assert_str_equalish("/bin/bash", out)
 
         # Test top-level << CLI
@@ -925,7 +928,7 @@ class TestMainShellOverride(MainTest):
                   shell_check: readlink -f /proc/$$/exe
                 """
             )
-        out, _ = self.run_scuba(["--shell", "/bin/bash", "shell_check"])
+        out, _ = run_scuba(["--shell", "/bin/bash", "shell_check"])
         assert_str_equalish("/bin/bash", out)
 
 
@@ -956,7 +959,7 @@ class TestMainVolumes(MainTest):
                 """
             )
 
-        out, _ = self.run_scuba(["doit"])
+        out, _ = run_scuba(["doit"])
         out = out.splitlines()
         assert out == ["from the top", "from the alias"]
 
@@ -987,12 +990,12 @@ class TestMainVolumes(MainTest):
             )
 
         # Run a non-alias command
-        out, _ = self.run_scuba(["cat", "/data/thing"])
+        out, _ = run_scuba(["cat", "/data/thing"])
         out = out.splitlines()
         assert out == ["from the top"]
 
         # Run the alias
-        out, _ = self.run_scuba(["doit"])
+        out, _ = run_scuba(["doit"])
         out = out.splitlines()
         assert out == ["from the alias"]
 
@@ -1011,7 +1014,7 @@ class TestMainVolumes(MainTest):
                 """
             )
 
-        self.run_scuba(["touch", "/userdir/test.txt"])
+        run_scuba(["touch", "/userdir/test.txt"])
 
         assert testfile.exists(), "Test file was not created"
 
@@ -1044,7 +1047,7 @@ class TestMainVolumes(MainTest):
         try:
             # Prevent current user from creating directory
             rootdir.chmod(0o555)
-            self.run_scuba(["doit"])
+            run_scuba(["doit"])
         finally:
             # Restore permissions to allow deletion
             rootdir.chmod(0o755)
@@ -1074,7 +1077,7 @@ class TestMainVolumes(MainTest):
                 """
             )
 
-        self.run_scuba(["touch", "/userdir/test.txt"], expect_return=128)
+        run_scuba(["touch", "/userdir/test.txt"], expect_return=128)
 
     def test_volumes_host_path_rel(self) -> None:
         """Volume host paths can be relative"""
@@ -1100,7 +1103,7 @@ class TestMainVolumes(MainTest):
         otherdir.mkdir(parents=True)
         os.chdir(otherdir)
 
-        out, _ = self.run_scuba(["cat", "/userdir/test.txt"])
+        out, _ = run_scuba(["cat", "/userdir/test.txt"])
         assert out == test_message
 
     def test_volumes_hostpath_rel_above(self) -> None:
@@ -1137,7 +1140,7 @@ class TestMainVolumes(MainTest):
                 """
             )
 
-        out, _ = self.run_scuba(["cat", "/userdir/test.txt"])
+        out, _ = run_scuba(["cat", "/userdir/test.txt"])
         assert out == test_message
 
 
@@ -1178,8 +1181,8 @@ class TestMainNamedVolumes(MainTest):
             )
 
         # Inoke scuba once: Write a file to the named volume
-        self.run_scuba(["/bin/sh", "-c", f"echo {TEST_STR} > {TEST_PATH}"])
+        run_scuba(["/bin/sh", "-c", f"echo {TEST_STR} > {TEST_PATH}"])
 
         # Invoke scuba again: Verify the file is still there
-        out, _ = self.run_scuba(["/bin/sh", "-c", f"cat {TEST_PATH}"])
+        out, _ = run_scuba(["/bin/sh", "-c", f"cat {TEST_PATH}"])
         assert_str_equalish(out, TEST_STR)
