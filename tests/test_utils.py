@@ -54,7 +54,7 @@ def test_format_cmdline() -> None:
     )
 
 
-def test_shell_quote_cmd():
+def test_shell_quote_cmd() -> None:
     args = ["foo", "bar pop", '"tee ball"']
 
     result = scuba.utils.shell_quote_cmd(args)
@@ -64,44 +64,44 @@ def test_shell_quote_cmd():
     assert_seq_equal(out_args, args)
 
 
-def test_parse_env_var():
+def test_parse_env_var() -> None:
     """parse_env_var returns a key, value pair"""
     result = scuba.utils.parse_env_var("KEY=value")
     assert result == ("KEY", "value")
 
 
-def test_parse_env_var_more_equals():
+def test_parse_env_var_more_equals() -> None:
     """parse_env_var handles multiple equals signs"""
     result = scuba.utils.parse_env_var("KEY=anotherkey=value")
     assert result == ("KEY", "anotherkey=value")
 
 
-def test_parse_env_var_no_equals(monkeypatch):
+def test_parse_env_var_no_equals(monkeypatch: pytest.MonkeyPatch) -> None:
     """parse_env_var handles no equals and gets value from environment"""
     monkeypatch.setenv("KEY", "mockedvalue")
     result = scuba.utils.parse_env_var("KEY")
     assert result == ("KEY", "mockedvalue")
 
 
-def test_parse_env_var_not_set(monkeypatch):
+def test_parse_env_var_not_set(monkeypatch: pytest.MonkeyPatch) -> None:
     """parse_env_var returns an empty string if not set"""
     monkeypatch.delenv("NOTSET", raising=False)
     result = scuba.utils.parse_env_var("NOTSET")
     assert result == ("NOTSET", "")
 
 
-def test_flatten_list__not_list():
+def test_flatten_list__not_list() -> None:
     with pytest.raises(ValueError):
-        scuba.utils.flatten_list("abc")
+        scuba.utils.flatten_list("abc")  # type: ignore[arg-type]
 
 
-def test_flatten_list__not_nested():
+def test_flatten_list__not_nested() -> None:
     sample = [1, 2, 3, 4]
     result = scuba.utils.flatten_list(sample)
     assert result == sample
 
 
-def test_flatten_list__nested_1():
+def test_flatten_list__nested_1() -> None:
     sample = [
         1,
         [2, 3],
@@ -113,7 +113,7 @@ def test_flatten_list__nested_1():
     assert_seq_equal(result, exp)
 
 
-def test_flatten_list__nested_many():
+def test_flatten_list__nested_many() -> None:
     sample = [
         1,
         [2, 3],
@@ -127,7 +127,7 @@ def test_flatten_list__nested_many():
     assert_seq_equal(result, exp)
 
 
-def test_get_umask():
+def test_get_umask() -> None:
     testval = 0o123  # unlikely default
     orig = os.umask(testval)
     try:
@@ -143,14 +143,14 @@ def test_get_umask():
         os.umask(orig)
 
 
-def test_writeln():
+def test_writeln() -> None:
     with io.StringIO() as s:
         scuba.utils.writeln(s, "hello")
         scuba.utils.writeln(s, "goodbye")
         assert s.getvalue() == "hello\ngoodbye\n"
 
 
-def test_expand_env_vars(monkeypatch):
+def test_expand_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MY_VAR", "my favorite variable")
     assert (
         scuba.utils.expand_env_vars("This is $MY_VAR") == "This is my favorite variable"
@@ -161,7 +161,7 @@ def test_expand_env_vars(monkeypatch):
     )
 
 
-def test_expand_missing_env_vars(monkeypatch):
+def test_expand_missing_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("MY_VAR", raising=False)
     # Verify that a KeyError is raised for unset env variables
     with pytest.raises(KeyError) as kerr:
@@ -169,7 +169,7 @@ def test_expand_missing_env_vars(monkeypatch):
     assert kerr.value.args[0] == "MY_VAR"
 
 
-def test_expand_env_vars_dollars():
+def test_expand_env_vars_dollars() -> None:
     # Verify that a ValueError is raised for bare, unescaped '$' characters
     with pytest.raises(ValueError):
         scuba.utils.expand_env_vars("Just a lonely $")

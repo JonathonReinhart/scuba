@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 import sys
 from os.path import normpath
@@ -6,12 +7,14 @@ import shutil
 import unittest
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Sequence, Union
+from typing import Any, Callable, Dict, List, Sequence, TypeVar, Optional, Union
 from unittest import mock
 
 from scuba.config import ScubaVolume
 
 PathStr = Union[Path, str]
+
+_FT = TypeVar("_FT", bound=Callable[..., Any])
 
 
 def assert_seq_equal(a: Sequence, b: Sequence) -> None:
@@ -39,8 +42,8 @@ def assert_str_equalish(exp: Any, act: Any) -> None:
 
 def assert_vol(
     vols: Dict[Path, ScubaVolume],
-    cpath_str: str,
-    hpath_str: str,
+    cpath_str: PathStr,
+    hpath_str: PathStr,
     options: List[str] = [],
 ) -> None:
     cpath = Path(cpath_str)
@@ -62,33 +65,39 @@ def make_executable(path: PathStr) -> None:
 
 # http://stackoverflow.com/a/8389373/119527
 class PseudoTTY:
-    def __init__(self, underlying):
+    def __init__(self, underlying: object):
         self.__underlying = underlying
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         return getattr(self.__underlying, name)
 
-    def isatty(self):
+    def isatty(self) -> bool:
         return True
 
 
-def skipUnlessTty():
+def skipUnlessTty() -> Callable[[_FT], _FT]:
     return unittest.skipUnless(
         sys.stdin.isatty(), "Can't test docker tty if not connected to a terminal"
     )
 
 
 class InTempDir:
-    def __init__(self, suffix="", prefix="tmp", dir=None, delete=True):
+    def __init__(
+        self,
+        suffix: str = "",
+        prefix: str = "tmp",
+        dir: Optional[PathStr] = None,
+        delete: bool = True,
+    ):
         self.delete = delete
         self.temp_path = tempfile.mkdtemp(suffix=suffix, prefix=prefix, dir=dir)
 
-    def __enter__(self):
+    def __enter__(self) -> InTempDir:
         self.orig_path = os.getcwd()
         os.chdir(self.temp_path)
         return self
 
-    def __exit__(self, *exc_info):
+    def __exit__(self, *exc_info: Any) -> None:
         # Restore the working dir and cleanup the temp one
         os.chdir(self.orig_path)
         if self.delete:
