@@ -10,6 +10,7 @@ import subprocess
 import sys
 from tempfile import TemporaryFile, NamedTemporaryFile
 from textwrap import dedent
+from typing import cast, IO, List, Optional, Sequence, TextIO, Tuple
 from unittest import mock
 import warnings
 
@@ -26,6 +27,8 @@ from .utils import (
     PseudoTTY,
 )
 
+ScubaResult = Tuple[str, str]
+
 
 SCUBA_YML = Path(".scuba.yml")
 SCUBAINIT_EXIT_FAIL = 99
@@ -36,7 +39,13 @@ def write_script(path: Path, text: str) -> None:
     make_executable(path)
 
 
-def run_scuba(args, *, expect_return=0, mock_isatty=False, stdin=None):
+def run_scuba(
+    args: List[str],
+    *,
+    expect_return: int = 0,
+    mock_isatty: bool = False,
+    stdin: Optional[IO[str]] = None,
+) -> ScubaResult:
     """Run scuba, checking its return value
 
     Returns scuba/docker stdout data.
@@ -47,8 +56,8 @@ def run_scuba(args, *, expect_return=0, mock_isatty=False, stdin=None):
     with TemporaryFile(prefix="scubatest-stdout", mode="w+t") as stdout:
         with TemporaryFile(prefix="scubatest-stderr", mode="w+t") as stderr:
             if mock_isatty:
-                stdout = PseudoTTY(stdout)
-                stderr = PseudoTTY(stderr)
+                stdout = PseudoTTY(stdout)  # type: ignore[assignment]
+                stderr = PseudoTTY(stderr)  # type: ignore[assignment]
 
             old_stdin = sys.stdin
             old_stdout = sys.stdout
@@ -57,9 +66,9 @@ def run_scuba(args, *, expect_return=0, mock_isatty=False, stdin=None):
             if stdin is None:
                 sys.stdin = open(os.devnull, "w")
             else:
-                sys.stdin = stdin
-            sys.stdout = stdout
-            sys.stderr = stderr
+                sys.stdin = cast(TextIO, stdin)
+            sys.stdout = cast(TextIO, stdout)
+            sys.stderr = cast(TextIO, stderr)
 
             try:
                 """
@@ -127,7 +136,7 @@ class TestMainBasic(MainTest):
         """Verify scuba handles a get_image_command error"""
         SCUBA_YML.write_text("image: {DOCKER_IMAGE}")
 
-        def mocked_gic(*args, **kw):
+        def mocked_gic(image: str) -> Optional[Sequence[str]]:
             raise scuba.dockerutil.DockerError("mock error")
 
         # http://alexmarandon.com/articles/python_mock_gotchas/#patching-in-the-wrong-place
@@ -169,7 +178,7 @@ class TestMainBasic(MainTest):
         assert name == "scuba"
         assert ver == scuba.__version__
 
-    def test_no_docker(self, monkeypatch) -> None:
+    def test_no_docker(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Verify scuba gracefully handles docker not being installed"""
         SCUBA_YML.write_text(f"image: {DOCKER_IMAGE}")
 
@@ -179,12 +188,12 @@ class TestMainBasic(MainTest):
         _, err = run_scuba(args, expect_return=2)
 
     @mock.patch("subprocess.call")
-    def test_dry_run(self, subproc_call_mock):
+    def test_dry_run(self, subproc_call_mock: mock.Mock) -> None:
+        print(f"subproc_call_mock is a {type(subproc_call_mock)}")
         """Verify scuba handles --dry-run and --verbose"""
         SCUBA_YML.write_text(f"image: {DOCKER_IMAGE}")
 
         args = ["--dry-run", "--verbose", "/bin/false"]
-
         _, err = run_scuba(args)
 
         assert not subproc_call_mock.called
@@ -272,12 +281,12 @@ class TestMainStdinStdout(MainTest):
 class TestMainUser(MainTest):
     def _test_user(
         self,
-        expected_uid,
-        expected_username,
-        expected_gid,
-        expected_groupname,
-        scuba_args=[],
-    ):
+        expected_uid: int,
+        expected_username: str,
+        expected_gid: int,
+        expected_groupname: str,
+        scuba_args: List[str] = [],
+    ) -> None:
         SCUBA_YML.write_text(f"image: {DOCKER_IMAGE}")
 
         args = scuba_args + [
@@ -287,14 +296,23 @@ class TestMainUser(MainTest):
         ]
         out, _ = run_scuba(args)
 
-        uid, username, gid, groupname = out.split()
-        uid = int(uid)
-        gid = int(gid)
+        uid_str, username, gid_str, groupname = out.split()
+        uid = int(uid_str)
+        gid = int(gid_str)
 
         assert uid == expected_uid
         assert username == expected_username
         assert gid == expected_gid
         assert groupname == expected_groupname
+
+    def _test_user_expect_root(self, scuba_args: List[str] = []) -> None:
+        return self._test_user(
+            expected_uid=0,
+            expected_username="root",
+            expected_gid=0,
+            expected_groupname="root",
+            scuba_args=scuba_args,
+        )
 
     def test_user_scubauser(self) -> None:
         """Verify scuba runs container as the current (host) uid/gid"""
@@ -305,19 +323,9 @@ class TestMainUser(MainTest):
             expected_groupname=getgrgid(os.getgid()).gr_name,
         )
 
-    EXPECT_ROOT = dict(
-        expected_uid=0,
-        expected_username="root",
-        expected_gid=0,
-        expected_groupname="root",
-    )
-
     def test_user_root(self) -> None:
         """Verify scuba -r runs container as root"""
-        self._test_user(
-            **self.EXPECT_ROOT,
-            scuba_args=["-r"],
-        )
+        self._test_user_expect_root(scuba_args=["-r"])
 
     def test_user_run_as_root(self) -> None:
         '''Verify running scuba as root is identical to "scuba -r"'''
@@ -325,7 +333,7 @@ class TestMainUser(MainTest):
         with mock.patch("os.getuid", return_value=0) as getuid_mock, mock.patch(
             "os.getgid", return_value=0
         ) as getgid_mock:
-            self._test_user(**self.EXPECT_ROOT)
+            self._test_user_expect_root()
             assert getuid_mock.called
             assert getgid_mock.called
 
@@ -373,7 +381,7 @@ class TestMainUser(MainTest):
 
 
 class TestMainHomedir(MainTest):
-    def _test_home_writable(self, scuba_args=[]):
+    def _test_home_writable(self, scuba_args: List[str] = []) -> None:
         SCUBA_YML.write_text(f"image: {DOCKER_IMAGE}")
 
         args = scuba_args + [
@@ -435,7 +443,7 @@ class TestMainDockerArgs(MainTest):
         expfiles = set()
         tgtdir = "/tgtdir"
 
-        def mount_dummy(name):
+        def mount_dummy(name: str) -> str:
             assert name not in expfiles
             expfiles.add(name)
             return f'-v "{dummy.absolute()}:{tgtdir}/{name}"\n'
@@ -686,7 +694,13 @@ class TestMainImageOverride(MainTest):
 
 
 class TestMainHooks(MainTest):
-    def _test_one_hook(self, hookname, hookcmd, cmd, expect_return=0):
+    def _test_one_hook(
+        self,
+        hookname: str,
+        hookcmd: str,
+        cmd: str,
+        expect_return: int = 0,
+    ) -> ScubaResult:
         SCUBA_YML.write_text(
             f"""
             image: {DOCKER_IMAGE}
@@ -698,19 +712,19 @@ class TestMainHooks(MainTest):
         args = ["/bin/sh", "-c", cmd]
         return run_scuba(args, expect_return=expect_return)
 
-    def _test_hook_runs_as(self, hookname, exp_uid, exp_gid) -> None:
+    def _test_hook_runs_as(self, hookname: str, exp_uid: int, exp_gid: int) -> None:
         out, _ = self._test_one_hook(
-            hookname,
-            "echo $(id -u) $(id -g)",
-            "echo success",
+            hookname=hookname,
+            hookcmd="echo $(id -u) $(id -g)",
+            cmd="echo success",
         )
-        out = out.splitlines()
+        out_lines = out.splitlines()
 
-        uid, gid = map(int, out[0].split())
+        uid, gid = map(int, out_lines[0].split())
         assert exp_uid == uid
         assert exp_gid == gid
 
-        assert_str_equalish(out[1], "success")
+        assert_str_equalish(out_lines[1], "success")
 
     def test_user_hook_runs_as_user(self) -> None:
         """Verify user hook executes as user"""
@@ -745,7 +759,7 @@ class TestMainEnvironment(MainTest):
         out, _ = run_scuba(args)
         assert_str_equalish(out, "VAL")
 
-    def test_env_var_key_only(self, monkeypatch):
+    def test_env_var_key_only(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Verify -e KEY works"""
         SCUBA_YML.write_text(f"image: {DOCKER_IMAGE}")
         args = [
@@ -759,7 +773,7 @@ class TestMainEnvironment(MainTest):
         out, _ = run_scuba(args)
         assert_str_equalish(out, "mockedvalue")
 
-    def test_env_var_sources(self, monkeypatch):
+    def test_env_var_sources(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Verify scuba handles all possible environment variable sources"""
         SCUBA_YML.write_text(
             rf"""
@@ -812,7 +826,7 @@ class TestMainEnvironment(MainTest):
             BAZ="From the command line",
         )
 
-    def test_builtin_env__SCUBA_ROOT(self, in_tmp_path):
+    def test_builtin_env__SCUBA_ROOT(self, in_tmp_path: Path) -> None:
         """Verify SCUBA_ROOT is set in container"""
         SCUBA_YML.write_text(f"image: {DOCKER_IMAGE}")
 
@@ -945,8 +959,7 @@ class TestMainVolumes(MainTest):
         )
 
         out, _ = run_scuba(["doit"])
-        out = out.splitlines()
-        assert out == ["from the top", "from the alias"]
+        assert out.splitlines() == ["from the top", "from the alias"]
 
     def test_volumes_alias_override(self) -> None:
         """Verify volumes can be overridden by an alias"""
@@ -975,13 +988,11 @@ class TestMainVolumes(MainTest):
 
         # Run a non-alias command
         out, _ = run_scuba(["cat", "/data/thing"])
-        out = out.splitlines()
-        assert out == ["from the top"]
+        assert out.splitlines() == ["from the top"]
 
         # Run the alias
         out, _ = run_scuba(["doit"])
-        out = out.splitlines()
-        assert out == ["from the alias"]
+        assert out.splitlines() == ["from the alias"]
 
     def test_volumes_host_path_create(self) -> None:
         """Missing host paths should be created before starting Docker"""
@@ -1136,10 +1147,10 @@ class TestMainNamedVolumes(MainTest):
             return
         result.check_returncode()
 
-    def setup_method(self, method) -> None:
+    def setup_method(self) -> None:
         self._rm_volume()
 
-    def teardown_method(self, method) -> None:
+    def teardown_method(self) -> None:
         self._rm_volume()
 
     def test_volumes_named(self) -> None:
