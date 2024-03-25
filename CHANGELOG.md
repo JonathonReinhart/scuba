@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [2.13.0] - 2024-03-25
 ### Added
 - Added support for Python 3.12 (#244)
 - Add explicit support for mounting named volumes (#250)
@@ -274,7 +274,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 First versioned release
 
 
-[Unreleased]: https://github.com/JonathonReinhart/scuba/compare/v2.12.0...HEAD
+[Unreleased]: https://github.com/JonathonReinhart/scuba/compare/v2.13.0...HEAD
+[2.13.0]: https://github.com/JonathonReinhart/scuba/compare/v2.12.0...v2.13.0
 [2.12.0]: https://github.com/JonathonReinhart/scuba/compare/v2.11.0...v2.12.0
 [2.11.0]: https://github.com/JonathonReinhart/scuba/compare/v2.10.1...v2.11.0
 [2.10.1]: https://github.com/JonathonReinhart/scuba/compare/v2.10.0...v2.10.1
