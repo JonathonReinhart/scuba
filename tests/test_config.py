@@ -1,9 +1,7 @@
 import logging
 import os
-from os.path import join
 from pathlib import Path
 import pytest
-from shutil import rmtree
 from typing import Optional
 from unittest import mock
 
@@ -89,32 +87,31 @@ class TestFindConfig(ConfigTest):
         """find_config cuba can find the config in the parent directory"""
         SCUBA_YML.write_text("image: bosybux")
 
-        os.mkdir("subdir")
-        os.chdir("subdir")
+        subdir = Path("subdir")
+        subdir.mkdir()
+        os.chdir(subdir)
 
         # Verify our current working dir
-        assert_paths_equal(os.getcwd(), in_tmp_path.joinpath("subdir"))
+        assert_paths_equal(Path.cwd(), in_tmp_path / subdir)
 
         path, rel, _ = scuba.config.find_config()
         assert_paths_equal(path, in_tmp_path)
-        assert_paths_equal(rel, "subdir")
+        assert_paths_equal(rel, subdir)
 
     def test_find_config_way_up(self, in_tmp_path: Path) -> None:
         """find_config can find the config way up the directory hierarchy"""
         SCUBA_YML.write_text("image: bosybux")
 
-        subdirs = ["foo", "bar", "snap", "crackle", "pop"]
-
-        for sd in subdirs:  # TODO
-            os.mkdir(sd)
-            os.chdir(sd)
+        subdir = Path("foo/bar/snap/crackle/pop")
+        subdir.mkdir(parents=True)
+        os.chdir(subdir)
 
         # Verify our current working dir
-        assert_paths_equal(os.getcwd(), in_tmp_path.joinpath(*subdirs))
+        assert_paths_equal(Path.cwd(), in_tmp_path / subdir)
 
         path, rel, _ = scuba.config.find_config()
         assert_paths_equal(path, in_tmp_path)
-        assert_paths_equal(rel, join(*subdirs))
+        assert_paths_equal(rel, subdir)
 
     def test_find_config_nonexist(self) -> None:
         """find_config raises ConfigError if the config cannot be found"""
