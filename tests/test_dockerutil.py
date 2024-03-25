@@ -33,7 +33,7 @@ def test_get_image_no_docker() -> None:
             uut.get_image_command("n/a")
 
 
-def _test_get_images(stdout, returncode=0) -> Sequence[str]:
+def _test_get_images(stdout: str, returncode: int = 0) -> Sequence[str]:
     def mocked_run(*args, **kwargs):
         mock_obj = mock.MagicMock()
         mock_obj.returncode = returncode
