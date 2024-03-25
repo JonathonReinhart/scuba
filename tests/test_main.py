@@ -541,16 +541,20 @@ class TestMainEntrypoint(MainTest):
             """
         )
 
+        test_script = Path("new.sh")
         test_str = "This is output from the overridden entrypoint"
 
-        with open("new.sh", "w") as f:
-            f.write("#!/bin/sh\n")
-            f.write(f'echo "{test_str}"\n')
-        make_executable("new.sh")
+        write_script(
+            test_script,
+            f"""\
+            #!/bin/sh
+            echo "{test_str}"
+            """,
+        )
 
         args = [
             "--entrypoint",
-            os.path.abspath("new.sh"),
+            str(test_script.absolute()),
             "true",
         ]
         out, _ = run_scuba(args)
@@ -581,24 +585,25 @@ class TestMainEntrypoint(MainTest):
 
     def test_yaml_entrypoint_override(self) -> None:
         """Verify entrypoint in .scuba.yml works"""
+        test_script = Path("new.sh")
+        test_str = "This is output from the overridden entrypoint"
+
+        write_script(
+            test_script,
+            f"""\
+            #!/bin/sh
+            echo "{test_str}"
+            """,
+        )
+
         SCUBA_YML.write_text(
-            """
+            f"""
             image: scuba/entrypoint-test
-            entrypoint: "./new.sh"
+            entrypoint: "./{test_script}"
             """
         )
 
-        test_str = "This is output from the overridden entrypoint"
-
-        with open("new.sh", "w") as f:
-            f.write("#!/bin/sh\n")
-            f.write(f'echo "{test_str}"\n')
-        make_executable("new.sh")
-
-        args = [
-            "true",
-        ]
-        out, _ = run_scuba(args)
+        out, _ = run_scuba(["true"])
         assert_str_equalish(test_str, out)
 
     def test_yaml_entrypoint_override_none(self) -> None:
