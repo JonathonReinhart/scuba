@@ -22,6 +22,7 @@ from .utils import (
     InTempDir,
     make_executable,
     skipUnlessTty,
+    PseudoTTY,
 )
 
 
