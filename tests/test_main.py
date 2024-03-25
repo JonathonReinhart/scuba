@@ -223,19 +223,27 @@ class TestMainBasic(MainTest):
 
 
 class TestMainStdinStdout(MainTest):
+    CHECK_TTY_SCRIPT = Path("check_tty.sh")
+
     def _setup_test_tty(self) -> None:
+        assert sys.stdin.isatty()
+
         SCUBA_YML.write_text(f"image: {DOCKER_IMAGE}")
-        with open("check_tty.sh", "w") as f:
-            f.write("#!/bin/sh\n")
-            f.write('if [ -t 1 ]; then echo "isatty"; else echo "notatty"; fi\n')
-        make_executable("check_tty.sh")
+
+        write_script(
+            self.CHECK_TTY_SCRIPT,
+            """\
+            #!/bin/sh
+            if [ -t 1 ]; then echo "isatty"; else echo "notatty"; fi
+            """,
+        )
 
     @skipUnlessTty()
     def test_with_tty(self) -> None:
         """Verify docker allocates tty if stdout is a tty."""
         self._setup_test_tty()
 
-        out, _ = run_scuba(["./check_tty.sh"], mock_isatty=True)
+        out, _ = run_scuba([f"./{self.CHECK_TTY_SCRIPT}"], mock_isatty=True)
 
         assert_str_equalish(out, "isatty")
 
@@ -244,7 +252,7 @@ class TestMainStdinStdout(MainTest):
         """Verify docker doesn't allocate tty if stdout is not a tty."""
         self._setup_test_tty()
 
-        out, _ = run_scuba(["./check_tty.sh"])
+        out, _ = run_scuba([f"./{self.CHECK_TTY_SCRIPT}"])
 
         assert_str_equalish(out, "notatty")
 
