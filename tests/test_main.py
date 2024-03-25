@@ -461,10 +461,12 @@ class TestMainDockerArgs(MainTest):
 class TestMainAliasScripts(MainTest):
     def test_complex_commands_in_alias(self) -> None:
         """Verify complex commands can be used in alias scripts"""
+        test_dir = Path("foo")
+        test_file = test_dir / "bar.txt"
         test_string = "Hello world"
-        os.mkdir("foo")
-        with open("foo/bar.txt", "w") as f:
-            f.write(test_string)
+
+        test_dir.mkdir()
+        test_file.write_text(test_string)
 
         SCUBA_YML.write_text(
             f"""
@@ -472,7 +474,7 @@ class TestMainAliasScripts(MainTest):
             aliases:
               alias1:
                 script:
-                  - cd foo && cat bar.txt
+                  - cd {test_dir} && cat {test_file.name}
             """
         )
 
