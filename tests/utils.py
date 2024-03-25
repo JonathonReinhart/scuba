@@ -39,8 +39,8 @@ def assert_str_equalish(exp: Any, act: Any) -> None:
 
 def assert_vol(
     vols: Dict[Path, ScubaVolume],
-    cpath_str: str,
-    hpath_str: str,
+    cpath_str: PathStr,
+    hpath_str: PathStr,
     options: List[str] = [],
 ) -> None:
     cpath = Path(cpath_str)

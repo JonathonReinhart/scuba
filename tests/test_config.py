@@ -77,7 +77,7 @@ class ConfigTest:
 
 
 class TestFindConfig(ConfigTest):
-    def test_find_config_cur_dir(self, in_tmp_path) -> None:
+    def test_find_config_cur_dir(self, in_tmp_path: Path) -> None:
         """find_config can find the config in the current directory"""
         SCUBA_YML.write_text("image: bosybux")
 
@@ -85,7 +85,7 @@ class TestFindConfig(ConfigTest):
         assert_paths_equal(path, in_tmp_path)
         assert_paths_equal(rel, "")
 
-    def test_find_config_parent_dir(self, in_tmp_path) -> None:
+    def test_find_config_parent_dir(self, in_tmp_path: Path) -> None:
         """find_config cuba can find the config in the parent directory"""
         SCUBA_YML.write_text("image: bosybux")
 
@@ -99,13 +99,13 @@ class TestFindConfig(ConfigTest):
         assert_paths_equal(path, in_tmp_path)
         assert_paths_equal(rel, "subdir")
 
-    def test_find_config_way_up(self, in_tmp_path) -> None:
+    def test_find_config_way_up(self, in_tmp_path: Path) -> None:
         """find_config can find the config way up the directory hierarchy"""
         SCUBA_YML.write_text("image: bosybux")
 
         subdirs = ["foo", "bar", "snap", "crackle", "pop"]
 
-        for sd in subdirs:
+        for sd in subdirs:  # TODO
             os.mkdir(sd)
             os.chdir(sd)
 
@@ -341,7 +341,7 @@ class TestConfigEnv(ConfigTest):
             error_match="must be list or mapping",
         )
 
-    def test_env_top_dict(self, monkeypatch) -> None:
+    def test_env_top_dict(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Top-level environment can be loaded (dict)"""
         monkeypatch.setenv("EXTERNAL", "Outside world")
         monkeypatch.delenv("EXTERNAL_NOTSET", raising=False)
@@ -373,7 +373,7 @@ class TestConfigEnv(ConfigTest):
         )
         assert expect == config.environment
 
-    def test_env_top_list(self, monkeypatch) -> None:
+    def test_env_top_list(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Top-level environment can be loaded (list)"""
         monkeypatch.setenv("EXTERNAL", "Outside world")
         monkeypatch.delenv("EXTERNAL_NOTSET", raising=False)
@@ -836,7 +836,7 @@ class TestConfigVolumes(ConfigTest):
         assert_vol(vols, "/foo", "/host/foo")
         assert_vol(vols, "/bar", "/host/bar", ["z", "ro"])
 
-    def test_with_env_vars_simple(self, monkeypatch) -> None:
+    def test_with_env_vars_simple(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """volume definitions can contain environment variables"""
         monkeypatch.setenv("TEST_VOL_PATH", "/bar/baz")
         monkeypatch.setenv("TEST_VOL_PATH2", "/moo/doo")
@@ -853,7 +853,7 @@ class TestConfigVolumes(ConfigTest):
 
         assert_vol(vols, "/bar/baz/foo", "/moo/doo/foo")
 
-    def test_with_env_vars_complex(self, monkeypatch) -> None:
+    def test_with_env_vars_complex(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """complex volume definitions can contain environment variables"""
         monkeypatch.setenv("TEST_HOME", "/home/testuser")
         monkeypatch.setenv("TEST_TMP", "/tmp")
@@ -881,7 +881,7 @@ class TestConfigVolumes(ConfigTest):
             vols, "/var/spool/mail/container", "/var/spool/mail/testuser", ["z", "ro"]
         )
 
-    def test_with_invalid_env_vars(self, monkeypatch) -> None:
+    def test_with_invalid_env_vars(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Volume definitions cannot include unset env vars"""
         # Ensure that the entry does not exist in the environment
         monkeypatch.delenv("TEST_VAR1", raising=False)
@@ -894,7 +894,9 @@ class TestConfigVolumes(ConfigTest):
             error_match="TEST_VAR1",
         )
 
-    def test_hostpath_rel(self, monkeypatch, in_tmp_path) -> None:
+    def test_hostpath_rel(
+        self, monkeypatch: pytest.MonkeyPatch, in_tmp_path: Path
+    ) -> None:
         """volume hostpath can be relative to scuba_root (top dir)"""
         monkeypatch.setenv("RELVAR", "./spam/eggs")
 
@@ -924,7 +926,9 @@ class TestConfigVolumes(ConfigTest):
         assert_vol(config.volumes, "/scp", in_tmp_path / "snap" / "crackle" / "pop")
         assert_vol(config.volumes, "/relvar", in_tmp_path / "spam" / "eggs")
 
-    def test_hostpath_rel_above(self, monkeypatch, in_tmp_path) -> None:
+    def test_hostpath_rel_above(
+        self, monkeypatch: pytest.MonkeyPatch, in_tmp_path: Path
+    ) -> None:
         """volume hostpath can be relative, above scuba_root (top dir)"""
         # Directory structure:
         #
@@ -957,7 +961,7 @@ class TestConfigVolumes(ConfigTest):
         assert config.volumes is not None
         assert_vol(config.volumes, "/foo", in_tmp_path / "foo_up_here")
 
-    def test_hostpath_rel_requires_dot_complex(self, monkeypatch, in_tmp_path) -> None:
+    def test_hostpath_rel_requires_dot_complex(self) -> None:
         """relaitve volume hostpath (complex form) must start with ./ or ../"""
         invalid_config(
             config_text=r"""
@@ -969,7 +973,9 @@ class TestConfigVolumes(ConfigTest):
             error_match="Relative path must start with ./ or ../",
         )
 
-    def test_hostpath_rel_in_env(self, monkeypatch, in_tmp_path) -> None:
+    def test_hostpath_rel_in_env(
+        self, monkeypatch: pytest.MonkeyPatch, in_tmp_path: Path
+    ) -> None:
         """volume definitions can contain environment variables, including relative path portions"""
         monkeypatch.setenv("PREFIX", "./")
         config = load_config(
@@ -985,7 +991,7 @@ class TestConfigVolumes(ConfigTest):
 
         assert_vol(vols, "/foo", in_tmp_path / "foo")
 
-    def test_contpath_rel(self, monkeypatch, in_tmp_path) -> None:
+    def test_contpath_rel(self) -> None:
         invalid_config(
             config_text=r"""
             image: na
@@ -1012,7 +1018,7 @@ class TestConfigVolumes(ConfigTest):
         assert_paths_equal(vol.container_path, "/foo")
         assert vol.volume_name == "foo-volume"
 
-    def test_simple_named_volume_env(self, monkeypatch) -> None:
+    def test_simple_named_volume_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """volumes simple form can specify a named volume via env var"""
         monkeypatch.setenv("FOO_VOLUME", "foo-volume")
         config = load_config(
@@ -1030,7 +1036,7 @@ class TestConfigVolumes(ConfigTest):
         assert_paths_equal(vol.container_path, "/foo")
         assert vol.volume_name == "foo-volume"
 
-    def test_complex_named_volume_env(self, monkeypatch) -> None:
+    def test_complex_named_volume_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """volumes complex form can specify a named volume via env var"""
         monkeypatch.setenv("FOO_VOLUME", "foo-volume")
         config = load_config(
