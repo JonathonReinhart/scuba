@@ -23,7 +23,7 @@ def test_get_image_command_bad_image() -> None:
 def test_get_image_no_docker() -> None:
     """get_image_command raises an exception if docker is not installed"""
 
-    def mocked_run(args, real_run=subprocess.run, **kw):
+    def mocked_run(args, real_run=subprocess.run, **kw):  # type: ignore[no-untyped-def]
         assert args[0] == "docker"
         args[0] = "dockerZZZZ"
         return real_run(args, **kw)
@@ -34,7 +34,7 @@ def test_get_image_no_docker() -> None:
 
 
 def _test_get_images(stdout: str, returncode: int = 0) -> Sequence[str]:
-    def mocked_run(*args, **kwargs):
+    def mocked_run(*args, **kwargs):  # type: ignore[no-untyped-def]
         mock_obj = mock.MagicMock()
         mock_obj.returncode = returncode
         mock_obj.stdout = stdout
