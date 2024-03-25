@@ -1155,23 +1155,23 @@ class TestMainNamedVolumes(MainTest):
 
     def test_volumes_named(self) -> None:
         """Verify named volumes can be used"""
-        VOL_PATH = Path("/foo")
-        TEST_PATH = VOL_PATH / "test.txt"
-        TEST_STR = "it works!"
+        vol_path = Path("/foo")
+        test_path = vol_path / "test.txt"
+        test_str = "it works!"
 
         SCUBA_YML.write_text(
             f"""
             image: {DOCKER_IMAGE}
             hooks:
-              root: chmod 777 {VOL_PATH}
+              root: chmod 777 {vol_path}
             volumes:
-              {VOL_PATH}: {self.VOLUME_NAME}
+              {vol_path}: {self.VOLUME_NAME}
             """
         )
 
         # Inoke scuba once: Write a file to the named volume
-        run_scuba(["/bin/sh", "-c", f"echo {TEST_STR} > {TEST_PATH}"])
+        run_scuba(["/bin/sh", "-c", f"echo {test_str} > {test_path}"])
 
         # Invoke scuba again: Verify the file is still there
-        out, _ = run_scuba(["/bin/sh", "-c", f"cat {TEST_PATH}"])
-        assert_str_equalish(out, TEST_STR)
+        out, _ = run_scuba(["/bin/sh", "-c", f"cat {test_path}"])
+        assert_str_equalish(out, test_str)
