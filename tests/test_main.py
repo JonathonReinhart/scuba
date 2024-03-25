@@ -194,15 +194,19 @@ class TestMainBasic(MainTest):
     def test_args(self) -> None:
         """Verify scuba handles cmdline args"""
         SCUBA_YML.write_text(f"image: {DOCKER_IMAGE}")
+        test_script = Path("test.sh")
 
-        with open("test.sh", "w") as f:  # TODO Path.write_text()
-            f.write("#!/bin/sh\n")
-            f.write('for a in "$@"; do echo $a; done\n')
-        make_executable("test.sh")
+        write_script(
+            test_script,
+            """\
+            #!/bin/sh
+            for a in "$@"; do echo $a; done
+            """,
+        )
 
         lines = ["here", "are", "some args"]
 
-        out, _ = run_scuba(["./test.sh"] + lines)
+        out, _ = run_scuba([f"./{test_script}"] + lines)
 
         assert_seq_equal(out.splitlines(), lines)
 
