@@ -9,6 +9,7 @@ import shlex
 import subprocess
 import sys
 from tempfile import TemporaryFile, NamedTemporaryFile
+from textwrap import dedent
 from unittest import mock
 import warnings
 
@@ -28,6 +29,11 @@ from .utils import (
 
 SCUBA_YML = Path(".scuba.yml")
 SCUBAINIT_EXIT_FAIL = 99
+
+
+def write_script(path: Path, text: str) -> None:
+    path.write_text(dedent(text) + "\n")
+    make_executable(path)
 
 
 def run_scuba(args, *, expect_return=0, mock_isatty=False, stdin=None):
