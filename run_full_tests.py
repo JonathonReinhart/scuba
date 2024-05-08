@@ -36,6 +36,7 @@ def test1():
             f.write(in_data)
 
         subprocess.check_call(["scuba", "/bin/sh", "-c", "cat file.in >> file.out"])
+        subprocess.check_call(["scuba", "/bin/sh", "-c", "yes '' | echo 'test'"])
 
         with open("file.out", "rt") as f:
             out_data = f.read()

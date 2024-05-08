@@ -23,6 +23,7 @@ TARGET=x86_64-unknown-linux-musl
 
 # Enable static linking
 STATIC_RUSTFLAGS=-C relocation-model=static
+NIGHTLY_RUSTFLAGS=-Zon-broken-pipe=inherit
 
 export RUSTFLAGS
 
@@ -43,7 +44,7 @@ fmt:
 
 .PHONY: scubainit-debug  # always build
 scubainit-debug: PROFILE=debug
-scubainit-debug: RUSTFLAGS=$(STATIC_RUSTFLAGS)
+scubainit-debug: RUSTFLAGS=$(STATIC_RUSTFLAGS) $(NIGHTLY_RUSTFLAGS)
 scubainit-debug: setup
 	@/bin/echo -e "\nBuilding scubainit ($(PROFILE)) with RUSTFLAGS=\"$$RUSTFLAGS\""
 	cargo build --target $(TARGET)
@@ -51,7 +52,7 @@ scubainit-debug: setup
 
 .PHONY: scubainit  # always build
 scubainit: PROFILE=release
-scubainit: RUSTFLAGS=$(STATIC_RUSTFLAGS)
+scubainit: RUSTFLAGS=$(STATIC_RUSTFLAGS) $(NIGHTLY_RUSTFLAGS)
 scubainit: setup
 	@/bin/echo -e "\nBuilding scubainit ($(PROFILE)) with RUSTFLAGS=\"$$RUSTFLAGS\""
 	cargo build --target $(TARGET) --release
