@@ -45,6 +45,8 @@ fn run_scubainit() -> Result<()> {
     setup_logging()?;
     info!("Looking Rusty!");
 
+    restore_sigpipe_default()?;
+
     let ctx = process_envvars()?;
 
     if let Some(ref user_info) = ctx.user_info {
@@ -367,4 +369,35 @@ fn setup_logging() -> Result<()> {
         .show_module_names(true)
         .verbosity(verbosity)
         .init()?)
+}
+
+// Restore the default SIGPIPE action.
+//
+// Rust pre-main code may change the SIGPIPE disposition to ignore:
+// * https://github.com/rust-lang/rust/issues/62569
+// * https://github.com/rust-lang/rust/issues/97889
+//
+// While scubainit doesn't rely on any specific SIGPIPE behavior, the dispositions of ignored
+// signals are inherited through execve and Rust's pre-main code shouldn't influence the process
+// executed by scuba.
+//
+// From man signal(7):
+//
+//   Signal dispositions ...  A child created via fork(2) inherits a copy of its parent's signal
+//   dispositions. During an execve(2), the dispositions of handled signals are reset to the
+//   default; the dispositions of ignored signals are left unchanged.
+//
+// This code may be unnecessary in the future if Rust's execve library function is changed to
+// restore SIGPIPE.
+fn restore_sigpipe_default() -> Result<()> {
+    // Set the SIGPIPE disposition to default (terminate).
+    // SAFETY: No signal handler is provided, only the default action,
+    //         so no additional consideration is needed.
+    unsafe {
+        let result = libc::signal(libc::SIGPIPE, libc::SIG_DFL);
+        if result == libc::SIG_ERR {
+            return Err(std::io::Error::last_os_error().into());
+        }
+    }
+    Ok(())
 }

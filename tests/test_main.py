@@ -278,6 +278,17 @@ class TestMainStdinStdout(MainTest):
         assert_str_equalish(out, test_str)
 
 
+class TestMainSignals(MainTest):
+    def test_sigpipe(self) -> None:
+        """Verify SIGPIPE is handled correctly"""
+        # See https://github.com/JonathonReinhart/scuba/issues/254
+        SCUBA_YML.write_text(f"image: {DOCKER_IMAGE}")
+
+        out, err = run_scuba(["sh", "-c", "yes | echo abcd"])
+        assert_str_equalish(out, "abcd")
+        assert_str_equalish(err, "")
+
+
 class TestMainUser(MainTest):
     def _test_user(
         self,
