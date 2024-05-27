@@ -282,6 +282,44 @@ class TestLoadConfig(ConfigTest):
         SCUBA_YML.write_text(f"image: !from_yaml {external_yml} danger")
         self.__test_load_config_safe(external_yml)
 
+    def test_load_config_image_name(self) -> None:
+        GITLAB_YML.write_text(
+            """
+            two:
+              stage: build
+              image:
+                name: dummian:8.2
+            """
+        )
+        invalid_config(
+            config_text=f"""
+            aliases:
+              two:
+                image:  !from_yaml {GITLAB_YML} two.image
+                script: rip
+            """
+        )
+
+    def test_load_config_gitlab_extensions(self) -> None:
+        GITLAB_YML.write_text(
+            """
+            include: included.yml
+
+            image: dummian:8.2
+
+            one:
+              image: !reference [another, job, somewhere]
+            
+            two:
+              extends: one
+
+            normal:
+              image: dummian:12
+            """
+        )
+
+        load_config(config_text=f"image: !from_yaml {GITLAB_YML} normal.image")
+
 
 class TestConfigHooks(ConfigTest):
     def test_hooks_mixed(self) -> None:

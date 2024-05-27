@@ -155,9 +155,12 @@ class Loader(yaml.SafeLoader):
         assert isinstance(obj, OverrideMixin)
         return obj
 
+    def not_yet_implemented(self, node: yaml.nodes.Node):
+        pass
 
 Loader.add_constructor("!from_yaml", Loader.from_yaml)
 Loader.add_constructor("!override", Loader.override)
+Loader.add_constructor("!reference", Loader.not_yet_implemented)
 
 
 def find_config() -> Tuple[Path, Path, ScubaConfig]:
@@ -517,7 +520,7 @@ class ScubaAlias:
             return cls(
                 name=name,
                 script=script,
-                image=node.get("image"),
+                image=_get_str(node, "image"),
                 entrypoint=_get_entrypoint(node),
                 environment=_process_environment(
                     node.get("environment"), f"{name}.environment"
