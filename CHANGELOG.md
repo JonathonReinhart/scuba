@@ -2,9 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [2.13.1] - 2024-05-28
 ### Fixed
 - Fixed SIGPIPE disposition being set to ignore (#255)
+
 
 ## [2.13.0] - 2024-03-25
 ### Added
@@ -278,7 +279,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 First versioned release
 
 
-[Unreleased]: https://github.com/JonathonReinhart/scuba/compare/v2.13.0...HEAD
+[Unreleased]: https://github.com/JonathonReinhart/scuba/compare/v2.13.1...HEAD
+[2.13.1]: https://github.com/JonathonReinhart/scuba/compare/v2.13.0...v2.13.1
 [2.13.0]: https://github.com/JonathonReinhart/scuba/compare/v2.12.0...v2.13.0
 [2.12.0]: https://github.com/JonathonReinhart/scuba/compare/v2.11.0...v2.12.0
 [2.11.0]: https://github.com/JonathonReinhart/scuba/compare/v2.10.1...v2.11.0
