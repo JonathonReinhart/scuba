@@ -55,11 +55,14 @@ class OverrideList(list, OverrideMixin):
 class OverrideStr(str, OverrideMixin):
     pass
 
+
 class Reference(list):
     """
     Represents a `!reference` tag value that needs to be parsed after yaml is loaded
     """
+
     pass
+
 
 # http://stackoverflow.com/a/9577670
 class Loader(yaml.SafeLoader):
@@ -181,9 +184,12 @@ class Loader(yaml.SafeLoader):
                 ]  # Be sure to replace any escaped '.' characters with *just* the '.'
         except KeyError:
             raise yaml.YAMLError(f"Key {key!r} not found in {filename}")
-        
+
         if isinstance(cur, Reference):
             cur = _process_reference(doc, cur)
+
+        if isinstance(cur, list):
+            cur = _resolve_reference_list(cur, doc)
 
         return cur
 
@@ -220,10 +226,11 @@ Loader.add_constructor("!from_yaml", Loader.from_yaml)
 Loader.add_constructor("!override", Loader.override)
 Loader.add_constructor("!from_gitlab", Loader.from_gitlab)
 
+
 class GitlabLoader(Loader):
     # https://docs.gitlab.com/ee/ci/yaml/yaml_optimization.html#reference-tags
     # https://gitlab.com/gitlab-org/gitlab/-/blob/436d642725ac6675c97c7e5833d8427e8422ac78/lib/gitlab/ci/config/yaml/tags/reference.rb#L8
-    
+
     def reference(self, node: yaml.nodes.Node) -> Reference:
         """
         Implements a !reference constructor with the following syntax:
@@ -242,22 +249,8 @@ class GitlabLoader(Loader):
         assert isinstance(key, list)
         return Reference(key)
 
-    
-def _process_reference(doc: dict, key: Reference) -> Any:
-    """
-    Converts a reference (list of yaml keys) to its referenced value
-    """
-    # Retrieve the key
-    try:
-        cur = doc
-        for k in key:
-            cur = cur[k]
-    except KeyError:
-        raise yaml.YAMLError(f"Key {key!r} not found")
-    return cur
 
 GitlabLoader.add_constructor("!reference", GitlabLoader.reference)
-
 
 
 def find_config() -> Tuple[Path, Path, ScubaConfig]:
@@ -333,6 +326,9 @@ def _process_script_node(node: CfgNode, name: str) -> List[str]:
         # The script is just the text itself
         return [node]
 
+    if isinstance(node, list):
+        return node
+
     if isinstance(node, dict):
         # There must be a "script" key, which must be a list of strings
         script = node.get("script")
@@ -348,6 +344,47 @@ def _process_script_node(node: CfgNode, name: str) -> List[str]:
         raise ConfigError(f"{name}.script: must be a string or list")
 
     raise ConfigError(f"{name}: must be string or dict")
+
+
+def _process_reference(doc: dict, key: Reference) -> Any:
+    """Process a reference tag
+
+    Args:
+      doc: a yaml document
+      key: the reference to be parsed
+
+    Returns:
+      the referenced value
+    """
+    # Retrieve the key
+    try:
+        cur = doc
+        for k in key:
+            cur = cur[k]
+    except KeyError:
+        raise yaml.YAMLError(f"Key {key!r} not found")
+    return cur
+
+
+def _resolve_reference_list(node_list: list, doc: dict):
+    """resolve nested references in a list node
+
+    Args:
+        list_node: a list node containing possibly containing references
+        doc: the current yaml doc
+
+    Returns:
+        a list with all references resolved
+    """
+    resolved_list = []
+    for node in node_list:
+        if isinstance(node, Reference):
+            # use += to concatenate list type
+            resolved_list += _process_reference(doc, node)
+        else:
+            # use append to concatenate other types
+            resolved_list.append(node)
+    return resolved_list
 
 
 def _process_environment(node: CfgNode, name: str) -> Environment:

@@ -298,6 +298,57 @@ class TestLoadConfig(ConfigTest):
         )
         assert config.image == "dummian:8.2"
 
+    def test_load_config_from_gitlab_reference_script_str(self) -> None:
+        """load a .gitlab-ci.yml with !reference in script"""
+        GITLAB_YML.write_text(
+            """
+            .setup:
+              script:
+                - do-something-really-important
+                - and-another-thing
+
+            build:
+              stage: build
+              script: !reference [.setup, script]
+            """
+        )
+        config = load_config(
+            config_text=f"""
+            aliases:
+              important: !from_gitlab {GITLAB_YML} build.script
+            """
+        )
+        assert config.aliases["important"].script == [
+            "do-something-really-important",
+            "and-another-thing",
+        ]
+
+    def test_load_config_from_gitlab_reference_script_list(self) -> None:
+        """load a .gitlab-ci.yml with !reference in script"""
+        GITLAB_YML.write_text(
+            """
+            .setup:
+              script:
+                - do-something-really-important
+
+            build:
+              stage: build
+              script:
+                - !reference [.setup, script]
+                - depends-on-important-stuff
+            """
+        )
+        config = load_config(
+            config_text=f"""
+            image: bosybux
+            aliases:
+              important: !from_gitlab {GITLAB_YML} build.script
+            """
+        )
+        assert config.image == "bosybux"
+        assert len(config.aliases) == 1
+        assert config.aliases["important"].script == ["do-something-really-important", "depends-on-important-stuff"]
+
     def test_load_config_from_gitlab_with_bad_reference(self) -> None:
         """load_config loads a config using !from_gitlab with !reference tag"""
         GITLAB_YML.write_text(
