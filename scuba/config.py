@@ -311,7 +311,7 @@ def _expand_env_vars(in_str: str) -> str:
         ) from ve
 
 
-def _process_script_node(node: CfgNode, name: str) -> List[str]:
+def _process_script_node(node: CfgNode, name: str, hook: bool = False) -> List[str]:
     """Process a script-type node
 
     Args:
@@ -326,7 +326,8 @@ def _process_script_node(node: CfgNode, name: str) -> List[str]:
         # The script is just the text itself
         return [node]
 
-    if isinstance(node, list):
+    if not hook and isinstance(node, list):
+        # if we're coming from a reference, the script may be a list despite not being a dict
         return node
 
     if isinstance(node, dict):
@@ -363,6 +364,10 @@ def _process_reference(doc: dict, key: Reference) -> Any:
             cur = cur[k]
     except KeyError:
         raise yaml.YAMLError(f"Key {key!r} not found")
+
+    if isinstance(cur, list):
+        cur = _resolve_reference_list(cur, doc)
+
     return cur
 
 
@@ -731,7 +736,7 @@ class ScubaConfig:
         ):
             node = data.get("hooks", {}).get(name)
             if node:
-                hooks[name] = _process_script_node(node, name)
+                hooks[name] = _process_script_node(node, name, True)
         return hooks
 
     @property
