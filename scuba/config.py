@@ -55,6 +55,11 @@ class OverrideList(list, OverrideMixin):
 class OverrideStr(str, OverrideMixin):
     pass
 
+class Reference(list):
+    """
+    Represents a `!reference` tag value that needs to be parsed after yaml is loaded
+    """
+    pass
 
 # http://stackoverflow.com/a/9577670
 class Loader(yaml.SafeLoader):
@@ -127,6 +132,61 @@ class Loader(yaml.SafeLoader):
             raise yaml.YAMLError(f"Key {key!r} not found in {filename}")
         return cur
 
+    def from_gitlab(self, node: yaml.nodes.Node) -> Any:
+        """
+        Implementes a !from_yaml constructor with the following syntax:
+            !from_gitlab filename key
+
+        Arguments:
+            filename:   Filename of external YAML document from which to load,
+                        relative to the current YAML file.
+            key:        Key from external YAML document to return,
+                        using a dot-separated syntax for nested keys.
+
+        Examples:
+           `!from_gitlab external.yml pop`
+
+            `!from_gitlab external.yml foo.bar.pop`
+
+            `!from_gitlab "another file.yml" "foo bar.snap crackle.pop"`
+        """
+        # Load the content from the node, as a scalar
+        assert isinstance(node, yaml.nodes.ScalarNode)
+        content = self.construct_scalar(node)
+        assert isinstance(content, str)
+
+        # Split on unquoted spaces
+        parts = shlex.split(content)
+        if len(parts) != 2:
+            raise yaml.YAMLError("Two arguments expected to !from_gitlab")
+        filename, key = parts
+
+        # path is relative to the current YAML document
+        path = self._root / filename
+
+        # Load the other YAML document
+        doc = self._cache.get(path)
+        if not doc:
+            with path.open("r") as f:
+                doc = yaml.load(f, GitlabLoader)
+                self._cache[path] = doc
+
+        # Retrieve the key
+        try:
+            cur = doc
+            # Use a negative look-behind to split the key on non-escaped '.' characters
+            for k in re.split(r"(?<!\\)\.", key):
+                cur = cur[
+                    k.replace("\\.", ".")
+                ]  # Be sure to replace any escaped '.' characters with *just* the '.'
+        except KeyError:
+            raise yaml.YAMLError(f"Key {key!r} not found in {filename}")
+        
+        if isinstance(cur, Reference):
+            cur = _process_reference(doc, cur)
+
+        return cur
+
     def override(self, node: yaml.nodes.Node) -> OverrideMixin:
         """
         Implements !override constructor
@@ -158,6 +218,46 @@ class Loader(yaml.SafeLoader):
 
 Loader.add_constructor("!from_yaml", Loader.from_yaml)
 Loader.add_constructor("!override", Loader.override)
+Loader.add_constructor("!from_gitlab", Loader.from_gitlab)
+
+class GitlabLoader(Loader):
+    # https://docs.gitlab.com/ee/ci/yaml/yaml_optimization.html#reference-tags
+    # https://gitlab.com/gitlab-org/gitlab/-/blob/436d642725ac6675c97c7e5833d8427e8422ac78/lib/gitlab/ci/config/yaml/tags/reference.rb#L8
+    
+    def reference(self, node: yaml.nodes.Node) -> Reference:
+        """
+        Implements a !reference constructor with the following syntax:
+            !reference [comma, separated, path]
+
+        Examples:
+            !reference [job, image]
+
+            !reference [other_job, before_script]
+
+            !reference [last_job, variables]
+        """
+        # Load the content from the node, as a sequence
+        assert isinstance(node, yaml.nodes.SequenceNode)
+        key = self.construct_sequence(node)
+        assert isinstance(key, list)
+        return Reference(key)
+
+    
+def _process_reference(doc: dict, key: Reference) -> Any:
+    """
+    Converts a reference (list of yaml keys) to its referenced value
+    """
+    # Retrieve the key
+    try:
+        cur = doc
+        for k in key:
+            cur = cur[k]
+    except KeyError:
+        raise yaml.YAMLError(f"Key {key!r} not found")
+    return cur
+
+GitlabLoader.add_constructor("!reference", GitlabLoader.reference)
+
 
 
 def find_config() -> Tuple[Path, Path, ScubaConfig]:

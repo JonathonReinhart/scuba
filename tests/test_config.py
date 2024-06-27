@@ -282,6 +282,34 @@ class TestLoadConfig(ConfigTest):
         SCUBA_YML.write_text(f"image: !from_yaml {external_yml} danger")
         self.__test_load_config_safe(external_yml)
 
+    def test_load_config_from_gitlab_with_reference(self) -> None:
+        """load_config loads a config using !from_gitlab with !reference tag"""
+        GITLAB_YML.write_text(
+            """
+            .start:
+              here: dummian:8.2
+              
+            now:
+              here: !reference [.start, here]
+            """
+        )
+        config = load_config(
+            config_text=f'image: !from_gitlab {GITLAB_YML} "now.here"\n'
+        )
+        assert config.image == "dummian:8.2"
+
+    def test_load_config_from_gitlab_with_bad_reference(self) -> None:
+        """load_config loads a config using !from_gitlab with !reference tag"""
+        GITLAB_YML.write_text(
+            """
+            now:
+              here: !reference [.start, here]
+            """
+        )
+        invalid_config(
+            config_text=f'image: !from_gitlab {GITLAB_YML} "now.here"\n',
+        )
+
 
 class TestConfigHooks(ConfigTest):
     def test_hooks_mixed(self) -> None:
