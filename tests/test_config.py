@@ -282,6 +282,183 @@ class TestLoadConfig(ConfigTest):
         SCUBA_YML.write_text(f"image: !from_yaml {external_yml} danger")
         self.__test_load_config_safe(external_yml)
 
+    def test_load_config_from_gitlab_with_reference(self) -> None:
+        """load_config loads a config using !from_gitlab with !reference tag"""
+        GITLAB_YML.write_text(
+            """
+            .start:
+              here: dummian:8.2
+              
+            now:
+              here: !reference [.start, here]
+            """
+        )
+        config = load_config(
+            config_text=f'image: !from_gitlab {GITLAB_YML} "now.here"\n'
+        )
+        assert config.image == "dummian:8.2"
+
+    def test_load_config_from_gitlab_reference_script_str(self) -> None:
+        """load a .gitlab-ci.yml with !reference in script"""
+        GITLAB_YML.write_text(
+            """
+            .setup:
+              script:
+                - do-something-really-important
+                - and-another-thing
+
+            build:
+              stage: build
+              script: !reference [.setup, script]
+            """
+        )
+        config = load_config(
+            config_text=f"""
+            aliases:
+              important: !from_gitlab {GITLAB_YML} build.script
+            """
+        )
+        assert config.aliases["important"].script == [
+            "do-something-really-important",
+            "and-another-thing",
+        ]
+
+    def test_load_config_from_gitlab_reference_script_list(self) -> None:
+        """load a .gitlab-ci.yml with !reference in script"""
+        GITLAB_YML.write_text(
+            """
+            .setup:
+              script:
+                - do-something-really-important
+
+            build:
+              stage: build
+              script:
+                - !reference [.setup, script]
+                - depends-on-important-stuff
+            """
+        )
+        config = load_config(
+            config_text=f"""
+            image: bosybux
+            aliases:
+              important: !from_gitlab {GITLAB_YML} build.script
+            """
+        )
+        assert config.aliases["important"].script == [
+            "do-something-really-important",
+            "depends-on-important-stuff",
+        ]
+
+    def test_load_config_from_gitlab_nested_reference(self) -> None:
+        """load a .gitlab-ci.yml with !reference in script"""
+        GITLAB_YML.write_text(
+            """
+            .initial:
+              script:
+                - the-most-important-thing
+
+            .setup:
+              script:
+                - !reference [.initial, script]
+                - do-something-really-important
+
+            build:
+              stage: build
+              script:
+                - !reference [.setup, script]
+                - depends-on-important-stuff
+            """
+        )
+        config = load_config(
+            config_text=f"""
+            image: bosybux
+            aliases:
+              important: !from_gitlab {GITLAB_YML} build.script
+            """
+        )
+        assert config.aliases["important"].script == [
+            "the-most-important-thing",
+            "do-something-really-important",
+            "depends-on-important-stuff",
+        ]
+
+    def test_load_config_from_gitlab_double_nested_reference(self) -> None:
+        """load a .gitlab-ci.yml with !reference in script"""
+        GITLAB_YML.write_text(
+            """
+            .preinit:
+              script:
+                - the-utmost-importance
+
+            .initial:
+              script:
+                - !reference [.preinit, script]
+                - the-most-important-thing
+
+            .setup:
+              script:
+                - !reference [.initial, script]
+                - do-something-really-important
+
+            build:
+              stage: build
+              script:
+                - !reference [.setup, script]
+                - depends-on-important-stuff
+            """
+        )
+        config = load_config(
+            config_text=f"""
+            image: bosybux
+            aliases:
+              important: !from_gitlab {GITLAB_YML} build.script
+            """
+        )
+        assert config.aliases["important"].script == [
+            "the-utmost-importance",
+            "the-most-important-thing",
+            "do-something-really-important",
+            "depends-on-important-stuff",
+        ]
+
+    def test_load_config_from_gitlab_with_include(self) -> None:
+        """
+        load_config loads a config using !from_gitlab with !reference tag while ignoring the include and extends
+        TODO: #200 implement other gitlab-specific yaml
+        """
+
+        GITLAB_YML.write_text(
+            f"""
+            include: dummy.yml
+
+            .base:
+              extends: .real_base
+              image: dummian:12
+              script:
+                - so something
+            
+            other:
+              image: !reference [.base, image]
+            """
+        )
+        config = load_config(
+            config_text=f'image: !from_gitlab {GITLAB_YML} "other.image"\n',
+        )
+        assert config.image == "dummian:12"
+
+    def test_load_config_from_gitlab_with_bad_reference(self) -> None:
+        """load_config loads a config using !from_gitlab with !reference tag"""
+        GITLAB_YML.write_text(
+            """
+            now:
+              here: !reference [.start, here]
+            """
+        )
+        invalid_config(
+            config_text=f'image: !from_gitlab {GITLAB_YML} "now.here"\n',
+        )
+
 
 class TestConfigHooks(ConfigTest):
     def test_hooks_mixed(self) -> None:
