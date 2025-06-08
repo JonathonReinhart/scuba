@@ -22,7 +22,7 @@ description = "Simplify use of Docker containers for building software"
 keywords = ["docker"]
 license = {file = "LICENSE.txt"}
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 
 [project.optional-dependencies]
 argcomplete = ["argcomplete>=1.10.1"]

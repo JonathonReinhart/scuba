@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Removed
 - Dropped support for Python 3.7 (#242)
+- Dropped support for Python 3.8 (#270)
 
 
 ## [2.13.1] - 2024-05-28
