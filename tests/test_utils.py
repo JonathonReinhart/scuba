@@ -164,9 +164,10 @@ def test_expand_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_expand_missing_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("MY_VAR", raising=False)
     # Verify that a KeyError is raised for unset env variables
-    with pytest.raises(KeyError) as kerr:
+    with pytest.raises(KeyError) as exc_info:
         scuba.utils.expand_env_vars("Where is ${MY_VAR}?")
-    assert kerr.value.args[0] == "MY_VAR"
+    key_err: KeyError = exc_info.value
+    assert key_err.args[0] == "MY_VAR"
 
 
 def test_expand_env_vars_dollars() -> None:
