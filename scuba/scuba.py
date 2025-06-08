@@ -127,8 +127,7 @@ class ScubaDive:
             volumes=[f"{hp} => {cp} {opt}" for hp, cp, opt in self.__get_vol_opts()],
             context=dataclasses.asdict(self.context),
         )
-        # TODO(#242) Use sort_dicts=False in Python >= 3.8
-        return "ScubaDive\n" + pprint.pformat(data, width=100)
+        return "ScubaDive\n" + pprint.pformat(data, width=100, sort_dicts=False)
 
     @property
     def is_remote_docker(self) -> bool:
