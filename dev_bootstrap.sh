@@ -5,7 +5,7 @@ then
     exit 1
 fi
 
-python3 -m virtualenv venv
-source venv/bin/activate
-pip install -r requirements.txt
-pip install -e .
+python3 -m venv venv || return $?
+source venv/bin/activate || return $?
+pip install -r requirements.txt || return $?
+pip install -e . || return $?
