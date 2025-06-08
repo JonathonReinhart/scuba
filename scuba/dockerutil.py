@@ -113,7 +113,7 @@ def get_images() -> Sequence[str]:
 def _get_image_config(image: str, key: str) -> Optional[Sequence[str]]:
     info = docker_inspect_or_pull(image)
     try:
-        result = info["Config"][key]
+        result = info["Config"].get(key)
     except KeyError as ke:
         raise DockerError(f"Failed to inspect image: JSON result missing key {ke}")
 
