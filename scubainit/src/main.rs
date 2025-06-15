@@ -1,5 +1,6 @@
 use anyhow::{bail, Context as _, Result};
 use exec::execvp;
+use linux_info::storage::{MountPoint, MountPoints};
 use log::{debug, error, info, warn};
 use std::env;
 use std::fs;
@@ -83,6 +84,45 @@ fn run_scubainit() -> Result<()> {
     result.context(format!("Failed to execute {program:?}"))
 }
 
+trait IsBindmount {
+    fn is_bind_mount(&self) -> bool;
+}
+
+impl IsBindmount for MountPoint<'_> {
+    fn is_bind_mount(&self) -> bool {
+        // https://github.com/util-linux/util-linux/blob/6f548300b2/misc-utils/findmnt.c#L649
+        // XXX This fails (in a Docker context, anyway) if the directory being bind-mounted
+        // is at / on its filesystem (e.g. `/home` on its own disk / LVM volume).
+        return self.root().is_some_and(|root| root != "/");
+    }
+}
+
+trait FindMount {
+    fn find_mountpoint(&self, path: &Path) -> Option<MountPoint<'_>>;
+}
+
+impl FindMount for MountPoints {
+    fn find_mountpoint(&self, path: &Path) -> Option<MountPoint<'_>> {
+        // Find the mount point with the longest prefix match of path.
+        let mut longest: Option<MountPoint<'_>> = None;
+        let mut longest_count = 0;
+        for info in self.points() {
+            let Some(mountpoint) = info.mount_point() else {
+                continue
+            };
+            let mountpoint = Path::new(mountpoint);
+            if path.starts_with(mountpoint) {
+                let count = mountpoint.components().count();
+                if count > longest_count {
+                    longest = Some(info);
+                    longest_count = count;
+                }
+            }
+        }
+        longest
+    }
+}
+
 struct UserInfo {
     uid: u32,
     gid: u32,
@@ -98,6 +138,46 @@ impl UserInfo {
     pub fn make_homedir(&self) -> Result<()> {
         let home = self.home_dir();
         debug!("Creating home dir: {home:?}");
+
+        // Caution must be exercised here -- perhaps more than one would expect.
+        // We need to make sure that we don't accidentally mutate the host system.
+        // See https://github.com/JonathonReinhart/scuba/issues/219.
+        //
+        // Examples (these assume home_dir() always returns /home/$USER).
+        // TODO(#216): Update this when we mirror $HOME instead of assuming /home.
+        //
+        // 1. Scuba Root: /home/$USER/
+        //    Scuba will:
+        //      * Pass `-v /home/$USER:/home:$USER`
+        //    Docker will:
+        //      * Bind-mount /home/$USER at /home/$USER.
+        //    Scubainit:
+        //      * create_dir_all() will do nothing.
+        //      * set_permissions() could change the mode.
+        //      * chown() could change the uid/gid.
+        //
+        // 2. Scuba Root: /home/
+        //    Scuba will:
+        //      * Pass `-v /home/:/home` (...yikes!)
+        //    Docker will:
+        //      * Bind-mount /home/ at /home/.
+        //    Scubainit:
+        //      * create_dir_all() could create /home/$USER if their $HOME is not /home/$USER.
+        //      * set_permissions() could change the mode.
+        //      * chown() could change the uid/gid.
+
+        // Is `home` on a bind-mount?
+        let mountpoints = MountPoints::read()?;
+        let mountpoint = mountpoints.find_mountpoint(&home);
+        if let Some(mountpoint) = mountpoint {
+            debug!("Mount point for home dir: {mountpoint:?}");
+            if mountpoint.is_bind_mount() {
+                let src = mountpoint.mount_source().unwrap_or("???");
+                let root = mountpoint.root().unwrap_or("???");
+                bail!("Error creating home dir: {home:?} is on a bind-mount: {src}[{root}]");
+            }
+        }
+
         fs::create_dir_all(&home)?;
         fs::set_permissions(&home, fs::Permissions::from_mode(0o700))?;
         chown(&home, Some(self.uid), Some(self.gid))?;
