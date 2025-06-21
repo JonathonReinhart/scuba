@@ -9,7 +9,7 @@ import tempfile
 from grp import getgrgid
 from pathlib import Path
 from pwd import getpwuid
-from typing import cast, Any, Dict, Iterable, List, Optional, Sequence, Tuple, Union
+from typing import cast, Any, Iterable, Optional, Sequence, Union
 from typing import TextIO
 
 from .config import ScubaConfig, OverrideMixin
@@ -19,7 +19,7 @@ from .dockerutil import get_image_entrypoint
 from .dockerutil import make_vol_opt
 from .utils import shell_quote_cmd, flatten_list, get_umask, writeln
 
-VolumeTuple = Tuple[Path, Path, List[str]]
+VolumeTuple = tuple[Path, Path, list[str]]
 
 
 class ScubaError(Exception):
@@ -28,21 +28,21 @@ class ScubaError(Exception):
 
 class ScubaDive:
     context: ScubaContext
-    env_vars: Dict[str, str]
-    volumes: List[VolumeTuple]
-    options: List[str]
-    docker_args: List[str]
+    env_vars: dict[str, str]
+    volumes: list[VolumeTuple]
+    options: list[str]
+    docker_args: list[str]
 
-    docker_cmd: List[str]
+    docker_cmd: list[str]
 
     def __init__(
         self,
-        user_command: List[str],
+        user_command: list[str],
         config: ScubaConfig,
         top_path: Path,
         top_rel: Path,
-        docker_args: Optional[List[str]] = None,
-        env: Optional[Dict[str, str]] = None,
+        docker_args: Optional[list[str]] = None,
+        env: Optional[dict[str, str]] = None,
         as_root: bool = False,
         verbose: bool = False,
         image_override: Optional[str] = None,
@@ -143,7 +143,7 @@ class ScubaDive:
         self,
         hostpath: Union[Path, str],
         contpath: Union[Path, str],
-        options: Optional[List[str]] = None,
+        options: Optional[list[str]] = None,
     ) -> None:
         """Add a volume (bind-mount) to the docker run invocation"""
         hostpath = Path(hostpath)
@@ -375,11 +375,11 @@ class ScubaDive:
 @dataclasses.dataclass
 class ScubaContext:
     image: str
-    environment: Dict[str, str]  # key: value
-    volumes: Dict[Path, ScubaVolume]
+    environment: dict[str, str]  # key: value
+    volumes: dict[Path, ScubaVolume]
     shell: str
-    docker_args: List[str]
-    script: Optional[List[str]] = None  # TODO: drop Optional?
+    docker_args: list[str]
+    script: Optional[list[str]] = None  # TODO: drop Optional?
     entrypoint: Optional[str] = None
     as_root: bool = False
 
@@ -408,7 +408,7 @@ class ScubaContext:
         entrypoint = cfg.entrypoint
         environment = copy.copy(cfg.environment)
         docker_args = copy.copy(cfg.docker_args) or []
-        volumes: Dict[Path, ScubaVolume] = copy.copy(cfg.volumes or {})
+        volumes: dict[Path, ScubaVolume] = copy.copy(cfg.volumes or {})
         as_root = False
 
         if command:
@@ -429,7 +429,7 @@ class ScubaContext:
                     as_root = True
 
                 if isinstance(alias.docker_args, OverrideMixin) or docker_args is None:
-                    docker_args = cast(List[str], alias.docker_args)
+                    docker_args = cast(list[str], alias.docker_args)
                 elif alias.docker_args is not None:
                     docker_args.extend(alias.docker_args)
 

@@ -7,7 +7,7 @@ import shutil
 import unittest
 import logging
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Sequence, TypeVar, Optional, Union
+from typing import Any, Callable, Sequence, TypeVar, Optional, Union
 from unittest import mock
 
 from scuba.config import ScubaVolume
@@ -41,10 +41,10 @@ def assert_str_equalish(exp: Any, act: Any) -> None:
 
 
 def assert_vol(
-    vols: Dict[Path, ScubaVolume],
+    vols: dict[Path, ScubaVolume],
     cpath_str: PathStr,
     hpath_str: PathStr,
-    options: List[str] = [],
+    options: list[str] = [],
 ) -> None:
     cpath = Path(cpath_str)
     hpath = Path(hpath_str)

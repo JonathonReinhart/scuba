@@ -1,7 +1,7 @@
 from __future__ import annotations
 import subprocess
 import json
-from typing import Any, Dict, IO, Optional, Sequence, Union
+from typing import Any, IO, Optional, Sequence, Union
 from pathlib import Path
 
 # https://github.com/python/typeshed/blob/main/stdlib/subprocess.pyi
@@ -41,7 +41,7 @@ def call(
 def _run_docker(*args: str, capture: bool = False) -> subprocess.CompletedProcess[str]:
     """Run docker and raise DockerExecuteError on ENOENT"""
     docker_args = ["docker"] + list(args)
-    kw: Dict[str, Any] = dict(text=True)
+    kw: dict[str, Any] = dict(text=True)
     if capture:
         kw.update(capture_output=True)
 
@@ -89,7 +89,7 @@ def docker_inspect_or_pull(image: str) -> dict:
 def get_images() -> Sequence[str]:
     """Get the current list of docker images
 
-    Returns: List of image names
+    Returns: A list of image names
     """
     cp = _run_docker(
         "images",

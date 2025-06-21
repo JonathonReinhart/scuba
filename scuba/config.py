@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 import re
 import shlex
-from typing import Any, List, Dict, Optional, TextIO, Tuple, Type, TypeVar, Union
+from typing import Any, Optional, TextIO, TypeVar, Union
 from typing import overload
 
 import yaml
@@ -15,8 +15,8 @@ from . import utils
 from .dockerutil import make_vol_opt
 
 CfgNode = Any
-CfgData = Dict[str, CfgNode]
-Environment = Dict[str, str]
+CfgData = dict[str, CfgNode]
+Environment = dict[str, str]
 _T = TypeVar("_T")
 
 VOLUME_NAME_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]+$")
@@ -59,7 +59,7 @@ class OverrideStr(str, OverrideMixin):
 # http://stackoverflow.com/a/9577670
 class Loader(yaml.SafeLoader):
     _root: Path  # directory containing the loaded document
-    _cache: Dict[Path, Any]  # document path => document
+    _cache: dict[Path, Any]  # document path => document
 
     def __init__(self, stream: TextIO):
         if not hasattr(self, "_root"):
@@ -68,7 +68,7 @@ class Loader(yaml.SafeLoader):
         super().__init__(stream)
 
     @staticmethod
-    def _rooted_loader(root: Path) -> Type[Loader]:
+    def _rooted_loader(root: Path) -> type[Loader]:
         """Get a Loader class with _root set to root"""
 
         class RootedLoader(Loader):
@@ -160,7 +160,7 @@ Loader.add_constructor("!from_yaml", Loader.from_yaml)
 Loader.add_constructor("!override", Loader.override)
 
 
-def find_config() -> Tuple[Path, Path, ScubaConfig]:
+def find_config() -> tuple[Path, Path, ScubaConfig]:
     """Search up the directory hierarchy for .scuba.yml
 
     Returns: path, rel, config on success, or None if not found
@@ -218,7 +218,7 @@ def _expand_env_vars(in_str: str) -> str:
         ) from ve
 
 
-def _process_script_node(node: CfgNode, name: str) -> List[str]:
+def _process_script_node(node: CfgNode, name: str) -> list[str]:
     """Process a script-type node
 
     Args:
@@ -274,7 +274,7 @@ def _process_environment(node: CfgNode, name: str) -> Environment:
     return result
 
 
-def _get_nullable_str(data: Dict[str, Any], key: str) -> Optional[str]:
+def _get_nullable_str(data: dict[str, Any], key: str) -> Optional[str]:
     # N.B. We can't use data.get() here, because that might return
     # None, leading to ambiguity between the key being absent or set
     # to a null value.
@@ -303,7 +303,7 @@ def _get_entrypoint(data: CfgData) -> Optional[str]:
     return _get_nullable_str(data, "entrypoint")
 
 
-def _get_docker_args(data: CfgData) -> Optional[List[str]]:
+def _get_docker_args(data: CfgData) -> Optional[list[str]]:
     args_str = _get_nullable_str(data, "docker_args")
     if args_str is None:
         return None
@@ -319,7 +319,7 @@ def _get_docker_args(data: CfgData) -> Optional[List[str]]:
 def _get_typed_val(
     data: CfgData,
     key: str,
-    type_: Type[_T],
+    type_: type[_T],
     default: Optional[_T] = None,
 ) -> Optional[_T]:
     v = data.get(key, default)
@@ -346,14 +346,14 @@ def _get_dict(data: CfgData, key: str) -> Optional[dict[str, Any]]:
     return _get_typed_val(data, key, dict)
 
 
-def _get_delimited_str_list(data: CfgData, key: str, sep: str) -> List[str]:
+def _get_delimited_str_list(data: CfgData, key: str, sep: str) -> list[str]:
     s = _get_typed_val(data, key, str)
     return s.split(sep) if s else []
 
 
 def _get_volumes(
     data: CfgData, scuba_root: Optional[Path]
-) -> Optional[Dict[Path, ScubaVolume]]:
+) -> Optional[dict[Path, ScubaVolume]]:
     voldata = _get_dict(data, "volumes")
     if voldata is None:
         return None
@@ -414,7 +414,7 @@ class ScubaVolume:
     container_path: Path
     host_path: Optional[Path] = None
     volume_name: Optional[str] = None
-    options: List[str] = dataclasses.field(default_factory=list)
+    options: list[str] = dataclasses.field(default_factory=list)
 
     def __post_init__(self) -> None:
         if sum(bool(x) for x in (self.host_path, self.volume_name)) != 1:
@@ -498,14 +498,14 @@ class ScubaVolume:
 @dataclasses.dataclass(frozen=True)
 class ScubaAlias:
     name: str
-    script: List[str]
+    script: list[str]
     image: Optional[str] = None
     entrypoint: Optional[str] = None
-    environment: Optional[Dict[str, str]] = None
+    environment: Optional[dict[str, str]] = None
     shell: Optional[str] = None
     as_root: bool = False
-    docker_args: Optional[List[str]] = None
-    volumes: Optional[Dict[Path, ScubaVolume]] = None
+    docker_args: Optional[list[str]] = None
+    volumes: Optional[dict[Path, ScubaVolume]] = None
 
     @classmethod
     def from_dict(
@@ -534,10 +534,10 @@ class ScubaAlias:
 class ScubaConfig:
     shell: str
     entrypoint: Optional[str]
-    docker_args: Optional[List[str]]  # TODO: drop Optional?
-    volumes: Optional[Dict[Path, ScubaVolume]]  # TODO: drop Optional? Dict?
-    aliases: Dict[str, ScubaAlias]
-    hooks: Dict[str, List[str]]
+    docker_args: Optional[list[str]]  # TODO: drop Optional?
+    volumes: Optional[dict[Path, ScubaVolume]]  # TODO: drop Optional? dict?
+    aliases: dict[str, ScubaAlias]
+    hooks: dict[str, list[str]]
     environment: Environment
 
     def __init__(
@@ -578,7 +578,7 @@ class ScubaConfig:
 
     def _load_aliases(
         self, data: CfgData, scuba_root: Optional[Path]
-    ) -> Dict[str, ScubaAlias]:
+    ) -> dict[str, ScubaAlias]:
         aliases = {}
         for name, node in data.get("aliases", {}).items():
             if " " in name:
@@ -586,7 +586,7 @@ class ScubaConfig:
             aliases[name] = ScubaAlias.from_dict(name, node, scuba_root)
         return aliases
 
-    def _load_hooks(self, data: CfgData) -> Dict[str, List[str]]:
+    def _load_hooks(self, data: CfgData) -> dict[str, list[str]]:
         hooks = {}
         for name in (
             "user",
