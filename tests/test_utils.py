@@ -3,14 +3,14 @@ from itertools import chain
 import os
 import pytest
 import shlex
-from typing import List, Sequence
+from typing import Sequence
 
 from .utils import assert_seq_equal
 
 import scuba.utils
 
 
-def _parse_cmdline(cmdline: str) -> List[str]:
+def _parse_cmdline(cmdline: str) -> list[str]:
     # Strip the formatting and whitespace
     lines = [l.rstrip("\\").strip() for l in cmdline.splitlines()]
 

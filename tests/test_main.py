@@ -10,7 +10,7 @@ import subprocess
 import sys
 from tempfile import TemporaryFile, NamedTemporaryFile
 from textwrap import dedent
-from typing import cast, IO, List, Optional, Sequence, TextIO, Tuple
+from typing import cast, IO, Optional, Sequence, TextIO
 from unittest import mock
 import warnings
 
@@ -27,7 +27,7 @@ from .utils import (
     PseudoTTY,
 )
 
-ScubaResult = Tuple[str, str]
+ScubaResult = tuple[str, str]
 
 
 SCUBA_YML = Path(".scuba.yml")
@@ -40,7 +40,7 @@ def write_script(path: Path, text: str) -> None:
 
 
 def run_scuba(
-    args: List[str],
+    args: list[str],
     *,
     expect_return: int = 0,
     mock_isatty: bool = False,
@@ -296,7 +296,7 @@ class TestMainUser(MainTest):
         expected_username: str,
         expected_gid: int,
         expected_groupname: str,
-        scuba_args: List[str] = [],
+        scuba_args: list[str] = [],
     ) -> None:
         SCUBA_YML.write_text(f"image: {DOCKER_IMAGE}")
 
@@ -316,7 +316,7 @@ class TestMainUser(MainTest):
         assert gid == expected_gid
         assert groupname == expected_groupname
 
-    def _test_user_expect_root(self, scuba_args: List[str] = []) -> None:
+    def _test_user_expect_root(self, scuba_args: list[str] = []) -> None:
         return self._test_user(
             expected_uid=0,
             expected_username="root",
@@ -392,7 +392,7 @@ class TestMainUser(MainTest):
 
 
 class TestMainHomedir(MainTest):
-    def _test_home_writable(self, scuba_args: List[str] = []) -> None:
+    def _test_home_writable(self, scuba_args: list[str] = []) -> None:
         SCUBA_YML.write_text(f"image: {DOCKER_IMAGE}")
 
         args = scuba_args + [
