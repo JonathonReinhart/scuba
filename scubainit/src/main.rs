@@ -10,7 +10,7 @@ use std::process::{Command, ExitCode};
 use stderrlog::{self, LogLevelNum};
 
 use scubainit::util::{libc_result, make_executable, open_read_append};
-use scubainit::util::{pop_env_bool, pop_env_str, pop_env_uint};
+use scubainit::util::{pop_env_bool, pop_env_octal, pop_env_str, pop_env_uint};
 use scubainit::{groups, passwd, shadow};
 
 const SCUBAINIT_EXIT_FAIL: u8 = 99;
@@ -346,7 +346,7 @@ fn process_envvars() -> Result<Context> {
         user_info: process_envvars_user_info()?,
 
         // Optional vars
-        umask: pop_env_uint(SCUBAINIT_UMASK)?,
+        umask: pop_env_octal(SCUBAINIT_UMASK)?,
 
         // SCUBAINIT_VERBOSE is popped in setup_logging().
 

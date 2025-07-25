@@ -59,7 +59,7 @@ pub fn pop_env_bool(name: &str) -> bool {
     result
 }
 
-/// Gets and unsets a uint environment variable `name`, or Ok(None) if it is not set.
+/// Gets and unsets a decimal uint environment variable `name`, or Ok(None) if it is not set.
 ///
 /// # Errors
 ///
@@ -71,10 +71,24 @@ pub fn pop_env_uint(name: &str) -> Result<Option<u32>> {
     };
     let value: u32 = value_str
         .parse()
-        .context(format!("Parsing integer variable {name}=\"{value_str}\""))?;
+        .context(format!("Parsing decimal integer variable {name}=\"{value_str}\""))?;
     Ok(Some(value))
 }
 
+/// Gets and unsets an octal uint environment variable `name`, or Ok(None) if it is not set.
+///
+/// # Errors
+///
+/// This function will return an error if the variable is set, but is not a valid integer string.
+pub fn pop_env_octal(name: &str) -> Result<Option<u32>> {
+    let value_str = match pop_env_str(name) {
+        None => return Ok(None),
+        Some(s) => s,
+    };
+    let value = u32::from_str_radix(&value_str, 8)
+        .context(format!("Parsing octal integer variable {name}=\"{value_str}\""))?;
+    Ok(Some(value))
+}
 pub fn make_executable(path: &str) -> std::io::Result<()> {
     let mut perms = fs::metadata(path)?.permissions();
     let mut mode = perms.mode();
@@ -174,6 +188,34 @@ mod tests {
     fn pop_env_uint_handles_invalid() {
         temp_env::with_var(VAR_NAME, Some("zzz"), || {
             assert!(pop_env_uint(VAR_NAME).is_err());
+            assert!(not_set(VAR_NAME));
+        });
+    }
+
+    #[test]
+    fn pop_env_octal_handles_unset() {
+        temp_env::with_var_unset(VAR_NAME, || {
+            assert!(not_set(VAR_NAME));
+            assert_eq!(pop_env_octal(VAR_NAME).unwrap(), None);
+        });
+    }
+
+    #[test]
+    fn pop_env_octal_handles_invalid() {
+        temp_env::with_var(VAR_NAME, Some("99"), || {
+            assert!(pop_env_octal(VAR_NAME).is_err());
+            assert!(not_set(VAR_NAME));
+        });
+    }
+
+    #[test]
+    fn pop_env_octal_works() {
+        temp_env::with_var(VAR_NAME, Some("0777"), || {
+            assert_eq!(pop_env_octal(VAR_NAME).unwrap(), Some(511));
+            assert!(not_set(VAR_NAME));
+        });
+        temp_env::with_var(VAR_NAME, Some("0022"), || {
+            assert_eq!(pop_env_octal(VAR_NAME).unwrap(), Some(18));
             assert!(not_set(VAR_NAME));
         });
     }
