@@ -71,7 +71,7 @@ pub fn pop_env_uint(name: &str) -> Result<Option<u32>> {
     };
     let value: u32 = value_str
         .parse()
-        .context(format!("Parsing decimal integer variable {name}=\"{value_str}\""))?;
+        .with_context(|| format!("Parsing decimal integer variable {name}=\"{value_str}\""))?;
     Ok(Some(value))
 }
 
@@ -86,7 +86,7 @@ pub fn pop_env_octal(name: &str) -> Result<Option<u32>> {
         Some(s) => s,
     };
     let value = u32::from_str_radix(&value_str, 8)
-        .context(format!("Parsing octal integer variable {name}=\"{value_str}\""))?;
+        .with_context(|| format!("Parsing octal integer variable {name}=\"{value_str}\""))?;
     Ok(Some(value))
 }
 pub fn make_executable(path: &str) -> std::io::Result<()> {
