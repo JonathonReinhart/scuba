@@ -16,6 +16,7 @@ import warnings
 
 import scuba.__main__ as main
 import scuba.dockerutil
+import scuba.utils
 
 from .const import DOCKER_IMAGE
 from .utils import (
@@ -1186,3 +1187,26 @@ class TestMainNamedVolumes(MainTest):
         # Invoke scuba again: Verify the file is still there
         out, _ = run_scuba(["/bin/sh", "-c", f"cat {test_path}"])
         assert_str_equalish(out, test_str)
+
+
+class TestMainUmask(MainTest):
+    def test_umask(self) -> None:
+        """Verify umask is set properly"""
+        SCUBA_YML.write_text(f"image: {DOCKER_IMAGE}")
+
+        FAKE_UMASK = 0o123  # unlikely
+
+        def mocked_get_umask() -> int:
+            return FAKE_UMASK
+
+        # http://alexmarandon.com/articles/python_mock_gotchas/#patching-in-the-wrong-place
+        # http://www.voidspace.org.uk/python/mock/patch.html#where-to-patch
+        with mock.patch("scuba.scuba.get_umask", side_effect=mocked_get_umask) as m:
+            args = ["/bin/sh", "-c", "umask"]
+            out, _ = run_scuba(args)
+
+        m.assert_called_once()
+
+        assert out.startswith("0")
+        result_umask = int(out, 8)
+        assert result_umask == FAKE_UMASK
