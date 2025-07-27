@@ -1,17 +1,23 @@
 #!/usr/bin/env python3
 import argparse
 import black
+import glob
 import subprocess
 from pathlib import Path
 
 PROJECT_DIR = Path(__file__).parent.resolve()
 SCUBAINIT_DIR = PROJECT_DIR / "scubainit"
+PYTHON_CODE = (
+    "scuba",
+    "tests",
+    "*.py",
+)
 
 
 def _run_black(fix: bool) -> bool:
-    args = [
-        str(PROJECT_DIR),
-    ]
+    args = []
+    for pat in PYTHON_CODE:
+        args += glob.glob(pat, root_dir=PROJECT_DIR)
 
     if not fix:
         # check only
