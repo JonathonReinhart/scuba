@@ -12,7 +12,7 @@ PROJPATH = dirname(PACKAGEPATH)
 DIST_SPEC = "scuba"
 
 # Base version, which will be augmented with Git information
-BASE_VERSION = "2.14.0"
+BASE_VERSION = "2.14.1"
 
 # This string will be replaced by `git-archive`
 # with the abbreviated commit hash

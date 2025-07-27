@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.14.1] - 2025-07-26
+### Fixed
+- Fixed umask being set incorrectly in the container (#274) (@haboustak)
+  - This was broken when scubainit was rewritten in v2.13.0.
+
+
 ## [2.14.0] - 2025-06-08
 ### Fixed
 - Fixed regression with Docker Enginer 28.2 (#269)
@@ -288,7 +294,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 First versioned release
 
 
-[Unreleased]: https://github.com/JonathonReinhart/scuba/compare/v2.14.0...HEAD
+[Unreleased]: https://github.com/JonathonReinhart/scuba/compare/v2.14.1...HEAD
+[2.14.1]: https://github.com/JonathonReinhart/scuba/compare/v2.14.0...v2.14.1
 [2.14.0]: https://github.com/JonathonReinhart/scuba/compare/v2.13.1...v2.14.0
 [2.13.1]: https://github.com/JonathonReinhart/scuba/compare/v2.13.0...v2.13.1
 [2.13.0]: https://github.com/JonathonReinhart/scuba/compare/v2.12.0...v2.13.0
