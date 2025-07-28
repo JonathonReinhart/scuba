@@ -282,6 +282,35 @@ class TestLoadConfig(ConfigTest):
         SCUBA_YML.write_text(f"image: !from_yaml {external_yml} danger")
         self.__test_load_config_safe(external_yml)
 
+    def test_load_config_image_name(self) -> None:
+        """
+        .gitlab-ci.yml supports a long-form `image` specification
+        with `name` and other sub-keys:
+        https://docs.gitlab.com/ee/ci/yaml/#image
+
+        Scuba doesn't currently support that, so make sure we handle
+        this error gracefully.
+
+        TODO(#230): Support this complex `image` format.
+        """
+
+        GITLAB_YML.write_text(
+            """
+            two:
+              stage: build
+              image:
+                name: dummian:8.2
+            """
+        )
+        invalid_config(
+            config_text=f"""
+            aliases:
+              two:
+                image:  !from_yaml {GITLAB_YML} two.image
+                script: rip
+            """
+        )
+
 
 class TestConfigHooks(ConfigTest):
     def test_hooks_mixed(self) -> None:

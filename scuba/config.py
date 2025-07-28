@@ -517,7 +517,7 @@ class ScubaAlias:
             return cls(
                 name=name,
                 script=script,
-                image=node.get("image"),
+                image=_get_str(node, "image"),
                 entrypoint=_get_entrypoint(node),
                 environment=_process_environment(
                     node.get("environment"), f"{name}.environment"
