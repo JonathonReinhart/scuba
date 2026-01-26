@@ -1,6 +1,6 @@
 argcomplete >= 1.10.1
 build
-mypy~=1.2.0
+mypy~=1.19.0
 PyYAML
 pytest
 pytest-cov
