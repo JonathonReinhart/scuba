@@ -1071,3 +1071,43 @@ class TestConfigVolumes(ConfigTest):
             """,
             error_match="Volume /foo must have exactly one of 'hostpath' or 'name' subkey",
         )
+
+
+class TestConfigAliasSuRoot(ConfigTest):
+    def test_alias_su_root_true(self) -> None:
+        """Alias with su_root: true sets as_su_root"""
+        config = load_config(config_text=r"""
+            image: na
+            aliases:
+              testalias:
+                su_root: true
+                script:
+                  - echo hello
+            """)
+        assert config.aliases["testalias"].as_su_root is True
+
+    def test_alias_su_root_and_root_mutually_exclusive(self) -> None:
+        """Alias with both root and su_root raises ConfigError"""
+        invalid_config(
+            config_text=r"""
+            image: na
+            aliases:
+              testalias:
+                root: true
+                su_root: true
+                script:
+                  - echo hello
+            """,
+            error_match="mutually exclusive",
+        )
+
+    def test_alias_su_root_default(self) -> None:
+        """Alias without su_root key defaults to as_su_root == False"""
+        config = load_config(config_text=r"""
+            image: na
+            aliases:
+              testalias:
+                script:
+                  - echo hello
+            """)
+        assert config.aliases["testalias"].as_su_root is False

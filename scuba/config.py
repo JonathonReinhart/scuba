@@ -521,6 +521,7 @@ class ScubaAlias:
     environment: dict[str, str] | None = None
     shell: str | None = None
     as_root: bool = False
+    as_su_root: bool = False
     docker_args: list[str] | None = None
     volumes: dict[Path, ScubaVolume] | None = None
 
@@ -529,6 +530,12 @@ class ScubaAlias:
         script = _process_script_node(node, name)
 
         if isinstance(node, dict):  # Rich alias
+            as_root = bool(node.get("root"))
+            as_su_root = bool(node.get("su_root"))
+            if as_root and as_su_root:
+                raise ConfigError(
+                    f"Alias '{name}': 'root' and 'su_root' are mutually exclusive"
+                )
             return cls(
                 name=name,
                 script=script,
@@ -538,7 +545,8 @@ class ScubaAlias:
                     node.get("environment"), f"{name}.environment"
                 ),
                 shell=node.get("shell"),
-                as_root=bool(node.get("root")),
+                as_root=as_root,
+                as_su_root=as_su_root,
                 docker_args=_get_docker_args(node),
                 volumes=_get_volumes(node, scuba_root),
             )

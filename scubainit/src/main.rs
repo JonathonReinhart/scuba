@@ -28,6 +28,7 @@ const SCUBAINIT_USER: &str = "SCUBAINIT_USER";
 const SCUBAINIT_GROUP: &str = "SCUBAINIT_GROUP";
 const SCUBAINIT_HOOK_USER: &str = "SCUBAINIT_HOOK_USER";
 const SCUBAINIT_HOOK_ROOT: &str = "SCUBAINIT_HOOK_ROOT";
+const SCUBAINIT_SU_ROOT: &str = "SCUBAINIT_SU_ROOT";
 const SCUBAINIT_VERBOSE: &str = "SCUBAINIT_VERBOSE";
 
 const USER_HOME: &str = "/home";
@@ -56,6 +57,11 @@ fn run_scubainit() -> Result<()> {
         user_info.add_user()?;
         user_info.add_shadow()?;
     };
+
+    // Modify root shadow entry for passwordless su if su-root mode is active
+    if ctx.su_root {
+        set_root_passwordless()?;
+    }
 
     // Call pre-su hook
     ctx.call_root_hook()?;
@@ -261,6 +267,7 @@ impl UserInfo {
 
 struct Context {
     user_info: Option<UserInfo>,
+    su_root: bool,
     umask: Option<u32>,
     user_hook: Option<String>,
     root_hook: Option<String>,
@@ -306,6 +313,54 @@ impl Context {
     }
 }
 
+/// Modify root's /etc/shadow entry to have an empty password, enabling passwordless `su`.
+/// If no root entry exists, one is created with an empty password field.
+fn set_root_passwordless() -> Result<()> {
+    let file = open_read_append(ETC_SHADOW)?;
+    let reader = shadow::ShadowFileReader::new(file);
+
+    let mut entries: Vec<shadow::ShadowEntry> = Vec::new();
+    let mut found_root = false;
+
+    for entry in reader {
+        let mut entry = entry?;
+        if entry.name == "root" {
+            entry.passwd = String::new();
+            found_root = true;
+        }
+        entries.push(entry);
+    }
+
+    if !found_root {
+        entries.push(shadow::ShadowEntry {
+            name: "root".to_string(),
+            passwd: String::new(),
+            last_change_date: None,
+            min_password_age: None,
+            max_password_age: None,
+            warn_period: None,
+            inact_period: None,
+            expire_date: None,
+        });
+    }
+
+    // Rewrite the file atomically with restrictive permissions.
+    // Use OpenOptionsExt::mode() to set 0o640 at creation time, avoiding any
+    // window where the shadow file could be world-readable.
+    use std::os::unix::fs::OpenOptionsExt;
+    let file = fs::OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .create(true)
+        .mode(0o640)
+        .open(ETC_SHADOW)?;
+    let mut writer = shadow::ShadowFileWriter::new(file);
+    for entry in &entries {
+        writer.write(entry)?;
+    }
+    Ok(())
+}
+
 fn process_envvars_user_info() -> Result<Option<UserInfo>> {
     // The following variables are optional, but if any is set, all must be set:
     let uid = pop_env_uint(SCUBAINIT_UID)?;
@@ -344,6 +399,7 @@ fn process_envvars() -> Result<Context> {
 
     Ok(Context {
         user_info: process_envvars_user_info()?,
+        su_root: pop_env_bool(SCUBAINIT_SU_ROOT),
 
         // Optional vars
         umask: pop_env_octal(SCUBAINIT_UMASK)?,

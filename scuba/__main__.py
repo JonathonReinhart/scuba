@@ -90,6 +90,12 @@ def parse_scuba_args(argv: Sequence[str] | None) -> argparse.Namespace:
         action="store_true",
         help="Run container as root (don't create scubauser)",
     )
+    ap.add_argument(
+        "-S",
+        "--su-root",
+        action="store_true",
+        help="Set up user identity and allow passwordless su to root",
+    )
     ap.add_argument("-v", "--version", action="version", version="scuba " + __version__)
     ap.add_argument("-V", "--verbose", action="store_true", help="Be verbose")
 
@@ -113,6 +119,9 @@ def parse_scuba_args(argv: Sequence[str] | None) -> argparse.Namespace:
             ap.error(f"Duplicate env var {k!r}")
         env[k] = v
     args.env_vars = env
+
+    if args.root and args.su_root:
+        ap.error("--root and --su-root are mutually exclusive")
 
     global g_verbose
     g_verbose = args.verbose
@@ -143,6 +152,7 @@ def run_scuba(scuba_args: argparse.Namespace) -> int:
         docker_args=scuba_args.docker_args,
         env=scuba_args.env_vars,
         as_root=scuba_args.root,
+        as_su_root=scuba_args.su_root,
         verbose=scuba_args.verbose,
         image_override=scuba_args.image,
         entrypoint=scuba_args.entrypoint,
