@@ -1,10 +1,13 @@
 import pytest
 import shlex
+import tempfile
+from pathlib import Path
 from typing import Any
+from unittest import mock
 from .utils import assert_vol
 
 from scuba.config import ScubaConfig, ConfigError, OverrideStr
-from scuba.scuba import ScubaContext
+from scuba.scuba import ScubaContext, ScubaDive, ScubaError
 
 
 # This exists simply to adapt all of the existing, simple kwargs-style callers
@@ -374,3 +377,166 @@ class TestScubaContext:
         assert len(vols) == 1
 
         assert_vol(vols, "/foo", "/alternate/foo")
+
+    ############################################################################
+    # su-root
+
+    def test_process_command_alias_su_root(self) -> None:
+        """process_command propagates as_su_root from alias"""
+        cfg = make_config(
+            image="default",
+            aliases=dict(
+                build=dict(
+                    script="make all",
+                    su_root=True,
+                ),
+            ),
+        )
+        result = ScubaContext.process_command(cfg, ["build"])
+        assert result.as_su_root is True
+
+
+def _make_passwd_entry(uid: int, name: str) -> mock.Mock:
+    entry = mock.Mock()
+    entry.pw_name = name
+    entry.pw_uid = uid
+    return entry
+
+
+def _make_group_entry(gid: int, name: str) -> mock.Mock:
+    entry = mock.Mock()
+    entry.gr_name = name
+    entry.gr_gid = gid
+    return entry
+
+
+class TestScubaDiveSuRoot:
+    """Tests for ScubaDive su-root mutual exclusion behavior."""
+
+    def _make_dive(
+        self,
+        alias_dict: dict[str, object],
+        cli_root: bool = False,
+        cli_su_root: bool = False,
+    ) -> ScubaDive:
+        """Helper to create a ScubaDive with mocked system calls."""
+        config = ScubaConfig(
+            {"image": "test_image", "aliases": {"myalias": alias_dict}}
+        )
+
+        tmp_dir = tempfile.mkdtemp()
+        top_path = Path(tmp_dir)
+        fake_scubainit = top_path / "scubainit"
+        fake_scubainit.write_bytes(b"\x00")
+
+        with (
+            mock.patch("scuba.scuba.os.getuid", return_value=1000),
+            mock.patch("scuba.scuba.os.getgid", return_value=1000),
+            mock.patch(
+                "scuba.scuba.getpwuid",
+                return_value=_make_passwd_entry(1000, "testuser"),
+            ),
+            mock.patch(
+                "scuba.scuba.getgrgid",
+                return_value=_make_group_entry(1000, "testgroup"),
+            ),
+            mock.patch("scuba.scuba.get_image_command", return_value=["bash"]),
+            mock.patch("scuba.scuba.get_image_entrypoint", return_value=None),
+            mock.patch.object(
+                ScubaDive,
+                "_ScubaDive__locate_scubainit",
+                return_value=str(fake_scubainit),
+            ),
+        ):
+            dive = ScubaDive(
+                user_command=["myalias"],
+                config=config,
+                top_path=top_path,
+                top_rel=Path("."),
+                as_root=cli_root,
+                as_su_root=cli_su_root,
+            )
+            return dive
+
+    def test_cli_su_root_with_alias_root_raises(self) -> None:
+        """CLI --su-root combined with alias root: true raises ScubaError"""
+        with pytest.raises(ScubaError, match="mutually exclusive"):
+            dive = self._make_dive(
+                alias_dict={"script": "echo test", "root": True},
+                cli_su_root=True,
+            )
+            dive._cleanup()
+
+    def test_cli_root_with_alias_su_root_raises(self) -> None:
+        """CLI --root combined with alias su_root: true raises ScubaError"""
+        with pytest.raises(ScubaError, match="mutually exclusive"):
+            dive = self._make_dive(
+                alias_dict={"script": "echo test", "su_root": True},
+                cli_root=True,
+            )
+            dive._cleanup()
+
+
+class TestCliSuRoot:
+    """Tests for CLI --su-root / -S flag parsing and dry-run output."""
+
+    def test_su_root_long_flag_accepted(self) -> None:
+        """--su-root flag is accepted and sets su_root=True"""
+        from scuba.__main__ import parse_scuba_args
+
+        args = parse_scuba_args(["--su-root", "echo", "hi"])
+        assert args.su_root is True
+
+    def test_su_root_short_flag_accepted(self) -> None:
+        """-S short form is accepted and sets su_root=True"""
+        from scuba.__main__ import parse_scuba_args
+
+        args = parse_scuba_args(["-S", "echo", "hi"])
+        assert args.su_root is True
+
+    def test_root_and_su_root_mutually_exclusive(self) -> None:
+        """--root --su-root together causes an error exit"""
+        from scuba.__main__ import parse_scuba_args
+
+        with pytest.raises(SystemExit):
+            parse_scuba_args(["--root", "--su-root", "echo", "hi"])
+
+    def test_dry_run_su_root_includes_env_var(self) -> None:
+        """Dry-run with --su-root includes SCUBAINIT_SU_ROOT in docker cmdline"""
+        config = ScubaConfig({"image": "test_image"})
+        tmp_dir = tempfile.mkdtemp()
+        top_path = Path(tmp_dir)
+        fake_scubainit = top_path / "scubainit"
+        fake_scubainit.write_bytes(b"\x00")
+
+        with (
+            mock.patch("scuba.scuba.os.getuid", return_value=1000),
+            mock.patch("scuba.scuba.os.getgid", return_value=1000),
+            mock.patch(
+                "scuba.scuba.getpwuid",
+                return_value=_make_passwd_entry(1000, "testuser"),
+            ),
+            mock.patch(
+                "scuba.scuba.getgrgid",
+                return_value=_make_group_entry(1000, "testgroup"),
+            ),
+            mock.patch("scuba.scuba.get_image_command", return_value=["bash"]),
+            mock.patch("scuba.scuba.get_image_entrypoint", return_value=None),
+            mock.patch.object(
+                ScubaDive,
+                "_ScubaDive__locate_scubainit",
+                return_value=str(fake_scubainit),
+            ),
+        ):
+            dive = ScubaDive(
+                user_command=["echo", "hi"],
+                config=config,
+                top_path=top_path,
+                top_rel=Path("."),
+                as_su_root=True,
+                keep_tempfiles=True,
+            )
+            cmdline = dive.get_docker_cmdline()
+            cmdline_str = " ".join(cmdline)
+            assert "SCUBAINIT_SU_ROOT=1" in cmdline_str
+            dive._cleanup()

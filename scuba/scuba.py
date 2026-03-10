@@ -43,6 +43,7 @@ class ScubaDive:
         docker_args: list[str] | None = None,
         env: dict[str, str] | None = None,
         as_root: bool = False,
+        as_su_root: bool = False,
         verbose: bool = False,
         image_override: str | None = None,
         entrypoint: str | None = None,
@@ -50,6 +51,7 @@ class ScubaDive:
         keep_tempfiles: bool = False,
     ):
         self.as_root = as_root
+        self.as_su_root = as_su_root
         self.verbose = verbose
         self.entrypoint_override = entrypoint
         self.keep_tempfiles = keep_tempfiles
@@ -119,6 +121,7 @@ class ScubaDive:
         data = dict(
             verbose=self.verbose,
             as_root=self.as_root,
+            as_su_root=self.as_su_root,
             workdir=str(self.workdir),
             options=self.options,
             docker_args=self.docker_args,
@@ -206,14 +209,24 @@ class ScubaDive:
         # Pass variables to scubainit
         self.add_env("SCUBAINIT_UMASK", f"{get_umask():04o}")
 
-        # Check if the CLI args specify "run as root", or if the command (alias) does
-        if not self.as_root and not self.context.as_root:
+        # Determine effective mode
+        effective_root = self.as_root or self.context.as_root
+        effective_su_root = self.as_su_root or self.context.as_su_root
+
+        if effective_root and effective_su_root:
+            raise ScubaError("root and su-root modes are mutually exclusive")
+
+        # Set user identity env vars (both user mode and su-root mode)
+        if not effective_root:
             uid = os.getuid()
             gid = os.getgid()
             self.add_env("SCUBAINIT_UID", uid)
             self.add_env("SCUBAINIT_GID", gid)
             self.add_env("SCUBAINIT_USER", getpwuid(uid).pw_name)
             self.add_env("SCUBAINIT_GROUP", getgrgid(gid).gr_name)
+
+        if effective_su_root:
+            self.add_env("SCUBAINIT_SU_ROOT", 1)
 
         if self.verbose:
             self.add_env("SCUBAINIT_VERBOSE", 1)
@@ -381,6 +394,7 @@ class ScubaContext:
     script: list[str] | None = None  # TODO: drop None type?
     entrypoint: str | None = None
     as_root: bool = False
+    as_su_root: bool = False
 
     @classmethod
     def process_command(
@@ -409,6 +423,7 @@ class ScubaContext:
         docker_args = copy.copy(cfg.docker_args) or []
         volumes: dict[Path, ScubaVolume] = copy.copy(cfg.volumes or {})
         as_root = False
+        as_su_root = False
 
         if command:
             alias = cfg.aliases.get(command[0])
@@ -426,6 +441,8 @@ class ScubaContext:
                     shell = alias.shell
                 if alias.as_root:
                     as_root = True
+                if alias.as_su_root:
+                    as_su_root = True
 
                 if isinstance(alias.docker_args, OverrideMixin) or docker_args is None:
                     docker_args = cast(list[str], alias.docker_args)
@@ -481,4 +498,5 @@ class ScubaContext:
             docker_args=docker_args,
             volumes=volumes,
             as_root=as_root,
+            as_su_root=as_su_root,
         )
