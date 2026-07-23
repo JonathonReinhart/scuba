@@ -15,6 +15,7 @@ from .config import ScubaConfig, OverrideMixin
 from .config import ConfigError, ScubaVolume
 from .dockerutil import get_image_command
 from .dockerutil import get_image_entrypoint
+from .dockerutil import docker_inspect_or_pull
 from .dockerutil import make_vol_opt
 from .utils import shell_quote_cmd, flatten_list, get_umask, writeln
 
@@ -183,13 +184,37 @@ class ScubaDive:
         self.workdir = workdir
 
     def __locate_scubainit(self) -> str:
-        """Determine path to scubainit binary"""
+        """Determine path to the scubainit binary matching container architecture."""
         pkg_path = os.path.dirname(__file__)
+        arch = self.__get_container_architecture()
+        target = f"{arch}-unknown-linux-musl"
 
-        scubainit_path = os.path.join(pkg_path, "scubainit")
-        if not os.path.isfile(scubainit_path):
-            raise ScubaError(f"scubainit not found at {scubainit_path!r}")
-        return scubainit_path
+        scubainit_path = os.path.join(pkg_path, f"scubainit-{target}")
+        if os.path.isfile(scubainit_path):
+            return scubainit_path
+
+        raise ScubaError(
+            f"scubainit binary not found for container target {target!r}"
+        )
+
+    def __normalize_architecture(self, arch: str) -> str | None:
+        return {
+            "amd64": "x86_64",
+            "x86_64": "x86_64",
+            "arm64": "aarch64",
+            "aarch64": "aarch64",
+        }.get(arch.lower())
+
+    def __get_container_architecture(self) -> str:
+        image_info = docker_inspect_or_pull(self.context.image)
+        arch = image_info.get("Architecture")
+        if not isinstance(arch, str):
+            raise ScubaError("Could not determine container architecture from image")
+
+        normalized_arch = self.__normalize_architecture(arch)
+        if normalized_arch is None:
+            raise ScubaError(f"Unsupported container architecture: {arch!r}")
+        return normalized_arch
 
     def __make_scubadir(self) -> None:
         """Make temp directory where all ancillary files are bind-mounted"""

@@ -6,10 +6,12 @@ information you desire.*
 
 1. Download and install [docker-ce](https://docs.docker.com/engine/install/debian/#install-using-the-repository)
 2. Download and install [rust](https://www.rust-lang.org/tools/install)
+	1. Run `rustup default stable`
+	2. Run `rustup target add x86_64-unknown-linux-musl aarch64-unknown-linux-musl`
 <!-- Specific python version? -->
 3. Download and install python3 and pip
 4. Run `source ./dev_bootstrap.sh`
-5. Run `test-docker-images/build_all.sh`
+5. Run `./test-docker-images/build_all.sh`
 
 ## Build and test
 

@@ -66,7 +66,7 @@ setup(
     packages=["scuba"],
     package_data={
         "scuba": [
-            "scubainit",
+            "scubainit-*",
         ],
     },
     include_package_data=True,  # https://github.com/pypa/setuptools/issues/1064
