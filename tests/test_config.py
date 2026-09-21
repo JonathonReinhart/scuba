@@ -1071,3 +1071,203 @@ class TestConfigVolumes(ConfigTest):
             """,
             error_match="Volume /foo must have exactly one of 'hostpath' or 'name' subkey",
         )
+import pytest
+import scuba.config
+from pathlib import Path
+
+SCUBA_YML = Path(".scuba.yml")
+GITLAB_YML = Path(".gitlab-ci.yml")
+
+
+def load_config(*, config_text: str | None = None) -> scuba.config.ScubaConfig:
+    if config_text is not None:
+        SCUBA_YML.write_text(config_text)
+    return scuba.config.load_config(SCUBA_YML, Path.cwd())
+
+
+def invalid_config(
+    *,
+    config_text: str | None = None,
+    error_match: str | None = None,
+) -> None:
+    with pytest.raises(scuba.config.ConfigError, match=error_match) as e:
+        load_config(config_text=config_text)
+
+
+@pytest.mark.usefixtures("in_tmp_path")
+class TestFromGitLab:
+    def test_from_gitlab_basic(self) -> None:
+        """!from_gitlab loads a key from a GitLab CI YAML file"""
+        GITLAB_YML.write_text("""
+            image: python:3.11
+            build:
+              script:
+                - make
+        """)
+        config = load_config(config_text=f"image: !from_gitlab {GITLAB_YML} image")
+        assert config.image == "python:3.11"
+
+    def test_from_gitlab_with_reference(self) -> None:
+        """!from_gitlab resolves !reference tags"""
+        GITLAB_YML.write_text("""
+            image: python:3.11
+            .before:
+              script:
+                - echo "ABCD"
+            build:
+              script:
+                - !reference [.before, script]
+                - echo "after"
+        """)
+        config = load_config(config_text=f"""
+            image: !from_gitlab {GITLAB_YML} image
+            aliases:
+              build:
+                script: !from_gitlab {GITLAB_YML} build.script
+        """)
+        assert config.aliases["build"].script == ['echo "ABCD"', 'echo "after"']
+
+    def test_from_gitlab_forward_reference(self) -> None:
+        """!from_gitlab supports forward references"""
+        GITLAB_YML.write_text("""
+            a: { b: { script: ["echo hello"] } }
+            c: { d: { e: !reference [g, h, j], f: 'f' } }
+            g: { h: { i: 'i', j: 1 } }
+        """)
+        config = load_config(config_text=f"""
+            image: python:3.11
+            aliases:
+              test:
+                script: !from_gitlab {GITLAB_YML} a.b.script
+        """)
+        assert config.aliases["test"].script == ["echo hello"]
+
+    def test_from_gitlab_circular_reference(self) -> None:
+        """!from_gitlab detects circular references"""
+        GITLAB_YML.write_text("""
+            a: !reference [b, c]
+            b: { c: !reference [a] }
+        """)
+        invalid_config(config_text=f"""
+            image: python:3.11
+            aliases:
+              test:
+                script: !from_gitlab {GITLAB_YML} a
+        """, error_match="circular chain")
+
+    def test_from_gitlab_missing_reference(self) -> None:
+        """!from_gitlab errors on missing references"""
+        GITLAB_YML.write_text("""
+            a: !reference [b]
+        """)
+        invalid_config(config_text=f"""
+            image: python:3.11
+            aliases:
+              test:
+                script: !from_gitlab {GITLAB_YML} a
+        """, error_match="could not be found")
+
+    def test_from_gitlab_multiple_documents(self) -> None:
+        """!from_gitlab handles multi-document YAML files"""
+        GITLAB_YML.write_text(dedent("""
+            image: python:3.11
+            ---
+            .before:
+              script: ["echo setup"]
+            build:
+              script:
+                - !reference [.before, script]
+                - echo "build"
+        """))
+        config = load_config(config_text=f"""
+            image: !from_gitlab {GITLAB_YML} image
+            aliases:
+              build:
+                script: !from_gitlab {GITLAB_YML} build.script
+        """)
+        assert config.image == "python:3.11"
+        assert config.aliases["build"].script == ['echo setup', 'echo "build"']
+
+    def test_from_gitlab_duplicate_top_key(self) -> None:
+        """!from_gitlab errors on duplicate top-level keys across documents"""
+        GITLAB_YML.write_text(dedent("""
+            image: invalid:8.2
+            ---
+            image: python:3.11
+        """))
+        invalid_config(config_text=f"image: !from_gitlab {GITLAB_YML} image",
+                       error_match="found multiple times")
+
+    def test_from_gitlab_list_flattening(self) -> None:
+        """!from_gitlab flattens referenced lists when used inside a list"""
+        GITLAB_YML.write_text("""
+            a: { b: [1, 2] }
+            c: { d: [3, 4] }
+            f: { g: [ !reference [a, b], 5, !reference [c, d] ] }
+        """)
+        config = load_config(config_text=f"""
+            image: python:3.11
+            aliases:
+              test:
+                script: !from_gitlab {GITLAB_YML} f.g
+        """)
+        assert config.aliases["test"].script == [1, 2, 5, 3, 4]
+
+    def test_from_gitlab_nested_dict_reference(self) -> None:
+        """!from_gitlab resolves references to nested dicts"""
+        GITLAB_YML.write_text("""
+            a: { b: { c: 'c', d: 'd' } }
+            e: { f: !reference [a, b] }
+            i: !reference [e, f]
+        """)
+        config = load_config(config_text=f"""
+            image: python:3.11
+            aliases:
+              test:
+                image: !from_gitlab {GITLAB_YML} i
+                script: echo test
+        """)
+        assert config.aliases["test"].image == {'c': 'c', 'd': 'd'}
+
+    def test_from_gitlab_reference_to_scalar(self) -> None:
+        """!from_gitlab resolves references to scalar values inside dicts"""
+        GITLAB_YML.write_text("""
+            a: { b: { c: 'echo hello', d: 'echo world' } }
+            e: { f: { g: !reference [a, b, c], h: 'echo done' } }
+            i: !reference [e, f]
+        """)
+        config = load_config(config_text=f"""
+            image: python:3.11
+            aliases:
+              test:
+                script: !from_gitlab {GITLAB_YML} i.g
+        """)
+        assert config.aliases["test"].script == ["echo hello"]
+
+    def test_from_gitlab_caching(self) -> None:
+        """!from_gitlab caches loaded files"""
+        from unittest import mock
+        GITLAB_YML.write_text("""
+            one: dummian:8.2
+            two: dummian:9.3
+            three: dummian:10.1
+        """)
+        SCUBA_YML.write_text(f"""
+            image: !from_gitlab {GITLAB_YML} one
+            aliases:
+              two:
+                image:  !from_gitlab {GITLAB_YML} two
+                script: ugh
+              three:
+                image:  !from_gitlab {GITLAB_YML} three
+                script: ugh
+        """)
+
+        with mock.patch.object(Path, "open", autospec=True, side_effect=Path.open) as m:
+            config = load_config()
+
+        # Assert that GITLAB_YML was only opened once
+        assert m.mock_calls == [
+            mock.call(SCUBA_YML, "r"),
+            mock.call(GITLAB_YML, "r"),
+        ]

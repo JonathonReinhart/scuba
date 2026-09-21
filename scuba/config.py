@@ -56,6 +56,13 @@ class OverrideStr(str, OverrideMixin):
     pass
 
 
+@dataclasses.dataclass(frozen=True)
+class GitLabReference:
+    """A GitLab CI ``!reference`` path."""
+
+    path: tuple[str, ...]
+
+
 # http://stackoverflow.com/a/9577670
 class Loader(yaml.SafeLoader):
     _root: Path  # directory containing the loaded document
@@ -174,9 +181,121 @@ class Loader(yaml.SafeLoader):
         assert isinstance(obj, OverrideMixin)
         return obj
 
+    def from_gitlab(self, node: yaml.nodes.Node) -> Any:
+        """Load a key from a GitLab CI YAML file and resolve references."""
+        assert isinstance(node, yaml.nodes.ScalarNode)
+        content = self.construct_scalar(node)
+        assert isinstance(content, str)
+
+        parts = shlex.split(content)
+        if len(parts) != 2:
+            raise yaml.YAMLError("Two arguments expected to !from_gitlab")
+        filename, key = parts
+
+        path = self._root / filename
+        if path not in self._cache:
+            with path.open("r") as f:
+                self._cache[path] = list(yaml.load_all(f, GitLabLoader))
+        docs = self._cache[path]
+
+        merged: CfgData = {}
+        for doc in docs:
+            if doc:
+                merged.update(doc)
+        merged = _resolve_gitlab_references(merged)
+
+        try:
+            top_key, *keys = [
+                key.replace("\\.", ".") for key in re.split(r"(?<!\\)\.", key)
+            ]
+
+            found_top = [
+                doc[top_key]
+                for doc in docs
+                if isinstance(doc, dict) and top_key in doc
+            ]
+            if not found_top:
+                raise KeyError
+            if len(found_top) > 1:
+                matching_docs = ", ".join(
+                    str(i)
+                    for i, doc in enumerate(docs, start=1)
+                    if isinstance(doc, dict) and top_key in doc
+                )
+                raise yaml.YAMLError(
+                    f"Key {key!r} found multiple times in {filename} "
+                    f"in documents {matching_docs}"
+                )
+
+            cur = merged[top_key]
+            for k in keys:
+                cur = cur[k]
+        except KeyError:
+            raise yaml.YAMLError(f"Key {key!r} not found in {filename}")
+        return cur
+
+
+class GitLabLoader(Loader):
+    """Load GitLab CI YAML, including ``!reference`` tags."""
+
+    def reference(self, node: yaml.nodes.Node) -> GitLabReference:
+        assert isinstance(node, yaml.nodes.SequenceNode)
+        if not node.value:
+            raise yaml.YAMLError(
+                "!reference expects at least 1 element: [path...]"
+            )
+        path = tuple(self.construct_scalar(n) for n in node.value)
+        return GitLabReference(path)
+
+
+GitLabLoader.add_constructor("!reference", GitLabLoader.reference)
+
+
+def _resolve_gitlab_references(data: CfgData) -> CfgData:
+    """Resolve GitLab CI ``!reference`` values, including forward references."""
+    resolving: set[tuple[str, ...]] = set()
+
+    def resolve(obj: Any) -> Any:
+        if isinstance(obj, GitLabReference):
+            if obj.path in resolving:
+                raise ConfigError(
+                    f"GitLab !reference {list(obj.path)} is part of a circular chain"
+                )
+
+            resolving.add(obj.path)
+            try:
+                cur: Any = data
+                for part in obj.path:
+                    if not isinstance(cur, dict) or part not in cur:
+                        raise ConfigError(
+                            f"GitLab !reference {list(obj.path)} could not be found"
+                        )
+                    cur = cur[part]
+                return resolve(cur)
+            finally:
+                resolving.discard(obj.path)
+
+        if isinstance(obj, dict):
+            return {key: resolve(value) for key, value in obj.items()}
+
+        if isinstance(obj, list):
+            result = []
+            for item in obj:
+                resolved = resolve(item)
+                if isinstance(item, GitLabReference) and isinstance(resolved, list):
+                    result.extend(resolved)
+                else:
+                    result.append(resolved)
+            return result
+
+        return obj
+
+    return resolve(data)
+
 
 Loader.add_constructor("!from_yaml", Loader.from_yaml)
 Loader.add_constructor("!override", Loader.override)
+Loader.add_constructor("!from_gitlab", Loader.from_gitlab)
 
 
 def find_config() -> tuple[Path, Path, ScubaConfig]:
